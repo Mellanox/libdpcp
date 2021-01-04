@@ -89,6 +89,26 @@ TEST_F(dpcp_dpp_rq, ti_01_create)
     ASSERT_EQ(ret, DPCP_OK);
     ASSERT_EQ(new_num, 1);
 
+#if defined(DPP_MKEY_UID_WA)
+    // This workaround is required when direct_mkey is created with UID=0 (by ibv_reg_mr)
+    // while DPP itself will be created with UID!=0. Pattern Mkey by DPCP PRM will have the
+    // same UID!=0 but indirectly will point to UID=0 direct_mkey. Still need to be sure
+    // that data transfer will not issue syndrome.
+    // Create indirect Mkey by PatternMkey
+    pattern_mkey* ptmk = nullptr;
+    pattern_mkey_bb mem_bb[1];
+    mem_bb[0].m_key = mk;
+    mem_bb[0].m_stride_sz = s_dpp_rq_attr.buf_stride_sz;
+    mem_bb[0].m_length = buf_length;
+    ret = ad->create_pattern_mkey(buf, MKEY_NONE, s_dpp_rq_attr.buf_stride_num, ARRAY_SIZE(mem_bb),
+                                  mem_bb, ptmk);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    ret = ptmk->get_id(mk_id);
+    ASSERT_EQ(ret, DPCP_OK);
+    ASSERT_NE(mk_id, 0);
+#endif // defined(DPP_MKEY_UID_WA)
+
     // Create
     s_mkey = mk_id;
     dpp_rq* drq = nullptr;

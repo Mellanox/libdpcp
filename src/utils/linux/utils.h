@@ -14,6 +14,7 @@ with the software product.
 
 #include <unistd.h>
 #include <cstdint>
+#include <infiniband/verbs.h>
 
 inline size_t get_page_size()
 {

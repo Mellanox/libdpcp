@@ -11,8 +11,14 @@ gtest_CPPFLAGS = \
 	-I$(top_srcdir)/src/dcmd/linux \
 	-I$(top_srcdir)/tests/gtest
 
+if ENABLE_CUDA
+gtest_LDFLAGS  = $(GTEST_LDFLAGS) -no-install $(VERBS_LIBS) -lrdmacm -lpthread $(CUDA_LDFLAGS) -lcuda
+gtest_CXXFLAGS = $(GTEST_CXXFLAGS) -g -O3 -fno-tree-vectorize $(CUDA_CFLAGS) -DGPU_DIRECT
+else
 gtest_LDFLAGS  = $(GTEST_LDFLAGS) -no-install $(VERBS_LIBS) -lrdmacm -lpthread
 gtest_CXXFLAGS = $(GTEST_CXXFLAGS) -g -O3 -fno-tree-vectorize
+endif
+
 gtest_DEPENDENCIES = $(gtest_LDADD)
 
 gtest_SOURCES = \

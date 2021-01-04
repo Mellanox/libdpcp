@@ -21,7 +21,7 @@ with the software product.
 #include <cstdint>
 #endif
 
-static const char* dpcp_version = "1.0.0";
+static const char* dpcp_version = "1.1.0";
 
 #if defined(__linux__)
 typedef void* LPOVERLAPPED;
@@ -196,6 +196,7 @@ class direct_mkey : public mkey {
     adapter* m_adapter;
     dcmd::umem* m_umem;
     void* m_address;
+    void* m_ibv_mem;
     size_t m_length;
     mkey_flags m_flags;
     uint32_t m_idx; // memory key index
@@ -219,7 +220,7 @@ public:
      *
      * @retval Returns DPCP_OK on success.
      */
-    status reg_mem();
+    status reg_mem(void* verbs_pd = NULL);
     /**
      * @brief Creates Memory Key for registered UMEM region
      *
@@ -1034,11 +1035,12 @@ private:
     td* m_td;
     pd* m_pd;
     uar_collection* m_uarpool;
+    void* m_caps;
+    void* m_ibv_pd;
     uint32_t m_pd_id;
     uint32_t m_td_id;
     uint32_t m_eqn;
     bool m_is_caps_available;
-    void* m_caps;
 
 public:
     adapter(dcmd::device* dev, dcmd::ctx* ctx);
@@ -1052,10 +1054,28 @@ public:
         return m_td_id;
     }
 
-    status set_pd(uint32_t pdn);
+    status set_pd(uint32_t pdn, void* verbs_pd = NULL);
+
     inline uint32_t get_pd()
     {
         return m_pd_id;
+    }
+
+    /**
+     * @brief Returns ibv_pd* as void*
+     *
+     * @param [out] p_ibv_pd       On Success will be set ibv_pd* pointer
+     *
+     * @retval      Returns DPCP_OK on success
+     *              Returns DPCP_ERR_NO_CONTEXT if ibv_pd* was not initialized
+     */
+    inline status get_ibv_pd(void*& p_ibv_pd)
+    {
+        if (m_ibv_pd) {
+            p_ibv_pd = m_ibv_pd;
+            return DPCP_OK;
+        }
+        return DPCP_ERR_NO_CONTEXT;
     }
 
     dcmd::ctx* get_ctx()

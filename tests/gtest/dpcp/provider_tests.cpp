@@ -70,7 +70,7 @@ TEST_F(dpcp_provider, ti_2)
     ASSERT_EQ(DPCP_OK, ret);
 
     for (unsigned i = 0; i < num; i++) {
-        log_trace("[%ld] id: %s name: %s\n", i, ai->id.c_str(), ai->name.c_str());
+        log_trace("[%u] id: %s name: %s\n", i, ai->id.c_str(), ai->name.c_str());
         ai++;
     }
 }

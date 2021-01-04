@@ -78,7 +78,7 @@ int dpcp_base::create_cq(adapter* ad, cq_data* dv_cq)
     dv_cq->dbrec = out.dbrec;
     dv_cq->p_cq_ci = 0;
 
-    log_trace("cq 0x%lx buf 0x%lx cq_sz %d cqe_cz %d cqn 0x%x\n", cq, dv_cq->buf, dv_cq->cq_size,
+    log_trace("cq %p buf %p cq_sz %d cqe_cz %d cqn 0x%x\n", cq, dv_cq->buf, dv_cq->cq_size,
               dv_cq->cqe_size, dv_cq->cqn);
     return 0;
 }

@@ -467,7 +467,7 @@ TEST_F(dpcp_adapter, ti_08_create_dpp_rq)
  */
 TEST_F(dpcp_adapter, ti_07_get_hca_freq)
 {
-    adapter *ad = OpenAdapter();
+    adapter* ad = OpenAdapter();
     ASSERT_NE(ad, nullptr);
 
     status ret = ad->open();
@@ -478,10 +478,59 @@ TEST_F(dpcp_adapter, ti_07_get_hca_freq)
     ret = ad->get_hca_caps_frequency_khz(freq);
     if (ret != DPCP_OK) {
         delete ad;
-	return;
+        return;
     }
     ASSERT_NE(freq, 0);
 
     delete ad;
 }
+#if defined(__linux__)
+/**
+ * @test dpcp_adapter.ti_08_set_get_ibv_pd
+ * @brief
+ *    Check set_pd() with ibv_pd* and get_ibv_pd
+ * @details
+ */
+TEST_F(dpcp_adapter, ti_08_set_get_ibv_pd)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+
+    ibv_context* ibv_ctx = (ibv_context*)ad->get_ibv_context();
+    ASSERT_NE(nullptr, ibv_ctx);
+
+    struct ibv_pd* pd = ibv_alloc_pd(ibv_ctx);
+    ASSERT_NE(nullptr, pd);
+    // Get PD id
+    mlx5dv_obj mlx5_obj = {};
+    mlx5_obj.pd.in = pd;
+    mlx5dv_pd out_pd;
+    mlx5_obj.pd.out = &out_pd;
+    int ret = mlx5dv_init_obj(&mlx5_obj, MLX5DV_OBJ_PD);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    void* p_ibv_pd = nullptr;
+    ret = ad->get_ibv_pd(p_ibv_pd);
+    ASSERT_EQ(DPCP_ERR_NO_CONTEXT, ret);
+
+    ret = ad->set_pd(out_pd.pdn, pd);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    ret = ad->get_ibv_pd(p_ibv_pd);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(pd, p_ibv_pd);
+
+    uint id = ad->get_pd();
+    ASSERT_EQ(out_pd.pdn, id);
+
+    ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    id = ad->get_pd();
+    ASSERT_NE(0, id);
+    ASSERT_EQ(out_pd.pdn, id);
+
+    delete ad;
+}
+#endif
 

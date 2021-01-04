@@ -58,11 +58,12 @@ adapter::adapter(dcmd::device* dev, dcmd::ctx* ctx)
     , m_td(nullptr)
     , m_pd(nullptr)
     , m_uarpool(nullptr)
+    , m_caps(nullptr)
+    , m_ibv_pd(nullptr)
     , m_pd_id(0)
     , m_td_id(0)
     , m_eqn(0)
     , m_is_caps_available(false)
-    , m_caps(nullptr)
 {
     m_caps = calloc(1, DEVX_ST_SZ_DW(query_hca_cap_out));
     if (nullptr != m_caps) {
@@ -70,12 +71,13 @@ adapter::adapter(dcmd::device* dev, dcmd::ctx* ctx)
     }
 }
 
-status adapter::set_pd(uint32_t pdn)
+status adapter::set_pd(uint32_t pdn, void* ibv_pd)
 {
     if (0 == pdn) {
         return DPCP_ERR_INVALID_PARAM;
     }
     m_pd_id = pdn;
+    m_ibv_pd = ibv_pd; // TODO: till DevX GPU memory is supported
     if (nullptr != m_pd) {
         delete m_pd;
         m_pd = nullptr;
@@ -175,7 +177,7 @@ status adapter::create_direct_mkey(void* address, size_t length, mkey_flags flag
         return DPCP_ERR_NO_MEMORY;
     }
     // Register UserMEMory
-    status ret = dmk->reg_mem();
+    status ret = dmk->reg_mem(m_ibv_pd);
     if (DPCP_OK != ret) {
         delete dmk;
         return DPCP_ERR_UMEM;

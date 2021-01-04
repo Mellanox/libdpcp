@@ -12,7 +12,7 @@ dnl===-----------------------------------------------------------------------===
 # Update version number here:
 #
 define([prj_ver_major], 1)
-define([prj_ver_minor], 0)
+define([prj_ver_minor], 1)
 define([prj_ver_revision], 0)
 define([prj_ver_release], esyscmd([echo ${PRJ_RELEASE:=0}]))
 
@@ -206,7 +206,7 @@ dnl=== SECTION 7: Checking for libraries
 dnl===
 dnl===-----------------------------------------------------------------------===
 show_section_title "Check for libraries"
-
+AX_CHECK_CUDA
 
 dnl===-----------------------------------------------------------------------===
 dnl===

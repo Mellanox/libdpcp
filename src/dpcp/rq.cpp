@@ -430,7 +430,7 @@ status dpp_rq::create()
         return DPCP_ERR_INVALID_ID;
     }
 
-    log_trace("create DPP_RQ: pd: %u\n", id);
+    log_trace("create DPP_RQ: pd: %u mkey: 0x%x\n", id, m_mkey);
     DEVX_SET(wq, p_wq, pd, (id & 0xFFFFFF));
 
     // Send mailbox

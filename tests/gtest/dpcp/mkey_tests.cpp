@@ -196,8 +196,138 @@ TEST_F(dpcp_mkey, ti_dm05_create)
     delete ad;
 }
 
-void prepare_bbs(adapter* ad, pattern_mkey_bb mem_bb[2], uint8_t*& dat_buf, uint8_t*& hdr_buf,
-                 const int32_t strides_num)
+#ifdef GPU_DIRECT
+
+#include <cuda.h>
+#include <cuda_runtime_api.h>
+
+void* allocate_buffer_gpu(const size_t size)
+{
+    uint64_t addr;
+    void* ptr;
+
+    CUdeviceptr buffer;
+
+    /* These settings are good for 1 GPU */
+    int whichDevice, count = 0, value = 0xFF;
+    CUdevice dev;
+    CUcontext dev_ctx;
+
+    cuInit(0);
+    int dev_id = 1; // get_gpu_direct();
+    cuDeviceGet(&dev, dev_id);
+    cuDevicePrimaryCtxRetain(&dev_ctx, dev);
+    cuCtxSetCurrent(dev_ctx);
+
+    CUdeviceptr d_A;
+    cuMemAlloc(&d_A, size);
+
+    ptr = reinterpret_cast<void*>(d_A);
+
+    return ptr;
+}
+
+TEST_F(dpcp_mkey, ti_dm06_reg_GPU_mem)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+
+    const size_t size = 4096 * 56320;
+    uint8_t* buf = (uint8_t*)allocate_buffer_gpu(size);
+    ASSERT_NE(nullptr, buf);
+
+    ibv_context* ibv_ctx = (ibv_context*)ad->get_ibv_context();
+    ASSERT_NE(nullptr, ibv_ctx);
+
+    struct ibv_pd* pd = ibv_alloc_pd(ibv_ctx);
+    ASSERT_NE(nullptr, pd);
+
+    direct_mkey* mk = new direct_mkey(ad, buf, size, (mkey_flags)0);
+
+    uint32_t old_id;
+    status ret = mk->get_id(old_id);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(0, old_id);
+
+    ret = mk->reg_mem(pd);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    ret = mk->get_id(old_id);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE(0, old_id);
+
+    cuMemFree((CUdeviceptr)buf);
+    delete mk;
+    delete ad;
+}
+#endif // GPU_DIRECT
+
+void prepare_bbs1(adapter* ad, pattern_mkey_bb mem_bb[1], uint8_t*& dat_buf,
+                  const int32_t strides_num)
+{
+    const int32_t dat_stride_sz = 512;
+    const int32_t dat_len = 512;
+    int32_t dat_buf_sz = strides_num * dat_stride_sz;
+    dat_buf = new (std::nothrow) uint8_t[dat_buf_sz];
+    ASSERT_NE(nullptr, dat_buf);
+
+    direct_mkey* dat_mk = nullptr;
+    status ret = ad->create_direct_mkey(dat_buf, dat_buf_sz, (mkey_flags)0, dat_mk);
+    ASSERT_EQ(DPCP_OK, ret);
+    // prepare memory descriptor
+    mem_bb[0].m_key = dat_mk;
+    mem_bb[0].m_stride_sz = dat_stride_sz;
+    mem_bb[0].m_length = dat_len;
+}
+
+void release_bbs1(pattern_mkey_bb mem_bb[1], uint8_t* dat_buf)
+{
+    delete mem_bb[0].m_key;
+    delete[] dat_buf;
+}
+
+/**
+ * @test dpcp_mkey.ti_pm01_create_indirect
+ * @brief
+ *    Check pattern_mkey::create method with indirect mkey
+ * @details
+ *
+ */
+TEST_F(dpcp_mkey, ti_pm01_create_indirect)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+
+    status ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    errno = 0;
+    const int32_t strides_num = 256;
+    pattern_mkey_bb mem_bb[1];
+    uint8_t* dat_buf = nullptr;
+    prepare_bbs1(ad, mem_bb, dat_buf, strides_num);
+
+    pattern_mkey mk(ad, dat_buf, MKEY_NONE, strides_num, 1, mem_bb);
+
+    // create
+    ret = mk.create();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    // check new mkey id
+    uint32_t new_id;
+    ret = mk.get_id(new_id);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE((uint32_t)0, new_id);
+
+    log_trace("pattern mkey id: 0x%x\n", new_id);
+
+    release_bbs1(mem_bb, dat_buf);
+
+    delete ad;
+}
+
+void prepare_bbs2(adapter* ad, pattern_mkey_bb mem_bb[2], uint8_t*& dat_buf, uint8_t*& hdr_buf,
+                  const int32_t strides_num)
 {
     const int32_t hdr_stride_sz = 16;
     const int32_t hdr_len = 14;
@@ -228,12 +358,96 @@ void prepare_bbs(adapter* ad, pattern_mkey_bb mem_bb[2], uint8_t*& dat_buf, uint
     mem_bb[1].m_length = dat_len;
 }
 
-void release_bbs(pattern_mkey_bb mem_bb[2], uint8_t* dat_buf, uint8_t* hdr_buf)
+void release_bbs2(pattern_mkey_bb mem_bb[2], uint8_t* dat_buf, uint8_t* hdr_buf)
 {
     delete mem_bb[0].m_key;
     delete mem_bb[1].m_key;
     delete[] dat_buf;
     delete[] hdr_buf;
+}
+
+/**
+ * @test dpcp_mkey.ti_pm02_Constructor
+ * @brief
+ *    Check pattern-mkey constructor
+ * @details
+ */
+TEST_F(dpcp_mkey, ti_pm02_Constructor)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+
+    status ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    const int32_t strides_num = 256;
+    pattern_mkey_bb mem_bb[2];
+    uint8_t* hdr_buf = nullptr;
+    uint8_t* dat_buf = nullptr;
+    prepare_bbs2(ad, mem_bb, dat_buf, hdr_buf, strides_num);
+
+    pattern_mkey mk(ad, hdr_buf, MKEY_NONE, strides_num, 2, mem_bb);
+
+    size_t m_num;
+    ret = mk.get_mkeys_num(m_num);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(2, m_num);
+
+    ret = mk.get_stride_num(m_num);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(m_num, strides_num);
+
+    size_t stride_sz = 0;
+    ret = mk.get_stride_sz(stride_sz);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(stride_sz, mem_bb[0].m_length + mem_bb[1].m_length);
+
+    uint32_t len;
+    ret = mk.get_length(len);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(len, strides_num * stride_sz);
+
+    release_bbs2(mem_bb, dat_buf, hdr_buf);
+    delete ad;
+}
+/**
+ * @test dpcp_mkey.ti_pm03_create
+ * @brief
+ *    Check pattern_mkey::create method
+ * @details
+ *
+ */
+TEST_F(dpcp_mkey, ti_pm03_create)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+
+    status ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    errno = 0;
+    const int32_t strides_num = 256;
+    pattern_mkey_bb mem_bb[2];
+    uint8_t* hdr_buf = nullptr;
+    uint8_t* dat_buf = nullptr;
+    prepare_bbs2(ad, mem_bb, dat_buf, hdr_buf, strides_num);
+
+    pattern_mkey mk(ad, hdr_buf, MKEY_NONE, strides_num, 2, mem_bb);
+
+    // create
+    ret = mk.create();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    // check new mkey id
+    uint32_t new_id;
+    ret = mk.get_id(new_id);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE((uint32_t)0, new_id);
+
+    log_trace("pattern mkey id: 0x%x\n", new_id);
+
+    release_bbs2(mem_bb, dat_buf, hdr_buf);
+    delete ad;
 }
 
 void prepare_bbs3(adapter* ad, pattern_mkey_bb mem_bb[3], uint8_t*& dat_buf, uint8_t*& hdr_buf,
@@ -292,92 +506,14 @@ void release_bbs3(pattern_mkey_bb mem_bb[3], uint8_t* dat_buf, uint8_t* hdr_buf,
     delete[] dat_buf;
     delete[] hdr_buf;
 }
-
 /**
- * @test dpcp_mkey.ti_pm01_Constructor
+ * @test dpcp_mkey.ti_pm04_create_pad
  * @brief
- *    Check pattern-mkey constructor
- * @details
- */
-TEST_F(dpcp_mkey, ti_pm01_Constructor)
-{
-    adapter* ad = OpenAdapter();
-    ASSERT_NE(nullptr, ad);
-
-    status ret = ad->open();
-    ASSERT_EQ(DPCP_OK, ret);
-
-    const int32_t strides_num = 256;
-    pattern_mkey_bb mem_bb[2];
-    uint8_t* hdr_buf = nullptr;
-    uint8_t* dat_buf = nullptr;
-    prepare_bbs(ad, mem_bb, dat_buf, hdr_buf, strides_num);
-
-    pattern_mkey mk(ad, hdr_buf, MKEY_NONE, strides_num, 2, mem_bb);
-
-    size_t m_num;
-    ret = mk.get_mkeys_num(m_num);
-    ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_EQ(2, m_num);
-
-    ret = mk.get_stride_num(m_num);
-    ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_EQ(m_num, strides_num);
-
-    size_t stride_sz = 0;
-    ret = mk.get_stride_sz(stride_sz);
-    ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_EQ(stride_sz, mem_bb[0].m_length + mem_bb[1].m_length);
-
-    uint32_t len;
-    ret = mk.get_length(len);
-    ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_EQ(len, strides_num * stride_sz);
-
-    release_bbs(mem_bb, dat_buf, hdr_buf);
-    delete ad;
-}
-/**
- * @test dpcp_mkey.ti_pm05_create
- * @brief
- *    Check pattern_mkey::create method
+ *    Check pattern_mkey::create method with padding template
  * @details
  *
  */
-TEST_F(dpcp_mkey, ti_pm05_create)
-{
-    adapter* ad = OpenAdapter();
-    ASSERT_NE(nullptr, ad);
-
-    status ret = ad->open();
-    ASSERT_EQ(DPCP_OK, ret);
-
-    errno = 0;
-    const int32_t strides_num = 256;
-    pattern_mkey_bb mem_bb[2];
-    uint8_t* hdr_buf = nullptr;
-    uint8_t* dat_buf = nullptr;
-    prepare_bbs(ad, mem_bb, dat_buf, hdr_buf, strides_num);
-
-    pattern_mkey mk(ad, hdr_buf, MKEY_NONE, strides_num, 2, mem_bb);
-
-    // create
-    ret = mk.create();
-    ASSERT_EQ(DPCP_OK, ret);
-
-    // check new mkey id
-    uint32_t new_id;
-    ret = mk.get_id(new_id);
-    ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE((uint32_t)0, new_id);
-
-    log_trace("pattern mkey id: 0x%x\n", new_id);
-
-    release_bbs(mem_bb, dat_buf, hdr_buf);
-    delete ad;
-}
-
-TEST_F(dpcp_mkey, ti_pm05_create_pad)
+TEST_F(dpcp_mkey, ti_pm04_create_pad)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
