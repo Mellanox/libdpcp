@@ -47,10 +47,20 @@ stamp-h1
 cov-int/
 jenkins/
 
-# Project/Eclipse
+# Project/Eclipse/Visual Studio
 .cproject
 .project
 tags
+.vs/
+obj/
+dpcp.sln
+dpcp.vcxproj
+dpcp.vcxproj.filters
+dpcp.vcxproj.user
 
 # build products
-contrib/script/dpcp.spec
+contrib/scripts/dpcp.spec
+debian/changelog
+
+# Tests
+tests/gtest/gtest

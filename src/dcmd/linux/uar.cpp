@@ -15,9 +15,19 @@ uar::uar(ctx_handle handle, struct uar_desc* desc)
         throw DCMD_EINVAL;
     }
 
+    /* Not all platforms support Combine Barrier which is required for
+     * BlueFlame usage. In case the UAR cannot be created with BlueFlame
+     * support - retry using No Cache mode */
+    desc->flags |= MLX5_IB_UAPI_UAR_ALLOC_TYPE_BF;
+    desc->flags &= ~MLX5_IB_UAPI_UAR_ALLOC_TYPE_NC;
     devx_uar = mlx5dv_devx_alloc_uar(handle, desc->flags);
     if (NULL == devx_uar) {
-        throw DCMD_ENOTSUP;
+        desc->flags |= MLX5_IB_UAPI_UAR_ALLOC_TYPE_NC;
+        desc->flags &= ~MLX5_IB_UAPI_UAR_ALLOC_TYPE_BF;
+        devx_uar = mlx5dv_devx_alloc_uar(handle, desc->flags);
+        if (NULL == devx_uar) {
+            throw DCMD_ENOTSUP;
+        }
     }
     m_handle = devx_uar;
 

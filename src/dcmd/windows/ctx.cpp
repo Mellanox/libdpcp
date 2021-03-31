@@ -105,3 +105,16 @@ int ctx::query_eqn(uint32_t cpu_num, uint32_t& eqn)
     log_trace("query_eqn: cpuNum: %x eqn: %x ret: %d\n", cpu_num, eqn, ret);
     return (ret ? DCMD_EIO : DCMD_EOK);
 }
+
+int ctx::hca_iseg_mapping(void*& pv_iseg)
+{
+    u32 cb_iseg;
+
+    int ret = devx_query_hca_iseg_mapping(m_handle, &cb_iseg, &pv_iseg);
+
+    if (ret) {
+        log_error("devx_query_hca_iseg_mapping failed ret=0x%x\n", ret);
+    }
+
+    return (ret ? DCMD_EIO : DCMD_EOK);
+}

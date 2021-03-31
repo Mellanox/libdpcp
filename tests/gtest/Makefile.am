@@ -46,6 +46,7 @@ gtest_SOURCES = \
 	dpcp/rq_tests.cpp\
 	dpcp/rq_dpp_tests.cpp\
 	dpcp/tir_tests.cpp\
+	dpcp/tis_tests.cpp\
 	dpcp/fr_tests.cpp\
 	dpcp/adapter_tests.cpp
 

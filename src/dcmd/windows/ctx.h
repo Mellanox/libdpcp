@@ -34,6 +34,7 @@ public:
     umem* create_umem(struct umem_desc* desc);
     flow* create_flow(struct flow_desc* desc);
     int query_eqn(uint32_t cpu_num, uint32_t& eqn);
+    int hca_iseg_mapping(void*& pv_iseg);
 
 private:
     ctx_handle m_handle;

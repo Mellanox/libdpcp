@@ -23,6 +23,7 @@ libdpcp_la_SOURCES = \
 	dpcp/mkey.cpp \
 	dpcp/rq.cpp \
 	dpcp/tir.cpp \
+	dpcp/tis.cpp \
 	\
 	dcmd/dcmd.h \
 	\

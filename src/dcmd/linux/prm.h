@@ -2495,7 +2495,8 @@ struct mlx5_ifc_traffic_counter_bits {
 
 struct mlx5_ifc_tisc_bits {
     u8 strict_lag_tx_port_affinity[0x1];
-    u8 reserved_at_1[0x3];
+    u8 tls_en[0x1];
+    u8 reserved_at_2[0x2];
     u8 lag_tx_port_affinity[0x04];
 
     u8 reserved_at_8[0x4];
@@ -2509,7 +2510,11 @@ struct mlx5_ifc_tisc_bits {
 
     u8 reserved_at_140[0x8];
     u8 underlay_qpn[0x18];
-    u8 reserved_at_160[0x3a0];
+
+    u8 reserved_at_160[0x8];
+    u8 pd[0x18];
+
+    u8 reserved_at_180[0x380];
 };
 
 enum {
@@ -2537,7 +2542,8 @@ struct mlx5_ifc_tirc_bits {
     u8 reserved_at_0[0x20];
 
     u8 disp_type[0x4];
-    u8 reserved_at_24[0x1c];
+    u8 tls_en[0x1];
+    u8 reserved_at_25[0x1b];
 
     u8 reserved_at_40[0x40];
 
@@ -8583,7 +8589,11 @@ struct mlx5_ifc_initial_seg_bits {
     u8 health_syndrome[0x8];
     u8 health_counter[0x18];
 
-    u8 reserved_at_80a0[0x17fc0];
+    u8 reserved_at_80a0[0x160];
+
+    u8 real_time[0x40];
+
+    u8 reserved_at_9[0x17e20];
 };
 
 struct mlx5_ifc_mtpps_reg_bits {

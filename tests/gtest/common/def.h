@@ -54,6 +54,8 @@ with the software product.
 #include <complex.h>
 #include <time.h>
 #include <signal.h>
+#include <chrono>
+#include <thread>
 
 #include "common/gtest.h" /* Google framework header */
 

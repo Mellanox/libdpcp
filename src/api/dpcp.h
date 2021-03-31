@@ -12,16 +12,16 @@ with the software product.
 */
 #pragma once
 
+#include <bitset>
 #include <string>
 #include <vector>
-#include <bitset>
 #if __cplusplus < 201103L
 #include <stdint.h>
 #else
 #include <cstdint>
 #endif
 
-static const char* dpcp_version = "1.1.0";
+static const char* dpcp_version = "1.1.2";
 
 #if defined(__linux__)
 typedef void* LPOVERLAPPED;
@@ -291,7 +291,8 @@ struct pattern_mkey_bb {
 /**
  * @brief class pattern_mkey - Represent Pattern Memory Key
  *
- * Application can create a dpcp::pattern_mkey only via dpcp::adapter->create_pattern_mkey().
+ * Application can create a dpcp::pattern_mkey only via
+ * dpcp::adapter->create_pattern_mkey().
  *
  * dpcp::adapter is responsible to create the dpcp::pattern_mkey instance.
  */
@@ -431,7 +432,8 @@ public:
 };
 
 /**
- * @brief enum cq_attr_use - set name for attributes which are valid and to be used or modified
+ * @brief enum cq_attr_use - set name for attributes which are valid and to be
+ * used or modified
  *
  */
 enum event_type {
@@ -526,7 +528,8 @@ public:
 };
 
 /**
- * @brief enum cq_attr_use - set name for attributes which are valid and to be used or modified
+ * @brief enum cq_attr_use - set name for attributes which are valid and to be
+ * used or modified
  *
  */
 enum cq_attr_use {
@@ -546,25 +549,28 @@ enum cq_flags {
     ATTR_CQ_CQE_COLLAPSED_FLAG, /**< If set, all CQEs are written (collapsed) to
                                 first CQ entry */
     ATTR_CQ_BREAK_MODERATION_EN_FLAG, /**< When set, solicited CQE (CQE.SE flag
-                                      is enabled) breaks Completion Event Moderation.
-                                      CQE causes immediate EQE generation.*/
+                                      is enabled) breaks Completion Event
+                                      Moderation. CQE causes immediate EQE
+                                      generation.*/
     ATTR_CQ_OVERRUN_IGNORE_FLAG, /**< When set, overrun ignore is enabled.
-                                 When set, updates of CQ consumer counter (poll for
-                                 completion) or Request completion notifications
-                                 (Arm CQ) DoorBells should not be rung on that CQ */
+                                 When set, updates of CQ consumer counter (poll
+                                 for      completion) or Request completion
+                                 notifications      (Arm CQ) DoorBells should not be
+                                 rung on that CQ */
     ATTR_CQ_PERIOD_MODE_FLAG, /**< 0: upon_event - cq_period timer restarts upon
-                              event generation. 1: upon_cqe - cq_period timer restarts
-                              upon completion generation */
+                              event generation. 1: upon_cqe - cq_period timer
+                              restarts upon completion generation */
     ATTR_CQ_MAX_CNT_FLAG
 };
 
 /**
- * @brief struct cq_moderation - Describes CQ Moderation attributes, (PRM, sec.8.19.10, Table 171)
+ * @brief struct cq_moderation - Describes CQ Moderation attributes, (PRM,
+ * sec.8.19.10, Table 171)
  *
  */
 struct cq_moderation {
-    uint32_t cq_period; /**< Event Generation moderation timer in 1 usec granularity,
-                         0 - disabled */
+    uint32_t cq_period; /**< Event Generation moderation timer in 1 usec
+                         granularity,  0 - disabled */
     uint32_t cq_max_cnt; /**<Event Generation Moderation counter, 0 - disabled */
 };
 
@@ -573,12 +579,13 @@ struct cq_moderation {
  *
  */
 struct cq_attr {
-    uint32_t cq_sz; /**< size of CQ in CQE numbers (64bytes each), should be power of 2*/
+    uint32_t cq_sz; /**< size of CQ in CQE numbers (64bytes each), should be power
+                       of 2*/
     uint32_t eq_num; /**< CQ reports completion events to this Event Queue Id */
     cq_moderation moderation; /**< moderation attributes */
     std::bitset<ATTR_CQ_MAX_CNT_FLAG> flags; /**< CQ flags */
-    std::bitset<CQ_ATTR_MAX_CNT> cq_attr_use; /**< OR'd mask of attribute types which should be
-                                 applied and use */
+    std::bitset<CQ_ATTR_MAX_CNT> cq_attr_use; /**< OR'd mask of attribute types
+                                 which should be applied and use */
 };
 
 #if !defined(__linux__)
@@ -751,7 +758,8 @@ class striding_rq : public rq {
     dcmd::umem* m_db_rec_umem;
 
     size_t m_wqe_num; // Number of WQEs in RQ, must be power of 2
-    size_t m_wqe_sz; // WQE size, i.e. number of DS (16B) in each RQ WQE, must be power of 2
+    size_t m_wqe_sz; // WQE size, i.e. number of DS (16B) in each RQ WQE, must be
+                     // power of 2
     uint32_t m_wq_buf_sz_bytes;
     uint32_t m_wq_buf_umem_id;
     uint32_t m_db_rec_umem_id;
@@ -885,6 +893,60 @@ public:
     bool get_mc_self_loopback();
 };
 
+/**
+ * @brief Represent TIS object flags
+ */
+typedef enum tis_flags {
+    TIS_NONE = 0ULL, /**< TIS without special flags */
+    TIS_TLS_EN = 1ULL << 0 /**< TIS with TLS offload enabled */
+} tis_flags;
+
+/**
+ * @brief Represent and handles TIS object
+ */
+class tis : public obj {
+private:
+    uint64_t m_flags;
+    uint32_t m_tisn;
+
+public:
+    /**
+     * @brief TIS Object constructor, object is initialized but not created yet
+     *
+     * @param [in]  ctx           Pointer to adapter context
+     * @param [in]  flags         Bitwise OR of @ref tis_flags ENUM
+     *
+     */
+    tis(dcmd::ctx* ctx, const uint64_t flags);
+    virtual ~tis();
+    /**
+     * @brief Creates TIS object in HW
+     *
+     * @param [in]  td_id         Transport Domain ID assign the TIS with
+     * @param [in]  pd_id         Protection Domain ID assign the TIS with
+     *      @note: valid only when flags has @ref tis_flags::TIS_TLS_EN bit
+     * enabled
+     *
+     * @retval Returns @ref dpcp::status with the status code
+     */
+    status create(const uint32_t td_id, const uint32_t pd_id = 0);
+    /**
+     * @brief Get TIS number object in HW
+     *
+     * @param [out]  tisn         The returned TIS number
+     *
+     * @retval Returns @ref dpcp::status with the status code
+     */
+    inline status get_tisn(uint32_t& tisn) const
+    {
+        if (m_tisn == 0) {
+            return DPCP_ERR_INVALID_ID;
+        }
+        tisn = m_tisn;
+        return DPCP_OK;
+    }
+};
+
 struct match_params {
     uint8_t dst_mac[8]; // 6 bytes + 2 (EOS+alignment)
     uint16_t ethertype;
@@ -970,7 +1032,8 @@ public:
     /**
      * @brief Remove DPCP tir from flow rule destination list
      *
-     * @param [in]  dst_tir       Pointer to DPCP tir to remove from this flow rule
+     * @param [in]  dst_tir       Pointer to DPCP tir to remove from this flow
+     * rule
      *
      * @retval Returns DPCP_OK on success.
      */
@@ -994,15 +1057,16 @@ public:
     status get_tir(uint32_t index, tir*& tr);
     /**
      * @brief Apply flow settings that were configured for this flow rule.
-     * Notice: only after apply is called flow settings will actually configured on the HW.
+     * Notice: only after apply is called flow settings will actually configured
+     *on the HW.
      *
-     * If flow rule is changed after the last apply call there rule state returned by rule get
-     *methods
-     * will reflect only rule logical state and not the actual HW state, in order to get rule HW
-     *state
-     * make sure to read it's state (by rule get nethods) after apply call but before any set calls.
-     * Notice: By default flow rule masks are zero so if no filters were applied, flow rule action
-     * will be always miss for all the traffic. By default rule priority if 0.
+     * If flow rule is changed after the last apply call there rule state returned
+     *by rule get methods will reflect only rule logical state and not the actual
+     *HW state, in order to get rule HW state make sure to read it's state (by
+     *rule get nethods) after apply call but before any set calls. Notice: By
+     *default flow rule masks are zero so if no filters were applied, flow rule
+     *action will be always miss for all the traffic. By default rule priority if
+     *0.
      *
      * If apply is called and destination list is 0, apply will fail.
      *
@@ -1011,9 +1075,9 @@ public:
      */
     status apply_settings();
     /**
-     * @brief Revoke flow settings that were configured for this flow rule and applied via apply.
-     * If apply was not called revoke_settings returns with failure.
-     * call to m_flow->destroy_flow(m_dcmd_flow);
+     * @brief Revoke flow settings that were configured for this flow rule and
+     * applied via apply. If apply was not called revoke_settings returns with
+     * failure. call to m_flow->destroy_flow(m_dcmd_flow);
      *
      * @retval Returns DPCP_OK on success.
      */
@@ -1041,6 +1105,8 @@ private:
     uint32_t m_td_id;
     uint32_t m_eqn;
     bool m_is_caps_available;
+
+    void* m_pv_iseg;
 
 public:
     adapter(dcmd::device* dev, dcmd::ctx* ctx);
@@ -1084,6 +1150,13 @@ public:
     }
 
     void* get_ibv_context();
+
+    /**
+     * @brief Returns real time for device (supported starting from ConnextX6)
+     *
+     * @retval      Returns real time
+     */
+    uint64_t get_real_time();
 
     status open();
     /**
@@ -1141,8 +1214,8 @@ public:
      *
      * @param [in]  rq_attr         RQ attributes
      * @param [in]  rq_num          Number of WQEs in RQ, must be power of 2
-     * @param [in]  wqe_sz          WQE size, i.e. number of DS (16B) in each RQ WQE, must be power
-     *of 2
+     * @param [in]  wqe_sz          WQE size, i.e. number of DS (16B) in each RQ
+     *WQE, must be power of 2
      * @param [out] rq              On Success created striding_rq
      *
      * @retval      Returns DPCP_OK on success
@@ -1171,6 +1244,15 @@ public:
      * @retval      Returns DPCP_OK on success
      */
     status create_tir(uint32_t rqn, tir*& tr);
+    /**
+     * @brief Creates and returns DPCP TIS
+     *
+     * @param [in]  flags           Bitwise OR of @ref tis_flags ENUM.
+     * @param [out] _tis            Pointer to TIS object on success
+     *
+     * @retval Returns @ref dpcp::status with the status code
+     */
+    status create_tis(const uint64_t& flags, tis*& _tis);
     /**
      * @brief Creates and returns flow_rule
      *

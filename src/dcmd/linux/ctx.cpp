@@ -120,3 +120,12 @@ int ctx::query_eqn(uint32_t cpu_num, uint32_t& eqn)
     log_trace("query_eqn: cpuNum: %x eqn: %x ret: %d\n", cpu_num, eqn, ret);
     return (ret ? DCMD_EIO : DCMD_EOK);
 }
+
+// TODO: ticket RM #2577742
+int ctx::hca_iseg_mapping(void*& pv_iseg)
+{
+    UNUSED(pv_iseg);
+    log_warn("Not implemented now");
+
+    return 0;
+}

@@ -64,6 +64,7 @@ adapter::adapter(dcmd::device* dev, dcmd::ctx* ctx)
     , m_td_id(0)
     , m_eqn(0)
     , m_is_caps_available(false)
+    , m_pv_iseg(nullptr)
 {
     m_caps = calloc(1, DEVX_ST_SZ_DW(query_hca_cap_out));
     if (nullptr != m_caps) {
@@ -108,6 +109,21 @@ void* adapter::get_ibv_context()
     return m_dcmd_ctx->get_context();
 }
 
+uint64_t adapter::get_real_time()
+{
+    if (nullptr == m_pv_iseg) {
+        log_error("m_pv_iseg is not initialized");
+        return 0;
+    }
+    // TODO: work how to save into pointer(via DEVX_ADDR_OF)
+    uint64_t rtc = (uint64_t)(DEVX_GET64(initial_seg, m_pv_iseg, real_time));
+    uint32_t nanoseconds = (uint32_t)(rtc & ~(0x3 << 30)); // get the low 30 bits
+    uint32_t seconds = (uint32_t)(rtc >> 32); // get the high 32 bits
+    std::chrono::seconds s(seconds);
+
+    return (uint64_t)(nanoseconds + std::chrono::nanoseconds(s).count());
+}
+
 status adapter::open()
 {
     status ret = DPCP_OK;
@@ -148,6 +164,14 @@ status adapter::open()
             return DPCP_ERR_NO_MEMORY;
         }
     }
+    // Mapping divece ctx to iseg for getting RTC on BF2 device
+    if (nullptr == m_pv_iseg) {
+        int err = m_dcmd_ctx->hca_iseg_mapping(m_pv_iseg);
+        if (err) {
+            log_error("hca_iseg_mapping failed ret=0x%x\n", err);
+            return DPCP_ERR_NO_CONTEXT;
+        }
+    }
     return ret;
 }
 
@@ -164,6 +188,28 @@ status adapter::create_tir(uint32_t rqn, tir*& t_)
         delete tr;
         return DPCP_ERR_CREATE;
     }
+
+    return DPCP_OK;
+}
+
+status adapter::create_tis(const uint64_t& flags, tis*& out_tis)
+{
+    tis* _tis = new (std::nothrow) tis(get_ctx(), flags);
+    if (_tis == nullptr) {
+        return DPCP_ERR_NO_MEMORY;
+    }
+
+    uint32_t tis_pd_id = 0;
+    if (flags & tis_flags::TIS_TLS_EN) {
+        tis_pd_id = m_pd_id;
+    }
+
+    status ret = _tis->create(m_td_id, tis_pd_id);
+    if (ret != DPCP_OK) {
+        delete _tis;
+        return DPCP_ERR_CREATE;
+    }
+    out_tis = _tis;
 
     return DPCP_OK;
 }

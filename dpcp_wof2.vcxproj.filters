@@ -52,6 +52,9 @@
     <ClCompile Include="src\dpcp\tir.cpp">
       <Filter>dpcp</Filter>
     </ClCompile>
+    <ClCompile Include="src\dpcp\tis.cpp">
+      <Filter>dpcp</Filter>
+    </ClCompile>
     <ClCompile Include="src\dcmd\windows\uar.cpp">
       <Filter>dpcp</Filter>
     </ClCompile>

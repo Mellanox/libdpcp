@@ -484,6 +484,40 @@ TEST_F(dpcp_adapter, ti_07_get_hca_freq)
 
     delete ad;
 }
+
+/**
+ * @test dpcp_adapter.ti_10_get_real_time
+ *
+ */
+TEST_F(dpcp_adapter, ti_10_get_real_time)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(ad, nullptr);
+
+    status ret = ad->open();
+    ASSERT_EQ(ret, DPCP_OK);
+
+    uint64_t real_time, real_time_after = 0;
+    uint64_t chrono_time, chrono_time_after = 0;
+
+    real_time = ad->get_real_time();
+    chrono_time = (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    ASSERT_NE(real_time, 0);
+
+    std::this_thread::sleep_for(std::chrono::microseconds(10));
+
+    real_time_after = ad->get_real_time();
+    chrono_time_after = (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    ASSERT_NE(real_time_after, 0);
+
+    ASSERT_GT(real_time_after, real_time);
+
+    uint64_t real_time_delta = real_time_after - real_time;
+    uint64_t chrono_delta = chrono_time_after - chrono_time;
+    uint64_t delta = std::llabs(real_time_delta - chrono_delta);
+
+    ASSERT_LE(delta, 50000);
+}
 #if defined(__linux__)
 /**
  * @test dpcp_adapter.ti_08_set_get_ibv_pd

@@ -131,7 +131,8 @@ status direct_mkey::reg_mem(void* verbs_pd)
         }
         if (nullptr == ibv_mem) {
             log_trace("direct_mkey::ibv_reg_mem failed: addr: %p len: %zd ibv_pd: %p ibv_mr: %p "
-                      "errno: %d\n", m_address, m_length, verbs_pd, ibv_mem, errno);
+                      "errno: %d\n",
+                      m_address, m_length, verbs_pd, ibv_mem, errno);
             return DPCP_ERR_UMEM;
         }
         m_ibv_mem = ibv_mem;
