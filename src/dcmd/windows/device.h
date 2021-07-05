@@ -21,19 +21,38 @@ namespace dcmd {
 class device : public base_device {
 public:
     device()
+        : m_handle(nullptr)
+        , m_dev_info()
+        , m_vendor_id(0)
+        , m_vendor_part_id(0)
     {
-        m_handle = nullptr;
     }
+
     device(dev_handle handle);
+
     virtual ~device()
     {
     }
+
     std::string get_name();
+
     ctx* create_ctx();
+
+    uint32_t get_vendor_id()
+    {
+        return m_vendor_id;
+    }
+
+    uint32_t get_vendor_part_id()
+    {
+        return m_vendor_part_id;
+    }
 
 private:
     dev_handle m_handle;
     devx_device m_dev_info;
+    uint32_t m_vendor_id;
+    uint32_t m_vendor_part_id;
 };
 
 } /* namespace dcmd */

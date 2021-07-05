@@ -27,7 +27,6 @@ int compchannel::bind(cq_obj_handle cq_obj, bool solicited_only)
         m_cq_obj = cq_obj;
         m_solicited = solicited_only;
     } else {
-        log_error("cq obj is null\n");
         return DCMD_EINVAL;
     }
     int err = ibv_req_notify_cq(m_cq_obj, m_solicited);

@@ -82,6 +82,9 @@ status provider::get_adapter_info_lst(adapter_info* info_lst, size_t& adapter_nu
 
         p_ai->id = m_devices[i]->get_id();
         p_ai->name = m_devices[i]->get_name();
+        p_ai->vendor_id = m_devices[i]->get_vendor_id();
+        p_ai->vendor_part_id = m_devices[i]->get_vendor_part_id();
+        log_trace("%s %x %x\n", p_ai->name.c_str(), p_ai->vendor_id, p_ai->vendor_part_id);
     }
     return DPCP_OK;
 }

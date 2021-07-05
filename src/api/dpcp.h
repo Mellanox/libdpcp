@@ -1,5 +1,5 @@
 /*
-Copyright (C) Mellanox Technologies, Ltd. 2020. ALL RIGHTS RESERVED.
+Copyright (C) Mellanox Technologies, Ltd. 2020-2021. ALL RIGHTS RESERVED.
 
 This software product is a proprietary product of Mellanox Technologies, Ltd.
 (the "Company") and all right, title, and interest in and to the software
@@ -10,18 +10,34 @@ are licensed, not sold. All rights not licensed are reserved.
 This software product is governed by the End User License Agreement provided
 with the software product.
 */
-#pragma once
+#ifndef DPCP_H_
+#define DPCP_H_
 
 #include <bitset>
 #include <string>
 #include <vector>
+
 #if __cplusplus < 201103L
 #include <stdint.h>
 #else
 #include <cstdint>
 #endif
 
-static const char* dpcp_version = "1.1.2";
+#if __linux__
+#include <tr1/functional>
+#include <tr1/unordered_map>
+
+using std::tr1::function;
+using std::tr1::unordered_map;
+#else
+#include <functional>
+#include <unordered_map>
+
+using std::function;
+using std::unordered_map;
+#endif
+
+static const char* dpcp_version = "1.1.12";
 
 #if defined(__linux__)
 typedef void* LPOVERLAPPED;
@@ -555,8 +571,8 @@ enum cq_flags {
     ATTR_CQ_OVERRUN_IGNORE_FLAG, /**< When set, overrun ignore is enabled.
                                  When set, updates of CQ consumer counter (poll
                                  for      completion) or Request completion
-                                 notifications      (Arm CQ) DoorBells should not be
-                                 rung on that CQ */
+                                 notifications      (Arm CQ) DoorBells should not
+                                 be      rung on that CQ */
     ATTR_CQ_PERIOD_MODE_FLAG, /**< 0: upon_event - cq_period timer restarts upon
                               event generation. 1: upon_cqe - cq_period timer
                               restarts upon completion generation */
@@ -1085,28 +1101,264 @@ public:
     virtual ~flow_rule();
 };
 
+enum sq_state {
+    SQ_RST = 0x0, /**< RQ in reset state */
+    SQ_RDY = 0x1, /**< RQ in ready state */
+    SQ_ERR = 0x3 /**<  RQ in error state */
+};
+
+/**
+ * @brief Packet Pacing attributes
+ *
+ */
+typedef struct qos_packet_pacing_s {
+    uint32_t sustained_rate; /**< packet pacing sustained rate */
+    uint32_t burst_sz; /**< burst size in packets */
+    uint16_t packet_sz; /**< typical packet size */
+} qos_packet_pacing;
+
+/**
+ * @brief Represent cryptography offloads key types
+ */
+typedef enum encryption_key_type_t {
+    ENCRYPTION_KEY_TYPE_TLS = 0x1, /**< TLS encryption key type */
+    ENCRYPTION_KEY_TYPE_IPSEC = 0x2 /**< IPsec encryption key type */
+} encryption_key_type_t;
+
+/**
+ * @brief Represent and handles DEK object
+ */
+class dek : public obj {
+private:
+    uint32_t m_key_id;
+
+public:
+    /**
+     * @brief DEK Object constructor, object is initialized but not created yet
+     *
+     * @param [in]  ctx           Pointer to adapter context
+     *
+     */
+    dek(dcmd::ctx* ctx);
+    virtual ~dek();
+    /**
+     * @brief Creates DEK object in HW
+     *
+     * @param [in]  pd_id           Protection Domain ID assign the DEK with
+     * @param [in]  key             Pointer to the encryption key
+     * @param [in]  key_size_bytes  Size in bytes of the key
+     *
+     * @note: The call supports @ref
+     * encryption_key_type_t::ENCRYPTION_KEY_TYPE_TLS
+     *
+     * @retval Returns @ref dpcp::status with the status code
+     */
+    status create(const uint32_t pd_id, void* key, const uint32_t key_size_bytes);
+    /**
+     * @brief Get key ID object in HW
+     *
+     * @note: Valid only when the @ref dek::create call
+     * completed successfully with return status of @ref status::DPCP_OK
+     *
+     * @retval Returns the ID of the key in HW
+     */
+    inline uint32_t get_key_id() const
+    {
+        return m_key_id;
+    }
+};
+
+/*
+ * @breif Represents HCA capabilities
+ *
+ * @note: The type of the fields shouldn't be changed.
+ */
+typedef struct adapter_hca_capabilities {
+    uint32_t device_frequency_khz; /**< Internal device frequency given in KHz.
+                                      Valid only if non-zero. */
+    bool tls_tx; /**< If set, TLS offload for transmitted traffic is supported */
+    bool tls_rx; /**< If set, TLS offload for received traffic is supported */
+    bool tls_1_2_aes_gcm_128; /**< If set, aes_gcm cipher with TLS 1.2 and 128 bit
+                               * key is supported
+                               */
+    bool general_object_types_encryption_key; /**< If set, creation of encryption
+                                               * keys is supported
+                                               */
+    uint8_t log_max_dek; /**< Log (base 2) of maximum DEK Objects that are
+                            supported, 0 means not supported */
+    bool crypto_enable; /**< no prm description. if set, crypto capabilites are supported */
+    uint8_t sq_ts_format; /**< Indicates the supported ts_format in SQ Context.
+                             0x0: FREE_RUNNING_TS
+                             0x1: REAL_TIME_TS
+                             0x2: FREE_RUNNING_AND_REAL_TIME_TS - both
+                             free running real time timestamps are supported.*/
+    uint8_t rq_ts_format; /**< Indicates the supported ts_format in RQ Context.
+                             0x0: FREE_RUNNING_TS
+                             0x1: REAL_TIME_TS
+                             0x2: FREE_RUNNING_AND_REAL_TIME_TS - both
+                             free running real time timestamps are supported.*/
+} adapter_hca_capabilities;
+
+typedef unordered_map<int, void*> caps_map_t;
+
+typedef function<void(adapter_hca_capabilities* external_hca_caps, const caps_map_t& caps_map)>
+    cap_cb_fn;
+
+typedef enum {
+    QOS_NONE,
+    QOS_PACKET_PACING // PacketPacing parameters
+} QOS_TYPE;
+
+typedef struct _QOS_attributes {
+    QOS_TYPE qos_type;
+    union {
+        qos_packet_pacing packet_pacing_attr;
+    } qos_attr;
+} qos_attributes;
+
+struct sq_attr {
+    qos_attributes* qos_attrs;
+    uint32_t qos_attrs_sz;
+    uint32_t tis_num;
+    uint32_t cqn;
+    uint32_t wqe_num; // Number of WQEs in SQ, must be power of 2
+    uint32_t wqe_sz; // WQE size, in bytes
+    uint32_t user_index;
+};
+
+class sq : public obj {
+protected:
+    sq_attr m_attr;
+    sq_state m_state;
+    uint32_t m_wqe_num; // should be **2
+    uint32_t m_wqe_sz; // should be 64 bytes
+
+public:
+    sq(dcmd::ctx* ctx, sq_attr& attr);
+    /**
+     * @brief Changes state of RQ
+     *
+     * @param [in] new_state The requested new state
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    virtual status modify_state(sq_state new_state);
+    /**
+     * @brief Returns SQ WQEe size in bytes
+     * @param [out] wq_sz      SQ WQE size in bytes
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    virtual status get_wqe_sz(uint32_t& wqe_sz);
+    /**
+     * @brief Returns SQ WQEs number
+     * @param [out] wqe_num      SQ WQEs number
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    virtual status get_wqe_num(uint32_t& wqe_num);
+    virtual status get_cqn(uint32_t& cqn);
+};
+
+/**
+ * @brief class striding_rq - Handles Striding ReceiveQueue
+ *
+ */
+class pp_sq : public sq {
+    friend class adapter;
+
+private:
+    uar_t* m_uar;
+    adapter* m_adapter;
+
+    void* m_wq_buf;
+    dcmd::umem* m_wq_buf_umem;
+
+    uint32_t* m_db_rec;
+    dcmd::umem* m_db_rec_umem;
+
+    void* m_pp;
+
+    size_t m_wqe_num; // Number of WQEs in SQ, must be power of 2
+    size_t m_wqe_sz; // WQE size, i.e. number of DS (16B) in each SQ WQE, must be
+                     // power of 2
+    uint32_t m_wq_buf_sz_bytes;
+    uint32_t m_wq_buf_umem_id;
+    uint32_t m_db_rec_umem_id;
+    uint32_t m_pp_idx; // Packet Pacing index
+    wq_type m_wq_type;
+
+    pp_sq(adapter* ad, sq_attr& attr);
+
+    status create();
+    status init(const uar_t* sq_uar);
+    status allocate_wq_buf(void*& buf, size_t sz);
+    status allocate_db_rec(uint32_t*& db_rec, size_t& sz);
+
+public:
+    virtual ~pp_sq();
+    /**
+     * @brief Returns virtual address of RQ WQ buffer
+     * @param [out] wq_buf_addr      RQ WQ buffer address
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    status get_wq_buf(void*& wq_buf_addr);
+    /**
+     * @brief Returns virtual address of SQ DoorBell record
+     * @param [out] db_rec      DB record address to be stored to
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    status get_dbrec(uint32_t*& db_rec);
+    /**
+     * @brief Returns virtual address of BlueFlame register
+     * @param [out] bd_reg      BF register address
+     * @param [in] offset       BF register offset
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    status get_bf_reg(uint64_t*& bf_reg, size_t offset = 0);
+    /**
+     * @brief Returns virtual address of RQ UAR page
+     * @param [out] uar_page      RQ UAR page address
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    status get_uar_page(volatile void*& uar_page);
+    inline size_t get_wq_buf_sz() const
+    {
+        return m_wq_buf_sz_bytes;
+    }
+    virtual status destroy();
+};
+
 struct adapter_info {
     std::string name;
     std::string id;
+    uint32_t vendor_id; /**< PCI Vendor Id */
+    uint32_t vendor_part_id; /**< PCI Vendor Device Id */
 };
 
 class adapter {
 private:
     status query_hca_caps();
+    void set_external_hca_caps();
 
     dcmd::device* m_dcmd_dev;
     dcmd::ctx* m_dcmd_ctx;
     td* m_td;
     pd* m_pd;
     uar_collection* m_uarpool;
-    void* m_caps;
     void* m_ibv_pd;
     uint32_t m_pd_id;
     uint32_t m_td_id;
     uint32_t m_eqn;
     bool m_is_caps_available;
-
-    void* m_pv_iseg;
+    caps_map_t m_caps;
+    adapter_hca_capabilities* m_external_hca_caps;
+    std::vector<cap_cb_fn> m_caps_callbacks;
+    bool m_opened;
 
 public:
     adapter(dcmd::device* dev, dcmd::ctx* ctx);
@@ -1120,7 +1372,7 @@ public:
         return m_td_id;
     }
 
-    status set_pd(uint32_t pdn, void* verbs_pd = NULL);
+    status set_pd(uint32_t pdn, void* verbs_pd);
 
     inline uint32_t get_pd()
     {
@@ -1152,13 +1404,39 @@ public:
     void* get_ibv_context();
 
     /**
-     * @brief Returns real time for device (supported starting from ConnextX6)
+     * @brief Get real time for device (supported starting from ConnextX6)
      *
-     * @retval      Returns real time
+     * @paramp [out] real_time     On success will be set real_time value
+     *
+     * @retval      Returns DPCP_OK on success
+     *              Returns DPCP_ERR_NO_CONTEXT if initial_segment was not
+     * initialized
      */
-    uint64_t get_real_time();
+    status get_real_time(uint64_t& real_time);
 
+    /**
+     * @brief Perform opening adapter for real line operations
+     *
+     *
+     * @retval      Returns DPCP_OK on success
+     *              Returns DPCP_ERR_NO_CONTEXT if initial_segment was not
+     *              initialized
+     *              Returns DPCP_ERR_NO_MEMORY in case issues with memory
+     *              Can return other valid values as result of underlying
+     *              object operarions
+     */
     status open();
+    /**
+     * @brief Perform check was adapter opened or not
+     *
+     *
+     * @retval      true if adapter was opened
+     *              false if not
+     */
+    bool is_opened()
+    {
+        return m_opened;
+    }
     /**
      * @brief Creates and returns direct_mkey
      *
@@ -1263,15 +1541,80 @@ public:
      * @retval      Returns DPCP_OK on success
      */
     status create_flow_rule(uint16_t priority, match_params& match_criteria, flow_rule*& flow_rule);
-
+    /**
+     * @brief Creates Completion Channel
+     *
+     * @param [out] cch       Completion Channel on success
+     *
+     * @retval      Returns DPCP_OK on success
+     */
     status create_comp_channel(comp_channel*& cch);
-
     status query_eqn(uint32_t& eqn, uint32_t cpu_vector = 0);
+    status get_hca_caps_frequency_khz(uint32_t& freq); // TODO: Deprecate.
 
     /**
-     * @brief Get general hca caps
+     * @brief Creates and returns pp_sq (PacketPacing SendQueue)
+     *
+     * @param [in]  sq_attr         SQ attributes
+     * @param [out] sq              On Success created pp_sq
+     *
+     * @retval      Returns DPCP_OK on success
      */
-    status get_hca_caps_frequency_khz(uint32_t& freq);
+    status create_pp_sq(sq_attr& sq_attr, pp_sq*& sq);
+    /**
+     * @brief Get general HCA capabilities
+     *
+     * @param [out]  caps           Reference to the capabilities structure
+     *
+     * @retval Returns @ref dpcp::status with the status code
+     */
+    inline status get_hca_capabilities(adapter_hca_capabilities& caps) const
+    {
+        if (m_is_caps_available) {
+            caps = *m_external_hca_caps;
+            return DPCP_OK;
+        }
+        return DPCP_ERR_QUERY;
+    }
+    /**
+     * @brief Creates and returns DPCP DEK
+     *
+     * @param [in]  type        Type of the encryption key
+     * @param [in]  key         Pointer to the key
+     * @param [in]  size_bytes  Size in bytes of the key
+     * @param [out] _dek        Pointer to DEK object on success
+     *
+     * @note: The call supported @ref
+     * adapter_hca_capabilities::general_object_types_encryption_key is on
+     * @note: The call support key type of @ref
+     * encryption_key_type_t::ENCRYPTION_KEY_TYPE_TLS
+     * @note: @ref key should be a pointer to encryption key,
+     *        e.g. key variable of @ref struct tls12_crypto_info_aes_gcm_128 type.
+     *        See tls.h API, e.g. for Linux it is in /usr/include/linux/tls.h
+     * @note: _dek object holds the key ID, can be queried by @ref dek::get_key_id
+     *
+     * @retval Returns @ref dpcp::status with the status code
+     */
+    status create_dek(const encryption_key_type_t type, void* const key, const uint32_t size_bytes,
+                      dek*& _dek);
+
+    /**
+     * @brief Creates ibv_pd for m_pd
+     *
+     *
+     * @retval      Returns DPCP_OK on success
+     *              Returns DPCP_ERR_NO_MEMORY if ibv_pd* was not allocated successfully
+     */
+    status create_ibv_pd();
+
+    /**
+     * @brief Creates own_pd for m_pd
+     *
+     *
+     * @retval      Returns DPCP_OK on success
+     *              Returns DPCP_ERR_NO_MEMORY if devx_pd* was not allocated successfully
+     */
+    status create_own_pd();
 };
 
 class provider {
@@ -1299,3 +1642,5 @@ public:
     //    void operator=(provider const&) = delete;
 };
 } // namespace dpcp
+
+#endif /* DPCP_H_ */

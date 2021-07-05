@@ -1,5 +1,5 @@
 #include <string>
-
+#include "utils/os.h"
 #include "dcmd/dcmd.h"
 
 using namespace dcmd;
@@ -52,6 +52,11 @@ device* provider::create_device(dev_handle handle)
         ctx* ctx_obj = obj_ptr->create_ctx();
         if (ctx_obj) {
             can_be_open = true;
+            int err = ibv_query_device((struct ibv_context*)ctx_obj->get_context(),
+                                       obj_ptr->get_device_attr_ptr());
+            if (err) {
+                log_warn("query device failed! errno=%d\n", errno);
+            }
             delete ctx_obj;
         }
     } catch (...) {

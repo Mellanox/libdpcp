@@ -10,7 +10,8 @@ are licensed, not sold. All rights not licensed are reserved.
 This software product is governed by the End User License Agreement provided
 with the software product.
 */
-#pragma once
+#ifndef SRC_UTILS_WINDOWS_UTILS_H_
+#define SRC_UTILS_WINDOWS_UTILS_H_
 
 #include <cstdint>
 #include <string>
@@ -58,3 +59,5 @@ inline size_t get_page_size()
 }
 
 size_t get_cacheline_size();
+
+#endif /* SRC_UTILS_WINDOWS_UTILS_H_ */

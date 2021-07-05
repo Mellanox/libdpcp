@@ -18,20 +18,41 @@ with the software product.
 namespace dcmd {
 
 class device : public base_device {
+
 public:
     device()
     {
         m_handle = nullptr;
     }
+
     device(dev_handle handle);
+
     virtual ~device()
     {
     }
+
     std::string get_name();
+
     ctx* create_ctx();
+
+    inline uint32_t get_vendor_id()
+    {
+        return m_device_attr.vendor_id;
+    }
+
+    uint32_t get_vendor_part_id()
+    {
+        return m_device_attr.vendor_part_id;
+    }
+
+    ibv_device_attr* get_device_attr_ptr()
+    {
+        return &m_device_attr;
+    }
 
 private:
     dev_handle m_handle;
+    ibv_device_attr m_device_attr;
 };
 
 } /* namespace dcmd */

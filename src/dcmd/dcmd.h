@@ -27,8 +27,18 @@ with the software product.
 #include "flow.h"
 #else
 
+#if defined __cplusplus
+
+#pragma warning(push)
+#pragma warning(disable : 4200)
+extern "C" {
+#include "prm.h"
+} // extern "C"
+#pragma warning(pop)
+
+#endif // defined __cplusplus
+
 #include "src/dcmd/windows/def.h"
-#include "src/dcmd/windows/prm.h"
 #include "src/dcmd/windows/provider.h"
 #include "src/dcmd/windows/compchannel.h"
 #include "src/dcmd/windows/device.h"

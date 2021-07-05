@@ -20,6 +20,10 @@
 #include "utils/os.h"
 #include "dpcp/internal.h"
 
+#ifndef IBV_ACCESS_ZERO_BASED
+#define IBV_ACCESS_ZERO_BASED (1 << 5)
+#endif
+
 namespace dpcp {
 
 static std::atomic<int> g_mkey_cnt;
@@ -56,9 +60,13 @@ direct_mkey::direct_mkey(adapter* ad, void* address, uint32_t length, mkey_flags
 // Destroy is handled by kernel driver.
 status direct_mkey::destroy()
 {
-#if defined(__linux__)
+    dcmd::ctx* ctx = m_adapter->get_ctx();
+    if (nullptr == ctx) {
+        return DPCP_ERR_NO_CONTEXT;
+    }
+
     if (m_ibv_mem) {
-        int err = ibv_dereg_mr((struct ibv_mr*)m_ibv_mem);
+        int err = ctx->ibv_dereg_mem_reg((struct ibv_mr*)m_ibv_mem);
         log_trace("d_mkey::dereg_mem idx 0x%x ibv_mr %p for %p status=%d, errno=%d\n", m_idx,
                   m_ibv_mem, this, err, errno);
         if (err) {
@@ -67,7 +75,6 @@ status direct_mkey::destroy()
         m_ibv_mem = nullptr;
         return DPCP_OK;
     }
-#endif
     status ret = obj::destroy();
     log_trace("d_mkey::destroy idx 0x%x umem %p for %p status=%d\n", m_idx, m_umem, this, ret);
     delete m_umem;
@@ -112,22 +119,32 @@ status direct_mkey::get_id(uint32_t& id)
 // Register UserMEMory
 status direct_mkey::reg_mem(void* verbs_pd)
 {
-#if defined(__linux__)
-#define ACCESS_LOCAL_WRITE IBV_ACCESS_LOCAL_WRITE
+    dcmd::ctx* ctx = m_adapter->get_ctx();
+    if (nullptr == ctx) {
+        return DPCP_ERR_NO_CONTEXT;
+    }
+
+    if (nullptr == m_address) {
+        return DPCP_ERR_NO_MEMORY;
+    }
+
+    if (0 == m_length) {
+        return DPCP_ERR_OUT_OF_RANGE;
+    }
 
     if (verbs_pd) {
-        uint32_t access = ACCESS_LOCAL_WRITE;
+        uint32_t access = ctx->ibv_get_access_flags();
         struct ibv_mr* ibv_mem = nullptr;
         if (MKEY_ZERO_BASED == m_flags) {
             // MKEY_ZERO_BASE is broken in ibv_reg_mr() so using ibv_reg_mr_iova() instead.
             access |= IBV_ACCESS_ZERO_BASED;
-            uint32_t page_sz = get_page_size();
-            ibv_mem = ibv_reg_mr_iova((ibv_pd*)verbs_pd, m_address, m_length,
-                                      (uint64_t)m_address % page_sz, access);
-            log_trace("direct_mkey::access %x is zero based, m_address: %p page size %u\n", access,
+            size_t page_sz = get_page_size();
+            ibv_mem = ctx->ibv_reg_mem_reg_iova((ibv_pd*)verbs_pd, m_address, m_length,
+                                                (uint64_t)m_address % page_sz, access);
+            log_trace("direct_mkey::access %x is zero based, m_address: %p page size %zu\n", access,
                       m_address, page_sz);
         } else {
-            ibv_mem = ibv_reg_mr((ibv_pd*)verbs_pd, m_address, m_length, access);
+            ibv_mem = ctx->ibv_reg_mem_reg((ibv_pd*)verbs_pd, m_address, m_length, access);
         }
         if (nullptr == ibv_mem) {
             log_trace("direct_mkey::ibv_reg_mem failed: addr: %p len: %zd ibv_pd: %p ibv_mr: %p "
@@ -144,34 +161,8 @@ status direct_mkey::reg_mem(void* verbs_pd)
         }
         return DPCP_OK;
     }
-#else
-#define ACCESS_LOCAL_WRITE 0x1
 
-    UNUSED(verbs_pd);
-#endif
-
-    dcmd::ctx* ctx = m_adapter->get_ctx();
-    if (nullptr == ctx) {
-        return DPCP_ERR_NO_CONTEXT;
-    }
-
-    if (nullptr == m_address) {
-        return DPCP_ERR_NO_MEMORY;
-    }
-
-    if (0 == m_length) {
-        return DPCP_ERR_OUT_OF_RANGE;
-    }
-    uint32_t access = ACCESS_LOCAL_WRITE;
-    dcmd::umem_desc dscr = {(void*)m_address, m_length, access};
-
-    m_umem = ctx->create_umem(&dscr);
-    log_trace("direct_mkey::create_umem: addr: %p len: %zd u_mem: %p\n", m_address, m_length,
-              m_umem);
-    if (nullptr == m_umem) {
-        return DPCP_ERR_UMEM;
-    }
-    return DPCP_OK;
+    return DPCP_ERR_UMEM;
 }
 
 status direct_mkey::create()

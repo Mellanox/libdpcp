@@ -10,7 +10,8 @@
  * This software product is governed by the End User License Agreement provided
  * with the software product.
  */
-#pragma once
+#ifndef SRC_DPCP_INTERNAL_H_
+#define SRC_DPCP_INTERNAL_H_
 
 #include <cstring>
 #include <map>
@@ -24,6 +25,7 @@ namespace dpcp {
 class rq;
 
 class pd : public obj {
+protected:
     uint32_t m_pd_id;
 
 public:
@@ -41,6 +43,39 @@ public:
         return m_pd_id;
     }
 
+    virtual status create() = 0;
+};
+
+class pd_devx : public pd {
+public:
+    pd_devx(dcmd::ctx* ctx)
+        : pd(ctx)
+    {
+    }
+    virtual ~pd_devx()
+    {
+    }
+
+    status create();
+};
+
+class pd_ibv : public pd {
+private:
+    void* m_ibv_pd;
+
+public:
+    pd_ibv(dcmd::ctx* ctx)
+        : pd(ctx)
+        , m_ibv_pd(nullptr)
+    {
+    }
+    virtual ~pd_ibv()
+    {
+    }
+    void* get_ibv_pd()
+    {
+        return m_ibv_pd;
+    }
     status create();
 };
 
@@ -84,7 +119,7 @@ typedef std::vector<const void*> shar_uar_vec;
 /**
  * @brief Internal class, responsible to handle UARs collection.
  * It uses lazy allocation, per get_uar() request for particular r q_num.
- * After release_uar() call the UAR allocatec for q_num goes to free pool and
+ * After release_uar() call the UAR allocate for q_num goes to free pool and
  * net get_uar() call will reuse it.
  */
 class uar_collection {
@@ -139,4 +174,37 @@ inline int ilog2(int n)
 
     return e;
 }
+
+class packet_pacing : public obj {
+private:
+    pp_handle* m_pp_handle;
+    qos_packet_pacing m_attr;
+    uint32_t m_index;
+
+public:
+    packet_pacing(dcmd::ctx* ctx, qos_packet_pacing& attr)
+        : obj(ctx)
+        , m_pp_handle(nullptr)
+        , m_attr(attr)
+        , m_index(0)
+    {
+    }
+
+    virtual ~packet_pacing()
+    {
+        if (m_pp_handle) {
+            devx_free_pp(m_pp_handle);
+        }
+    }
+
+    uint32_t get_index() const
+    {
+        return m_index;
+    }
+
+    status create();
+};
+
 } // namespace dpcp
+
+#endif /* SRC_DPCP_INTERNAL_H_ */

@@ -39,6 +39,9 @@ public:
         return m_name;
     }
 
+    virtual uint32_t get_vendor_id() = 0;
+    virtual uint32_t get_vendor_part_id() = 0;
+
 protected:
     std::string m_id;
     std::string m_name;

@@ -28,7 +28,7 @@ protected:
 /**
  * @test dpcp_pd.ti_01_Constructor
  * @brief
- *    Check constructor
+ *    Check pd_ibv constructor
  * @details
  */
 TEST_F(dpcp_pd, ti_01_Constructor)
@@ -36,7 +36,7 @@ TEST_F(dpcp_pd, ti_01_Constructor)
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
 
-    pd pd1(ad->get_ctx());
+    pd_ibv pd1(ad->get_ctx());
     uint32_t id = pd1.get_pd_id();
     ASSERT_EQ(0, id);
 
@@ -46,7 +46,7 @@ TEST_F(dpcp_pd, ti_01_Constructor)
 /**
  * @test dpcp_pd.ti_02_create
  * @brief
- *    Check pd::create method
+ *    Check pd_ibv ::create method
  * @details
  *
  */
@@ -55,7 +55,50 @@ TEST_F(dpcp_pd, ti_02_create)
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
 
-    pd pd1(ad->get_ctx());
+    pd_ibv pd1(ad->get_ctx());
+
+    status ret = pd1.create();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    uint32_t pd_id = pd1.get_pd_id();
+    EXPECT_LE((uint32_t)0, pd_id);
+
+    log_trace("pd_id: %u\n", pd_id);
+
+    delete ad;
+}
+
+/**
+ * @test dpcp_pd.ti_03_Constructor
+ * @brief
+ *    Check pd_devx constructor
+ * @details
+ */
+TEST_F(dpcp_pd, ti_03_Constructor)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+
+    pd_devx pd1(ad->get_ctx());
+    uint32_t id = pd1.get_pd_id();
+    ASSERT_EQ(0, id);
+
+    delete ad;
+}
+
+/**
+ * @test dpcp_pd.ti_04_create
+ * @brief
+ *    Check pd_devx ::create method
+ * @details
+ *
+ */
+TEST_F(dpcp_pd, ti_04_create)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+
+    pd_devx pd1(ad->get_ctx());
 
     status ret = pd1.create();
     ASSERT_EQ(DPCP_OK, ret);

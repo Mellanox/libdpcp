@@ -1,16 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  
-  <!--<Import Project="$(MpCommonTopDir)\MpProject.props" />  -->
+
 
   <PropertyGroup>
     <TARGETTYPE Condition="'$(OVERRIDE_TARGETTYPE)'!='true'">PROGRAM</TARGETTYPE>
-    <TARGETNAME Condition="'$(OVERRIDE_TARGETNAME)'!='true'">$(ProjectName.Replace('_wof2',''))</TARGETNAME>
+    <TARGETNAME Condition="'$(OVERRIDE_TARGETNAME)'!='true'">$(ProjectName)</TARGETNAME>
     <PRECOMPILED_STDAFX Condition="'$(OVERRIDE_PRECOMPILED_STDAFX)'!='true'">0</PRECOMPILED_STDAFX>
     <UMTYPE Condition="'$(OVERRIDE_UMTYPE)'!='true'">console</UMTYPE>
     <UMENTRY Condition="'$(OVERRIDE_UMENTRY)'!='true'">wmain</UMENTRY>
 
-    <USER_C_FLAGS Condition="'$(OVERRIDE_USER_C_FLAGS)'!='true'"> 
+    <USER_C_FLAGS Condition="'$(OVERRIDE_USER_C_FLAGS)'!='true'">
 	-D "_WINSOCK_DEPRECATED_NO_WARNINGS" /D "_CRT_SECURE_NO_WARNINGS"
 	/D "UNICODE" /D "_UNICODE" /D "WIN32" /D "_WINDOWS" /D "_WIN32" /D "STRICT"
 	/D "WIN32_LEAN_AND_MEAN" /D "GTEST_HAS_PTHREAD=0" /D "_HAS_EXCEPTIONS=1"
@@ -27,11 +26,7 @@
 
     <INCLUDES Condition="'$(OVERRIDE_INCLUDES)'!='true'">
         $(INCLUDES);
-        $(MP_COMMON_INC);
-        $(SolutionDir)..\core\common\user\MpCommon\MpCommon\inc;
-        $(SolutionDir)..\core\mlx5devx\inc;
-        $(SolutionDir)..\DriveX;
-        $(SolutionDir)..\DriveX\mlx5\inc;
+        $(ProjectDir)..\..\contrib\MLNX_WinOF2_DevX_SDK\inc;
         $(ProjectDir)..\..\;
         $(ProjectDir)..\..\src;
         $(ProjectDir)..\..\src\api;
@@ -44,15 +39,13 @@
     <SOURCES Condition="'$(OVERRIDE_SOURCES)'!='true'"></SOURCES>
 
     <BUILD_PRODUCES Condition="'$(OVERRIDE_BUILD_PRODUCES)'!='true'">$(TARGETNAME)</BUILD_PRODUCES>
-  
-    <TARGETLIBS Condition="'$(OVERRIDE_TARGETLIBS)'!='true'">              
+
+    <TARGETLIBS Condition="'$(OVERRIDE_TARGETLIBS)'!='true'">
 	$(SDK_LIB_PATH)\Ws2_32.lib
-	$(SDK_LIB_PATH)\mswsock.lib
-	$(SDK_LIB_PATH)\iphlpapi.lib
-	$(SolutionDir)bin\user\obj$(O)\dpcp.lib
-	$(SolutionDir)..\bin\user\obj$(O)mlx5devx.lib
+        $(SolutionDir)bin\user\obj$(O)\dpcp.lib
+        $(ProjectDir)..\..\contrib\MLNX_WinOF2_DevX_SDK\lib\mlx5devx.lib;
     </TARGETLIBS>
-    
+
     <LINKER_FLAGS Condition="'$(OVERRIDE_LINKER_FLAGS)'!='true'">
         $(LINKER_FLAGS)
     </LINKER_FLAGS>

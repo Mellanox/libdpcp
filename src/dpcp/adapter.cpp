@@ -16,13 +16,105 @@
 #endif
 
 #include <algorithm>
+#include <vector>
 
 #include "utils/os.h"
 #include "dpcp/internal.h"
 
 namespace dpcp {
 
-status pd::create()
+static void set_hca_device_frequency_khz_caps(adapter_hca_capabilities* external_hca_caps,
+                                              const caps_map_t& caps_map)
+{
+    external_hca_caps->device_frequency_khz =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+                 capability.cmd_hca_cap.device_frequency_khz);
+    log_trace("Capability - device_frequency_khz: %d\n", external_hca_caps->device_frequency_khz);
+}
+
+static void set_hca_tls_caps(adapter_hca_capabilities* external_hca_caps,
+                             const caps_map_t& caps_map)
+{
+    external_hca_caps->tls_tx = DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+                                         capability.cmd_hca_cap.tls_tx);
+    log_trace("Capability - tls_tx: %d\n", external_hca_caps->tls_tx);
+
+    external_hca_caps->tls_rx = DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+                                         capability.cmd_hca_cap.tls_rx);
+    log_trace("Capability - tls_rx: %d\n", external_hca_caps->tls_rx);
+}
+
+static void set_hca_cap_crypto_enable(adapter_hca_capabilities* external_hca_caps,
+                                      const caps_map_t& caps_map)
+{
+    external_hca_caps->crypto_enable = DEVX_GET(
+        query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second, capability.cmd_hca_cap.crypto);
+    log_trace("Capability - crypto: %d\n", external_hca_caps->crypto_enable);
+}
+
+static void set_hca_general_object_types_encryption_key_caps(
+    adapter_hca_capabilities* external_hca_caps, const caps_map_t& caps_map)
+{
+    uint64_t general_obj_types =
+        DEVX_GET64(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+                   capability.cmd_hca_cap.general_obj_types);
+    if (general_obj_types & MLX5_HCA_CAP_GENERAL_OBJECT_TYPES_ENCRYPTION_KEY) {
+        external_hca_caps->general_object_types_encryption_key = true;
+    }
+
+    log_trace("Capability - general_object_types_encryption_key: %d\n",
+              external_hca_caps->general_object_types_encryption_key);
+}
+
+static void set_hca_log_max_dek_caps(adapter_hca_capabilities* external_hca_caps,
+                                     const caps_map_t& caps_map)
+{
+    external_hca_caps->log_max_dek =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+                 capability.cmd_hca_cap.log_max_dek);
+    log_trace("Capability - log_max_dek: %d\n", external_hca_caps->log_max_dek);
+}
+
+static void set_tls_1_2_aes_gcm_128_caps(adapter_hca_capabilities* external_hca_caps,
+                                         const caps_map_t& caps_map)
+{
+    external_hca_caps->tls_1_2_aes_gcm_128 =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_TLS)->second,
+                 capability.tls_cap.tls_1_2_aes_gcm_128);
+    log_trace("Capability - tls_1_2_aes_gcm_128_caps: %d\n",
+              external_hca_caps->tls_1_2_aes_gcm_128);
+}
+
+static void set_sq_ts_format_caps(adapter_hca_capabilities* external_hca_caps,
+                                  const caps_map_t& caps_map)
+{
+    external_hca_caps->sq_ts_format =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+                 capability.cmd_hca_cap.sq_ts_format);
+    log_trace("Capability - sq_ts_format: %d\n", external_hca_caps->sq_ts_format);
+}
+
+static void set_rq_ts_format_caps(adapter_hca_capabilities* external_hca_caps,
+                                  const caps_map_t& caps_map)
+{
+    external_hca_caps->rq_ts_format =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+                 capability.cmd_hca_cap.rq_ts_format);
+    log_trace("Capability - rq_ts_format: %d\n", external_hca_caps->rq_ts_format);
+}
+
+static const std::vector<cap_cb_fn> caps_callbacks = {
+    set_hca_device_frequency_khz_caps,
+    set_hca_tls_caps,
+    set_hca_general_object_types_encryption_key_caps,
+    set_hca_log_max_dek_caps,
+    set_tls_1_2_aes_gcm_128_caps,
+    set_hca_cap_crypto_enable,
+    set_sq_ts_format_caps,
+    set_rq_ts_format_caps,
+};
+
+status pd_devx::create()
 {
     uint32_t in[DEVX_ST_SZ_DW(alloc_pd_in)] = {};
     uint32_t out[DEVX_ST_SZ_DW(alloc_pd_out)] = {};
@@ -35,6 +127,26 @@ status pd::create()
         m_pd_id = DEVX_GET(alloc_pd_out, out, pd);
     }
     return ret;
+}
+
+status pd_ibv::create()
+{
+    dcmd::ctx* ctx = obj::get_ctx();
+    if (nullptr == ctx) {
+        return DPCP_ERR_NO_CONTEXT;
+    }
+
+    m_ibv_pd = (void*)ibv_alloc_pd((ibv_context*)ctx->get_context());
+    if (nullptr == m_ibv_pd) {
+        return DPCP_ERR_NO_MEMORY;
+    }
+
+    int err = ctx->create_ibv_pd(m_ibv_pd, m_pd_id);
+    if (err) {
+        return DPCP_ERR_INVALID_ID;
+    }
+
+    return DPCP_OK;
 }
 
 status td::create()
@@ -58,34 +170,76 @@ adapter::adapter(dcmd::device* dev, dcmd::ctx* ctx)
     , m_td(nullptr)
     , m_pd(nullptr)
     , m_uarpool(nullptr)
-    , m_caps(nullptr)
     , m_ibv_pd(nullptr)
     , m_pd_id(0)
     , m_td_id(0)
     , m_eqn(0)
     , m_is_caps_available(false)
-    , m_pv_iseg(nullptr)
+    , m_caps()
+    , m_external_hca_caps(nullptr)
+    , m_caps_callbacks(caps_callbacks)
+    , m_opened(false)
 {
-    m_caps = calloc(1, DEVX_ST_SZ_DW(query_hca_cap_out));
-    if (nullptr != m_caps) {
+    m_caps.insert(std::make_pair(MLX5_CAP_GENERAL, calloc(1, DEVX_ST_SZ_DW(query_hca_cap_out))));
+    m_caps.insert(std::make_pair(MLX5_CAP_TLS, calloc(1, DEVX_ST_SZ_DW(query_hca_cap_out))));
+    if (m_caps[MLX5_CAP_GENERAL] != nullptr && m_caps[MLX5_CAP_TLS] != nullptr) {
         query_hca_caps();
+        set_external_hca_caps();
     }
 }
 
 status adapter::set_pd(uint32_t pdn, void* ibv_pd)
 {
-    if (0 == pdn) {
+    if (0 == pdn || nullptr == ibv_pd) {
         return DPCP_ERR_INVALID_PARAM;
     }
     m_pd_id = pdn;
     m_ibv_pd = ibv_pd; // TODO: till DevX GPU memory is supported
-    if (nullptr != m_pd) {
-        delete m_pd;
-        m_pd = nullptr;
-    }
     return DPCP_OK;
 }
 
+status adapter::create_ibv_pd()
+{
+    status ret = DPCP_OK;
+
+    m_pd = new (std::nothrow) pd_ibv(m_dcmd_ctx);
+    if (nullptr == m_pd) {
+        return DPCP_ERR_NO_MEMORY;
+    }
+
+    ret = m_pd->create();
+    if (DPCP_OK != ret) {
+        return ret;
+    }
+
+    ret = set_pd(m_pd->get_pd_id(), ((pd_ibv*)m_pd)->get_ibv_pd());
+    if (DPCP_OK != ret) {
+        return ret;
+    }
+    return ret;
+}
+
+status adapter::create_own_pd()
+{
+    status ret = DPCP_OK;
+
+    m_pd = new (std::nothrow) pd_devx(m_dcmd_ctx);
+    if (nullptr == m_pd) {
+        return DPCP_ERR_NO_MEMORY;
+    }
+
+    ret = m_pd->create();
+    if (DPCP_OK != ret) {
+        return ret;
+    }
+
+    ret = m_pd->get_id(m_pd_id);
+    if (DPCP_OK != ret) {
+        return ret;
+    }
+
+    return ret;
+}
 std::string adapter::get_name()
 {
     return m_dcmd_dev->get_name();
@@ -109,35 +263,29 @@ void* adapter::get_ibv_context()
     return m_dcmd_ctx->get_context();
 }
 
-uint64_t adapter::get_real_time()
+status adapter::get_real_time(uint64_t& real_time)
 {
-    if (nullptr == m_pv_iseg) {
-        log_error("m_pv_iseg is not initialized");
-        return 0;
+    uint64_t rtc = m_dcmd_ctx->get_real_time();
+    if (0 == rtc) {
+        return DPCP_ERR_NO_CONTEXT;
     }
-    // TODO: work how to save into pointer(via DEVX_ADDR_OF)
-    uint64_t rtc = (uint64_t)(DEVX_GET64(initial_seg, m_pv_iseg, real_time));
     uint32_t nanoseconds = (uint32_t)(rtc & ~(0x3 << 30)); // get the low 30 bits
     uint32_t seconds = (uint32_t)(rtc >> 32); // get the high 32 bits
     std::chrono::seconds s(seconds);
 
-    return (uint64_t)(nanoseconds + std::chrono::nanoseconds(s).count());
+    real_time = (uint64_t)(nanoseconds + std::chrono::nanoseconds(s).count());
+    return DPCP_OK;
 }
 
 status adapter::open()
 {
     status ret = DPCP_OK;
+    if (is_opened()) {
+        return ret;
+    }
     // Allocate and Create Protection Domain
-    if (!m_pd_id) {
-        m_pd = new (std::nothrow) pd(m_dcmd_ctx);
-        if (nullptr == m_pd) {
-            return DPCP_ERR_NO_MEMORY;
-        }
-        ret = m_pd->create();
-        if (DPCP_OK != ret) {
-            return ret;
-        }
-        ret = m_pd->get_id(m_pd_id);
+    if (!get_pd()) {
+        ret = create_ibv_pd();
         if (DPCP_OK != ret) {
             return ret;
         }
@@ -164,14 +312,13 @@ status adapter::open()
             return DPCP_ERR_NO_MEMORY;
         }
     }
-    // Mapping divece ctx to iseg for getting RTC on BF2 device
-    if (nullptr == m_pv_iseg) {
-        int err = m_dcmd_ctx->hca_iseg_mapping(m_pv_iseg);
-        if (err) {
-            log_error("hca_iseg_mapping failed ret=0x%x\n", err);
-            return DPCP_ERR_NO_CONTEXT;
-        }
+    // Mapping device ctx to iseg for getting RTC on BF2 device
+    int err = m_dcmd_ctx->hca_iseg_mapping();
+    if (err) {
+        log_error("hca_iseg_mapping failed ret=0x%x\n", err);
+        return DPCP_ERR_NO_CONTEXT;
     }
+    m_opened = true;
     return ret;
 }
 
@@ -492,23 +639,102 @@ status adapter::query_eqn(uint32_t& eqn, uint32_t cpu_vector)
     return DPCP_ERR_QUERY;
 }
 
+status adapter::create_pp_sq(sq_attr& sq_attr, pp_sq*& packet_pacing_sq)
+{
+    if (nullptr == m_uarpool) {
+        // Allocate UAR pool
+        m_uarpool = new (std::nothrow) uar_collection(get_ctx());
+        if (nullptr == m_uarpool) {
+            return DPCP_ERR_NO_MEMORY;
+        }
+    }
+    pp_sq* ppsq = new (std::nothrow) pp_sq(this, sq_attr);
+    if (nullptr == ppsq) {
+        return DPCP_ERR_NO_MEMORY;
+    }
+    packet_pacing_sq = ppsq;
+    // Obrain UAR for new SQ
+    uar sq_uar = m_uarpool->get_uar(ppsq);
+    if (nullptr == sq_uar) {
+        return DPCP_ERR_ALLOC_UAR;
+    }
+    uar_t uar_p;
+    status ret = m_uarpool->get_uar_page(sq_uar, uar_p);
+    if (DPCP_OK != ret) {
+        return ret;
+    }
+    // Allocate WQ Buf
+    void* wq_buf = nullptr;
+    size_t wq_buf_sz = ppsq->get_wq_buf_sz();
+    ret = ppsq->allocate_wq_buf(wq_buf, wq_buf_sz);
+    if (DPCP_OK != ret) {
+        return ret;
+    }
+    // Register UMEM for WQ Buffer
+    ret = reg_mem(get_ctx(), (void*)wq_buf, wq_buf_sz, ppsq->m_wq_buf_umem, ppsq->m_wq_buf_umem_id);
+    if (DPCP_OK != ret) {
+        return ret;
+    }
+    log_trace("create_pp_sq Buf: 0x%p sz: 0x%x umem_id: %x\n", wq_buf, (uint32_t)wq_buf_sz,
+              ppsq->m_wq_buf_umem_id);
+    //
+    // Allocated DB
+    uint32_t* db_rec = nullptr;
+    size_t db_rec_sz = 0;
+    ret = ppsq->allocate_db_rec(db_rec, db_rec_sz);
+    if (DPCP_OK != ret) {
+        return ret;
+    }
+    // Register UMEM for DoorBell record
+    ret = reg_mem(get_ctx(), (void*)db_rec, db_rec_sz, ppsq->m_db_rec_umem, ppsq->m_db_rec_umem_id);
+    if (DPCP_OK != ret) {
+        return ret;
+    }
+    log_trace("create_pp_sq DB: 0x%p sz: 0x%zx umem_id: %x\n", db_rec, db_rec_sz,
+              ppsq->m_db_rec_umem_id);
+
+    ret = ppsq->init(&uar_p);
+    return ret;
+}
+
 status adapter::query_hca_caps()
 {
     uint32_t in[DEVX_ST_SZ_DW(query_hca_cap_in)] = {};
-    int ret;
+    enum mlx5_cap_type cap_type = MLX5_CAP_GENERAL;
+    enum mlx5_cap_mode cap_mode = HCA_CAP_OPMOD_GET_MAX;
+    uint32_t opmod = (cap_type << 1) | (cap_mode & 0x01);
 
     DEVX_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP);
-    DEVX_SET(query_hca_cap_in, in, op_mod,
-             MLX5_SET_HCA_CAP_OP_MOD_GENERAL_DEVICE | HCA_CAP_OPMOD_GET_MAX);
+    DEVX_SET(query_hca_cap_in, in, op_mod, opmod);
 
-    ret = m_dcmd_ctx->exec_cmd(in, sizeof(in), m_caps, DEVX_ST_SZ_DW(query_hca_cap_out));
+    int ret =
+        m_dcmd_ctx->exec_cmd(in, sizeof(in), m_caps[cap_type], DEVX_ST_SZ_DW(query_hca_cap_out));
     if (ret) {
-        log_trace("exec_cmd failed %d\n", ret);
+        log_trace("exec_cmd for HCA_CAP failed %d\n", ret);
         return DPCP_ERR_QUERY;
     }
 
-    m_is_caps_available = true;
+    cap_type = MLX5_CAP_TLS;
+    opmod = (cap_type << 1) | (cap_mode & 0x01);
+    DEVX_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP);
+    DEVX_SET(query_hca_cap_in, in, op_mod, opmod);
+
+    ret = m_dcmd_ctx->exec_cmd(in, sizeof(in), m_caps[cap_type], DEVX_ST_SZ_DW(query_hca_cap_out));
+    if (ret) {
+        log_trace("exec_cmd for CAP_TLS failed %d\n", ret);
+        return DPCP_ERR_QUERY;
+    }
+
     return DPCP_OK;
+}
+
+void adapter::set_external_hca_caps()
+{
+    m_external_hca_caps = new adapter_hca_capabilities();
+    for (auto& callback : m_caps_callbacks) {
+        callback(m_external_hca_caps, m_caps);
+    }
+    m_is_caps_available = true;
 }
 
 status adapter::get_hca_caps_frequency_khz(uint32_t& freq)
@@ -517,16 +743,43 @@ status adapter::get_hca_caps_frequency_khz(uint32_t& freq)
         return DPCP_ERR_QUERY;
     }
 
-    freq = DEVX_GET(query_hca_cap_out, m_caps, capability.cmd_hca_cap.device_frequency_khz);
+    freq = m_external_hca_caps->device_frequency_khz;
     log_trace("Adapter frequency (khz) %d\n", freq);
+    return DPCP_OK;
+}
+
+status adapter::create_dek(const encryption_key_type_t type, void* const key,
+                           const uint32_t size_bytes, dek*& out_dek)
+{
+    if (type != encryption_key_type_t::ENCRYPTION_KEY_TYPE_TLS) {
+        log_trace("Only TLS encryption key type is supported");
+        return DPCP_ERR_NO_SUPPORT;
+    }
+
+    dek* _dek = new (std::nothrow) dek(get_ctx());
+    if (_dek == nullptr) {
+        return DPCP_ERR_NO_MEMORY;
+    }
+
+    if (m_is_caps_available && !m_external_hca_caps->general_object_types_encryption_key) {
+        log_trace("The adapter doesn't support the creation of general object encryption key");
+        delete _dek;
+        return DPCP_ERR_NO_SUPPORT;
+    }
+
+    status ret = _dek->create(m_pd_id, key, size_bytes);
+    if (ret != DPCP_OK) {
+        delete _dek;
+        return DPCP_ERR_CREATE;
+    }
+    out_dek = _dek;
+
     return DPCP_OK;
 }
 
 adapter::~adapter()
 {
     m_is_caps_available = false;
-    free(m_caps);
-    m_caps = nullptr;
 
     if (m_pd) {
         delete m_pd;
@@ -539,6 +792,10 @@ adapter::~adapter()
     if (m_uarpool) {
         delete m_uarpool;
         m_uarpool = nullptr;
+    }
+    if (m_external_hca_caps) {
+        delete m_external_hca_caps;
+        m_external_hca_caps = nullptr;
     }
     delete m_dcmd_ctx;
     m_dcmd_ctx = nullptr;
@@ -671,4 +928,30 @@ uar_collection::~uar_collection()
     m_ex_uars.clear();
     m_sh_vc.clear();
 }
+
+enum {
+    MLX5_PP_DATA_RATE = 0x0,
+    MLX5_PP_WQE_RATE = 0x1,
+};
+
+status packet_pacing::create()
+{
+    uint32_t pp[DEVX_ST_SZ_DW(set_pp_rate_limit_context)] = {};
+
+    DEVX_SET(set_pp_rate_limit_context, &pp, burst_upper_bound, m_attr.burst_sz);
+    DEVX_SET(set_pp_rate_limit_context, &pp, typical_packet_size, m_attr.packet_sz);
+    DEVX_SET(set_pp_rate_limit_context, &pp, rate_limit, m_attr.sustained_rate);
+    DEVX_SET(set_pp_rate_limit_context, &pp, rate_mode, MLX5_PP_DATA_RATE);
+    m_pp_handle = devx_alloc_pp((ctx_handle)get_ctx()->get_context(), pp, sizeof(pp), 0);
+    if (IS_ERR(m_pp_handle)) {
+        log_error("alloc_pp failed for rate %u burst %u packet_sz %u\n", m_attr.sustained_rate,
+                  m_attr.burst_sz, m_attr.sustained_rate);
+        return DPCP_ERR_CREATE;
+    }
+    m_index = get_pp_index(m_pp_handle);
+    log_trace("packet pacing index: %u for rate: %d burst: %d packet_sz: %d\n", m_index,
+              m_attr.sustained_rate, m_attr.burst_sz, m_attr.packet_sz);
+    return DPCP_OK;
+}
+
 } // namespace dpcp

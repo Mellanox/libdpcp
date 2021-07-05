@@ -10,7 +10,8 @@
  This software product is governed by the End User License Agreement provided
  with the software product.
 */
-#pragma once
+#ifndef SRC_UTILS_WINDOWS_STDAFX_H_
+#define SRC_UTILS_WINDOWS_STDAFX_H_
 // stdafx.h : include file for standard system include files,
 // or project specific include files that are used frequently, but
 // are changed infrequently
@@ -20,10 +21,7 @@
 #include <windows.h>
 #include <winnt.h>
 
-#pragma warning(push)
-#pragma warning(disable : 4200)
-#include <mlx5dv_win.h>
-#pragma warning(pop)
-
 #include "dcmd/dcmd.h"
 #include "log.h"
+
+#endif /* SRC_UTILS_WINDOWS_STDAFX_H_ */

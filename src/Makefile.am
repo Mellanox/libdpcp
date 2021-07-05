@@ -24,8 +24,11 @@ libdpcp_la_SOURCES = \
 	dpcp/rq.cpp \
 	dpcp/tir.cpp \
 	dpcp/tis.cpp \
+	dpcp/dek.cpp \
+	dpcp/sq.cpp \
 	\
 	dcmd/dcmd.h \
+	dcmd/prm.h \
 	\
 	dcmd/base/base_provider.h \
 	dcmd/base/base_device.h \
@@ -46,7 +49,6 @@ libdpcp_la_SOURCES = \
 	dcmd/linux/ctx.h \
 	dcmd/linux/obj.cpp \
 	dcmd/linux/obj.h \
-	dcmd/linux/prm.h \
 	dcmd/linux/uar.cpp \
 	dcmd/linux/uar.h \
 	dcmd/linux/umem.cpp \

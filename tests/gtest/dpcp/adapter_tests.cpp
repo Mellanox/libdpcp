@@ -1,5 +1,5 @@
 /*
-Copyright (C) Mellanox Technologies, Ltd. 2019-2020. ALL RIGHTS RESERVED.
+Copyright (C) Mellanox Technologies, Ltd. 2019-2021. ALL RIGHTS RESERVED.
 
 This software product is a proprietary product of Mellanox Technologies, Ltd.
 (the "Company") and all right, title, and interest in and to the software
@@ -19,6 +19,10 @@ with the software product.
 #include "dpcp_base.h"
 
 using namespace dpcp;
+
+using std::chrono::duration_cast;
+using std::chrono::nanoseconds;
+using std::chrono::steady_clock;
 
 static adapter* s_ad = nullptr;
 static striding_rq* s_srq = nullptr;
@@ -44,7 +48,31 @@ TEST_F(dpcp_adapter, ti_01_Constructor)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
+
+    bool is_opened = ad->is_opened();
+    ASSERT_FALSE(is_opened);
     delete ad;
+}
+
+/**
+* @test dpcp_adapter.ti_02_is_opened
+* @brief
+*    Check is_opened()
+* @details
+*/
+TEST_F(dpcp_adapter, ti_02_is_opened)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+
+    bool is_opened_before = ad->is_opened();
+    ASSERT_FALSE(is_opened_before);
+
+    status ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    bool is_opened_after = ad->is_opened();
+    ASSERT_TRUE(is_opened_after);
 }
 
 /**
@@ -55,14 +83,21 @@ TEST_F(dpcp_adapter, ti_01_Constructor)
  */
 TEST_F(dpcp_adapter, ti_02_set_get_pd)
 {
+    void* pd;
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
 
     uint32_t id = ad->get_pd();
     ASSERT_EQ(0, id);
 
+    status ret = ad->create_ibv_pd();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    ret = ad->get_ibv_pd(pd);
+    ASSERT_EQ(DPCP_OK, ret);
+
     uint32_t id1 = 0xabba;
-    status ret = ad->set_pd(id1);
+    ret = ad->set_pd(id1, pd);
     ASSERT_EQ(DPCP_OK, ret);
 
     id = ad->get_pd();
@@ -147,7 +182,7 @@ TEST_F(dpcp_adapter, ti_04_create_direct_mkey)
     int32_t new_num;
     ret = mk->get_mkey_num(new_num);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_EQ(1, new_num);
+    ASSERT_EQ(0, new_num);
 
     delete mk;
     delete ad;
@@ -188,7 +223,7 @@ TEST_F(dpcp_adapter, ti_05_mkey_zero_based)
     int32_t new_num;
     ret = mk->get_mkey_num(new_num);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_EQ(1, new_num);
+    ASSERT_EQ(0, new_num);
 
     delete mk;
     delete ad;
@@ -383,7 +418,7 @@ TEST_F(dpcp_adapter, ti_09_create_pattern_mkey)
     int32_t new_num;
     ret = ptmk->get_mkey_num(new_num);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_EQ(3, new_num);
+    ASSERT_EQ(1, new_num);
 
     delete ptmk;
     delete dat_mk;
@@ -393,13 +428,13 @@ TEST_F(dpcp_adapter, ti_09_create_pattern_mkey)
     delete ad;
 }
 /**
- * @test dpcp_adapter.ti_08_create_dpp_rq
+ * @test dpcp_adapter.ti_10_create_dpp_rq
  * @brief
  *    Check adapter::create_dpp_rq method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_08_create_dpp_rq)
+TEST_F(dpcp_adapter, ti_10_create_dpp_rq)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(ad, nullptr);
@@ -440,7 +475,7 @@ TEST_F(dpcp_adapter, ti_08_create_dpp_rq)
     int32_t new_num;
     ret = mk->get_mkey_num(new_num);
     ASSERT_EQ(ret, DPCP_OK);
-    ASSERT_EQ(new_num, 1);
+    ASSERT_EQ(new_num, 0);
 
     // Create
     uint32_t mkey = mk_id;
@@ -460,12 +495,12 @@ TEST_F(dpcp_adapter, ti_08_create_dpp_rq)
 }
 
 /**
- * @test dpcp_adapter.ti_07_get_hca_freq
+ * @test dpcp_adapter.ti_11_get_hca_freq
  * @brief
  *    Check query_hca_freq method
  * @details
  */
-TEST_F(dpcp_adapter, ti_07_get_hca_freq)
+TEST_F(dpcp_adapter, ti_11_get_hca_freq)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(ad, nullptr);
@@ -491,23 +526,41 @@ TEST_F(dpcp_adapter, ti_07_get_hca_freq)
  */
 TEST_F(dpcp_adapter, ti_10_get_real_time)
 {
-    adapter* ad = OpenAdapter();
-    ASSERT_NE(ad, nullptr);
-
+    adapter* ad = OpenAdapter(DevPartIdBlueField);
+    if (!ad) {
+        log_warn("Adapter with PCI DevID %x not found, test is not run!\n", DevPartIdBlueField);
+        return;
+    }
     status ret = ad->open();
     ASSERT_EQ(ret, DPCP_OK);
+
+    adapter_hca_capabilities caps;
+    ret = ad->get_hca_capabilities(caps);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    if (!caps.sq_ts_format) {
+        log_trace("RTC is is not enabled\n");
+        delete ad;
+        return;
+    }
 
     uint64_t real_time, real_time_after = 0;
     uint64_t chrono_time, chrono_time_after = 0;
 
-    real_time = ad->get_real_time();
-    chrono_time = (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    ret = ad->get_real_time(real_time);
+    chrono_time =
+        (uint64_t)duration_cast<std::chrono::nanoseconds>(steady_clock::now().time_since_epoch())
+            .count();
+    ASSERT_EQ(ret, DPCP_OK);
     ASSERT_NE(real_time, 0);
 
     std::this_thread::sleep_for(std::chrono::microseconds(10));
 
-    real_time_after = ad->get_real_time();
-    chrono_time_after = (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    ret = ad->get_real_time(real_time_after);
+    chrono_time_after =
+        (uint64_t)duration_cast<std::chrono::nanoseconds>(steady_clock::now().time_since_epoch())
+            .count();
+    ASSERT_EQ(ret, DPCP_OK);
     ASSERT_NE(real_time_after, 0);
 
     ASSERT_GT(real_time_after, real_time);
@@ -518,14 +571,69 @@ TEST_F(dpcp_adapter, ti_10_get_real_time)
 
     ASSERT_LE(delta, 50000);
 }
+/*
+ * @test dpcp_adapter.ti_12_create_pp_sq
+ * @brief
+ *    Check adapter::create_pp_sq method
+ * @details
+ *
+ */
+TEST_F(dpcp_adapter, ti_12_create_pp_sq)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+
+    status ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+    int32_t length = 4096;
+    void* buf = new (std::nothrow) uint8_t[length];
+    ASSERT_NE(nullptr, buf);
+
+    cq_data cqd = {};
+    ret = (status)create_cq(ad, &cqd);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE(0, cqd.cqn);
+
+    tis* s_tis;
+    ret = ad->create_tis(0, s_tis);
+    ASSERT_EQ(DPCP_OK, ret);
+    uint32_t tis_n = 0;
+    ret = s_tis->get_tisn(tis_n);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE(0, tis_n);
+
+    sq_attr sqattr = {};
+    qos_attributes qos_attr;
+    qos_attr.qos_type = QOS_TYPE::QOS_PACKET_PACING;
+    qos_attr.qos_attr.packet_pacing_attr.burst_sz = 1;
+    qos_attr.qos_attr.packet_pacing_attr.packet_sz = 1200;
+    qos_attr.qos_attr.packet_pacing_attr.sustained_rate = 1200000;
+    sqattr.qos_attrs_sz = 1;
+    sqattr.qos_attrs = &qos_attr;
+    sqattr.user_index = 0;
+    sqattr.wqe_num = 32768;
+    sqattr.wqe_sz = 64;
+
+    sqattr.cqn = cqd.cqn;
+    sqattr.tis_num = tis_n;
+
+    pp_sq* ppsq = nullptr;
+    ret = ad->create_pp_sq(sqattr, ppsq);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE(nullptr, ppsq);
+
+    delete ppsq;
+    delete ad;
+}
+
 #if defined(__linux__)
 /**
- * @test dpcp_adapter.ti_08_set_get_ibv_pd
+ * @test dpcp_adapter.ti_13_set_get_ibv_pd
  * @brief
  *    Check set_pd() with ibv_pd* and get_ibv_pd
  * @details
  */
-TEST_F(dpcp_adapter, ti_08_set_get_ibv_pd)
+TEST_F(dpcp_adapter, ti_13_set_get_ibv_pd)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -566,5 +674,156 @@ TEST_F(dpcp_adapter, ti_08_set_get_ibv_pd)
 
     delete ad;
 }
-#endif
 
+/**
+ * @test dpcp_adapter.ti_13_get_hca_capabilities
+ * @brief
+ *    Check query_hca_freq method
+ * @details
+ */
+TEST_F(dpcp_adapter, ti_13_get_hca_capabilities)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(ad, nullptr);
+
+    status ret = ad->open();
+    ASSERT_EQ(ret, DPCP_OK);
+
+    adapter_hca_capabilities caps;
+    ret = ad->get_hca_capabilities(caps);
+    if (ret != DPCP_OK) {
+        delete ad;
+        return;
+    }
+
+    log_trace("Capability - device_frequency_khz: %d\n", caps.device_frequency_khz);
+    log_trace("Capability - tls_tx: %d\n", caps.tls_tx);
+    log_trace("Capability - tls_rx: %d\n", caps.tls_rx);
+    log_trace("Capability - general_object_types_encryption_key: %d\n", caps.general_object_types_encryption_key);
+    log_trace("Capability - log_max_dek: %d\n", caps.log_max_dek);
+    log_trace("Capability - tls_1_2_aes_gcm_128: %d\n", caps.tls_1_2_aes_gcm_128);
+    log_trace("Capability - sq_ts_format: %d\n", caps.sq_ts_format);
+    log_trace("Capability - rq_ts_format: %d\n", caps.rq_ts_format);
+
+    delete ad;
+}
+
+/**
+ * @test dpcp_adapter.ti_14_create_tis
+ * @brief
+ *    Check adapter::create_tis method
+ * @details
+ *
+ */
+TEST_F(dpcp_adapter, ti_14_create_tis)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+
+    status ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    tis* _tis = nullptr;
+    uint64_t flags = tis_flags::TIS_NONE;
+    ad->create_tis(flags, _tis);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE(nullptr, _tis);
+
+    uint32_t tisn = 0;
+    ret = _tis->get_tisn(tisn);
+    ASSERT_EQ(DPCP_OK, ret);
+    log_trace("tisn: 0x%x\n", tisn);
+
+    delete _tis;
+    delete ad;
+}
+
+/**
+ * @test dpcp_adapter.ti_15_create_tls_tis
+ * @brief
+ *    Check adapter::create_tls with @ref tis_flags::TIS_TLS_EN method
+ * @details
+ *
+ */
+TEST_F(dpcp_adapter, ti_15_create_tls_tis)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+
+    status ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    adapter_hca_capabilities caps;
+    ret = ad->get_hca_capabilities(caps);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    bool is_tls_supported = (caps.tls_tx || caps.tls_rx)
+        && caps.general_object_types_encryption_key
+        && caps.log_max_dek && caps.tls_1_2_aes_gcm_128;
+    if (!is_tls_supported) {
+        log_trace("TLS is not supported\n");
+        delete ad;
+        return;
+    }
+
+    tis* _tis = nullptr;
+    uint64_t flags = tis_flags::TIS_TLS_EN;
+    ad->create_tis(flags, _tis);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE(nullptr, _tis);
+
+    uint32_t tisn = 0;
+    ret = _tis->get_tisn(tisn);
+    ASSERT_EQ(DPCP_OK, ret);
+    log_trace("tisn: 0x%x\n", tisn);
+
+    delete _tis;
+    delete ad;
+}
+
+/**
+ * @test dpcp_adapter.ti_16_create_dek
+ * @brief
+ *    Check adapter::create_dek method
+ * @details
+ *
+ */
+TEST_F(dpcp_adapter, ti_16_create_dek)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+
+    status ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    adapter_hca_capabilities caps;
+    ret = ad->get_hca_capabilities(caps);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    bool is_dek_supported = caps.general_object_types_encryption_key
+        && caps.log_max_dek;
+    if (!is_dek_supported) {
+        log_trace("DEK is not supported\n");
+        delete ad;
+        return;
+    }
+
+    const uint32_t tls_cipher_aes_gcm_128_key_size = 16;
+    uint32_t key_size_bytes = tls_cipher_aes_gcm_128_key_size;
+    void* key = new char[key_size_bytes];
+
+    memcpy(key, "a6a7ee7abec9c4ce", key_size_bytes);  // Random key for the test.
+    key_size_bytes = key_size_bytes;
+
+    dek* _dek = nullptr;
+    ret = ad->create_dek(
+        encryption_key_type_t::ENCRYPTION_KEY_TYPE_TLS,
+        key, key_size_bytes, _dek);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    uint32_t key_id = _dek->get_key_id();
+    log_trace("key_id: 0x%x\n", key_id);
+
+    delete ad;
+}
+#endif

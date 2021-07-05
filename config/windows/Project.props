@@ -1,0 +1,117 @@
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <PROJ_BASE_PATH Condition="'$(OVERRIDE_PROJ_BASE_PATH)'!='true'">$(SolutionDir)</PROJ_BASE_PATH>
+    <BINPLACE_BASE  Condition="'$(OVERRIDE_BINPLACE_BASE)'!='true'">$(PROJ_BASE_PATH)\bin\user\obj$(BUILD_ALT_DIR)</BINPLACE_BASE>
+    <BINPLACE_PATH  Condition="'$(OVERRIDE_BINPLACE_PATH)'!='true'">$(PROJ_BASE_PATH)\bin\user\obj$(O)</BINPLACE_PATH>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <CoercedMacro_386_STDCALL Condition="'$(OVERRIDE_CoercedMacro_386_STDCALL)'!='true'">0</CoercedMacro_386_STDCALL>
+    <amd64_STDCALL Condition="'$(OVERRIDE_amd64_STDCALL)'!='true'">0</amd64_STDCALL>
+    <MSC_WARNING_LEVEL Condition="'$(OVERRIDE_MSC_WARNING_LEVEL)'!='true'">-W4 -WX</MSC_WARNING_LEVEL>
+
+    <USER_C_FLAGS Condition="'$(OVERRIDE_USER_C_FLAGS)'!='true'">$(USER_C_FLAGS) -w34265 -w44263 -w44289 -w44529 -w44946 -w44740 -w44555 </USER_C_FLAGS>
+    <PRECOMPILED_STDAFX Condition="'$(OVERRIDE_PRECOMPILED_STDAFX)'!='true'">1</PRECOMPILED_STDAFX>
+    <PRECOMPILED_INCLUDE></PRECOMPILED_INCLUDE>
+    <USE_MSVCRT Condition="'$(OVERRIDE_USE_MSVCRT)'!='true'">1</USE_MSVCRT>
+    <USE_NATIVE_EH Condition="'$(OVERRIDE_USE_NATIVE_EH)'!='true'">1</USE_NATIVE_EH>
+    <!-- RTTI not needed for dynamic_cast and it creates large code bloat -->
+    <USE_RTTI Condition="'$(OVERRIDE_USE_RTTI)'!='true'">1</USE_RTTI>
+    <USE_NTDLL Condition="'$(OVERRIDE_USE_NTDLL)'!='true'">1</USE_NTDLL>
+    <TARGETPATH Condition="'$(OVERRIDE_TARGETPATH)'!='true'">$(BINPLACE_BASE)</TARGETPATH>
+    <C_DEFINES Condition="'$(OVERRIDE_C_DEFINES)'!='true'">
+        $(C_DEFINES) -D_STL100_ -DUNICODE -D_UNICODE
+        -D_ALLOW_RUNTIME_LIBRARY_MISMATCH -D_STATIC_CPPLIB -D_DISABLE_DEPRECATE_STATIC_CPPLIB
+        -D_CRT_SECURE_NO_WARNINGS -D_HAS_ITERATOR_DEBUGGING=0 -D_SECURE_SCL=0
+        -D_SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS
+    </C_DEFINES>
+    <C_DEFINES Condition="'$(Platform)'!='ARM64'">
+        $(C_DEFINES) -D_NO_CRT_STDIO_INLINE -D_CRTIMP_=
+    </C_DEFINES>
+    <NTTARGETFILES Condition="'$(OVERRIDE_NTTARGETFILES)'!='true'">Custom_target</NTTARGETFILES>
+  </PropertyGroup>
+  <Choose>
+    <When Condition="Exists('$(MSBuildProgramFiles32)\Windows Kits\10')">
+      <PropertyGroup >
+         <USER_C_FLAGS Condition="'$(OVERRIDE_USER_C_FLAGS)'!='true'">$(USER_C_FLAGS) /Zc:threadSafeInit-,sizedDealloc-</USER_C_FLAGS>
+      </PropertyGroup >
+    </When>
+  </Choose>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <FloatingPointModel>fast</FloatingPointModel>
+      <EnableEnhancedInstructionSet Condition="'$(Platform)'=='Win32'">StreamingSIMDExtensions</EnableEnhancedInstructionSet>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <Choose>
+    <When Condition="'$(FREEBUILD)'!='' And $(FREEBUILD)!=0" />
+    <Otherwise>
+      <PropertyGroup>
+        <C_DEFINES Condition="'$(OVERRIDE_C_DEFINES)'!='true'">$(C_DEFINES) -DDEBUG -DDBG</C_DEFINES>
+      </PropertyGroup>
+    </Otherwise>
+  </Choose>
+
+  <Choose>
+    <When Condition="'$(FREEBUILD)'!='' And $(FREEBUILD)!=0">
+      <PropertyGroup>
+        <C_DEFINES Condition="'$(OVERRIDE_C_DEFINES)'!='true'">$(C_DEFINES) -DNDEBUG</C_DEFINES>
+      </PropertyGroup>
+    </When>
+  </Choose>
+
+  <ItemDefinitionGroup Condition="'$(FREEBUILD)'!='' And $(FREEBUILD)!=0">
+    <ClCompile><WholeProgramOptimization>true</WholeProgramOptimization></ClCompile>
+    <Link><LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration></Link>
+    <Link><OptimizeReferences>true</OptimizeReferences></Link>
+    <Link><EnableCOMDATFolding>true</EnableCOMDATFolding></Link>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Platform)'=='ARM64'">
+    <ClCompile><RuntimeLibrary>MultiThreaded</RuntimeLibrary></ClCompile>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup>
+    <Link><SetChecksum>true</SetChecksum></Link>
+    <Link><AdditionalOptions>/DEBUG %(AdditionalOptions)</AdditionalOptions></Link>
+  </ItemDefinitionGroup>
+
+  <PropertyGroup Condition="$(ConfigurationType)==DynamicLibrary or $(ConfigurationType)==Application or $(ConfigurationType)==Driver">
+    <WPP_DLL_OPTIONS>-dll</WPP_DLL_OPTIONS>
+  </PropertyGroup>
+
+  <!-- PRECOMPILED_STDAFX=1 - do precompiled headers for CXX instead of C files
+       Note: precompiled headers can not be used on both c and cxx files in a single directory. -->
+
+  <PropertyGroup>
+    <MpPrecompiledIncludeName Condition="'$(OverrideMpPrecompiledIncludeName)'!='true'">stdafx</MpPrecompiledIncludeName>
+    <MpPrecompiledHeaderFileName>$(MpPrecompiledIncludeName).h</MpPrecompiledHeaderFileName>
+    <MpPrecompiledSourceName>$(MpPrecompiledIncludeName).cpp</MpPrecompiledSourceName>
+  </PropertyGroup>
+
+  <Target Name="MpSetPreCompiledHeader" BeforeTargets="BeforeClCompile" Condition="$(PRECOMPILED_STDAFX) != '0'">
+    <!-- The way msbuild handles relative paths from nmake is different. So we strip the file name from the relative path.
+    Then we get the absolute path of directory containing the precompiled header.-->
+
+    <ItemGroup>
+      <ClCompile Include="$(MpPrecompiledSourceName)">
+        <PrecompiledHeader>Create</PrecompiledHeader>
+        <PreCompiledHeaderOutputFile>$(IntDir)\$(MpPrecompiledIncludeName).pch</PreCompiledHeaderOutputFile>
+        <PreCompiledHeaderFile>$(MpPrecompiledHeaderFileName)</PreCompiledHeaderFile>
+      </ClCompile>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ClCompile Condition="'%(ClCompile.Identity)' !='$(MpPrecompiledSourceName)'">
+        <PreCompiledHeaderOutputFile>$(IntDir)\$(MpPrecompiledIncludeName).pch</PreCompiledHeaderOutputFile>
+        <PreCompiledHeaderFile>$(MpPrecompiledHeaderFileName)</PreCompiledHeaderFile>
+        <PrecompiledHeader>Use</PrecompiledHeader>
+      </ClCompile>
+    </ItemGroup>
+
+  </Target>
+
+</Project>
+

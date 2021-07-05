@@ -12,6 +12,7 @@ with the software product.
 */
 
 #include "stdafx.h"
+#include "dcmd/dcmd.h"
 #include "flow.h"
 
 using namespace dcmd;
@@ -22,8 +23,8 @@ flow::flow(ctx_handle handle, struct flow_desc* desc)
         throw DCMD_ENOTSUP;
     }
     size_t extra_dest_num = desc->num_dst_tir - 1; // the first is within devx_fs_rule_add_in
-    uint32_t in_len = (uint32_t)(MLX5_ST_SZ_BYTES(devx_fs_rule_add_in) +
-                                 MLX5_ST_SZ_BYTES(dest_format_struct) * extra_dest_num);
+    uint32_t in_len = (uint32_t)(DEVX_ST_SZ_BYTES(devx_fs_rule_add_in) +
+                                 DEVX_ST_SZ_BYTES(dest_format_struct) * extra_dest_num);
     auto in = new (std::nothrow) uint8_t[in_len];
     memset(in, 0, in_len);
     // priority

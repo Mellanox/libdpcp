@@ -1,0 +1,9 @@
+Version: 			2.70.24554
+Type: 				chk
+Repository: 			m:\git\winof2.git
+Branch: 			master
+Revision hash code: 		3aca5daf414228507fec6706dab549b4267c58cc
+Build directory: 		Y:\BUILDS\winof2\2_70\24554\master
+Build machine: 			winbuild02-vm
+MlxRshim Version: 		2.70.24554
+Mux Version: 			2.70.24554

@@ -87,7 +87,7 @@ TEST_F(dpcp_dpp_rq, ti_01_create)
     int32_t new_num;
     ret = mk->get_mkey_num(new_num);
     ASSERT_EQ(ret, DPCP_OK);
-    ASSERT_EQ(new_num, 1);
+    ASSERT_EQ(new_num, 0);
 
 #if defined(DPP_MKEY_UID_WA)
     // This workaround is required when direct_mkey is created with UID=0 (by ibv_reg_mr)

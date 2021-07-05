@@ -14,6 +14,7 @@ with the software product.
 #define SRC_DCMD_PRM_H_
 
 #define u8 uint8_t
+#define BIT(nr) (1UL << (nr))
 
 /*
  * Copyright (C) Mellanox Technologies Ltd, 2001-2020. ALL RIGHTS RESERVED.
@@ -62,6 +63,32 @@ enum {
 enum mlx5_cap_mode {
     HCA_CAP_OPMOD_GET_MAX = 0,
     HCA_CAP_OPMOD_GET_CUR = 1,
+};
+
+enum mlx5_cap_type {
+    MLX5_CAP_GENERAL = 0,
+    MLX5_CAP_ETHERNET_OFFLOADS,
+    MLX5_CAP_ODP,
+    MLX5_CAP_ATOMIC,
+    MLX5_CAP_ROCE,
+    MLX5_CAP_IPOIB_OFFLOADS,
+    MLX5_CAP_IPOIB_ENHANCED_OFFLOADS,
+    MLX5_CAP_FLOW_TABLE,
+    MLX5_CAP_ESWITCH_FLOW_TABLE,
+    MLX5_CAP_ESWITCH,
+    MLX5_CAP_RESERVED,
+    MLX5_CAP_VECTOR_CALC,
+    MLX5_CAP_QOS,
+    MLX5_CAP_DEBUG,
+    MLX5_CAP_RESERVED_14,
+    MLX5_CAP_DEV_MEM,
+    MLX5_CAP_RESERVED_16,
+    MLX5_CAP_TLS,
+    MLX5_CAP_VDPA_EMULATION = 0x13,
+    MLX5_CAP_DEV_EVENT = 0x14,
+    MLX5_CAP_IPSEC,
+    /* NUM OF CAP Types */
+    MLX5_CAP_NUM
 };
 
 enum {
@@ -1111,9 +1138,16 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 
     u8 general_obj_types[0x40];
 
-    u8 reserved_at_440[0x40];
+    u8 sq_ts_format[0x2];
+    u8 rq_ts_format[0x2];
+    u8 reserved_at_444[0x25];
 
-    u8 reserved_at_480[0x3];
+    u8 crypto[0x1];
+    u8 reserved_at_46a[0x16];
+
+    u8 reserved_at_480[0x1];
+    u8 tls_tx[0x1];
+    u8 tls_rx[0x1];
     u8 log_max_l2_table[0x5];
     u8 reserved_at_488[0x8];
     u8 log_uar_page_sz[0x10];
@@ -1126,7 +1160,10 @@ struct mlx5_ifc_cmd_hca_cap_bits {
     u8 num_of_uars_per_page[0x20];
     u8 reserved_at_540[0x40];
 
-    u8 reserved_at_580[0x3d];
+    u8 reserved_at_580[0x33];
+    u8 log_max_dek[0x5];
+    u8 reserved_at_5b8[0x4];
+    u8 mini_cqe_resp_stride_index[0x1];
     u8 cqe_128_always[0x1];
     u8 cqe_compression_128[0x1];
     u8 cqe_compression[0x1];
@@ -2355,6 +2392,16 @@ struct mlx5_ifc_emulation_cap_bits {
     u8 reserved_at_40[0x7c0];
 };
 
+struct mlx5_ifc_tls_cap_bits {
+    u8 tls_1_2_aes_gcm_128[0x1];
+    u8 tls_1_3_aes_gcm_128[0x1];
+    u8 tls_1_2_aes_gcm_256[0x1];
+    u8 tls_1_3_aes_gcm_256[0x1];
+    u8 reserved_at_4[0x1c];
+
+    u8 reserved_at_20[0x7e0];
+};
+
 union mlx5_ifc_hca_cap_union_bits {
     struct mlx5_ifc_cmd_hca_cap_bits cmd_hca_cap;
     struct mlx5_ifc_odp_cap_bits odp_cap;
@@ -2366,6 +2413,7 @@ union mlx5_ifc_hca_cap_union_bits {
     struct mlx5_ifc_e_switch_cap_bits e_switch_cap;
     struct mlx5_ifc_vector_calc_cap_bits vector_calc_cap;
     struct mlx5_ifc_qos_cap_bits qos_cap;
+    struct mlx5_ifc_tls_cap_bits tls_cap;
     /* UNUSED
             struct mlx5_ifc_fpga_cap_bits fpga_cap;
     */
@@ -2627,7 +2675,7 @@ enum {
 };
 
 struct mlx5_ifc_sqc_bits {
-    u8 rlky[0x1];
+    u8 rlkey[0x1];
     u8 cd_master[0x1];
     u8 fre[0x1];
     u8 flush_in_error_en[0x1];
@@ -2637,7 +2685,9 @@ struct mlx5_ifc_sqc_bits {
     u8 reg_umr[0x1];
     u8 allow_swp[0x1];
     u8 hairpin[0x1];
-    u8 reserved_at_f[0x11];
+    u8 reserved_at_f[0xb];
+    u8 ts_format[0x2];
+    u8 hairpin_offload_type[0x4];
 
     u8 reserved_at_20[0x8];
     u8 user_index[0x18];
@@ -4836,7 +4886,7 @@ struct mlx5_ifc_encap_header_in_bits {
 
     u8 more_encap_header[0][0x8];
 };
-
+/*
 struct mlx5_ifc_query_encap_header_out_bits {
     u8 status[0x8];
     u8 reserved_at_8[0x18];
@@ -4847,7 +4897,7 @@ struct mlx5_ifc_query_encap_header_out_bits {
 
     struct mlx5_ifc_encap_header_in_bits encap_header[0];
 };
-
+*/
 struct mlx5_ifc_query_encap_header_in_bits {
     u8 opcode[0x10];
     u8 uid[0x10];
@@ -7545,6 +7595,15 @@ struct mlx5_ifc_set_pp_rate_limit_out_bits {
     u8 reserved_at_40[0x40];
 };
 
+struct mlx5_ifc_set_pp_rate_limit_context_bits {
+    u8 rate_limit[0x20];
+    u8 burst_upper_bound[0x20];
+    u8 reserved_at_40[0xC];
+    u8 rate_mode[0x4];
+    u8 typical_packet_size[0x10];
+    u8 reserved_at_60[0x120];
+};
+
 struct mlx5_ifc_set_pp_rate_limit_in_bits {
     u8 opcode[0x10];
     u8 uid[0x10];
@@ -7557,14 +7616,7 @@ struct mlx5_ifc_set_pp_rate_limit_in_bits {
 
     u8 reserved_at_60[0x20];
 
-    u8 rate_limit[0x20];
-
-    u8 burst_upper_bound[0x20];
-
-    u8 reserved_at_c0[0x10];
-    u8 typical_packet_size[0x10];
-
-    u8 reserved_at_e0[0x120];
+    struct mlx5_ifc_set_pp_rate_limit_context_bits ctx;
 };
 
 struct mlx5_ifc_access_register_out_bits {
@@ -9278,6 +9330,84 @@ struct mlx5_ifc_device_emulation_qp_to_nvme_map_bits {
     u8 nvme_sqe_doorbell_offset[0x20];
 
     u8 reserved_at_140[0x6c0];
+};
+
+struct mlx5_ifc_encryption_key_obj_bits {
+    u8 modify_field_select[0x40];
+
+    u8 reserved_at_40[0x14];
+    u8 key_size[0x4];
+    u8 reserved_at_58[0x4];
+    u8 key_type[0x4];
+
+    u8 reserved_at_60[0x8];
+    u8 pd[0x18];
+
+    u8 reserved_at_80[0x180];
+    u8 key[8][0x20];
+
+    u8 reserved_at_300[0x500];
+};
+
+struct mlx5_ifc_create_encryption_key_in_bits {
+    struct mlx5_ifc_general_obj_in_cmd_hdr_bits general_obj_in_cmd_hdr;
+    struct mlx5_ifc_encryption_key_obj_bits encryption_key_object;
+};
+
+enum {
+    MLX5_GENERAL_OBJECT_TYPE_ENCRYPTION_KEY_KEY_SIZE_128 = 0x0,
+    MLX5_GENERAL_OBJECT_TYPE_ENCRYPTION_KEY_KEY_SIZE_256 = 0x1,
+};
+
+enum {
+    MLX5_GENERAL_OBJECT_TYPE_ENCRYPTION_KEY_TYPE_TLS = 0x1,
+    MLX5_GENERAL_OBJECT_TYPE_ENCRYPTION_KEY_TYPE_IPSEC = 0x2,
+};
+
+struct mlx5_ifc_tls_static_params_bits {
+    u8 const_2[0x2];
+    u8 tls_version[0x4];
+    u8 const_1[0x2];
+    u8 reserved_at_8[0x14];
+    u8 encryption_standard[0x4];
+
+    u8 reserved_at_20[0x20];
+
+    u8 initial_record_number[0x40];
+
+    u8 resync_tcp_sn[0x20];
+
+    u8 gcm_iv[0x20];
+
+    u8 implicit_iv[0x40];
+
+    u8 reserved_at_100[0x8];
+    u8 dek_index[0x18];
+
+    u8 reserved_at_120[0xe0];
+};
+
+struct mlx5_ifc_tls_progress_params_bits {
+    u8 next_record_tcp_sn[0x20];
+
+    u8 hw_resync_tcp_sn[0x20];
+
+    u8 record_tracker_state[0x2];
+    u8 auth_state[0x2];
+    u8 reserved_at_44[0x4];
+    u8 hw_offset_record_number[0x18];
+};
+
+enum {
+    MLX5_HCA_CAP_GENERAL_OBJECT_TYPES_ENCRYPTION_KEY = 4096, // BIT(0xc),
+    MLX5_HCA_CAP_GENERAL_OBJECT_TYPES_IPSEC = 8192, // BIT(0x13),
+    MLX5_HCA_CAP_GENERAL_OBJECT_TYPES_SAMPLER = 1048576, // BIT(0x20),
+};
+
+enum {
+    MLX5_GENERAL_OBJECT_TYPES_ENCRYPTION_KEY = 0xc,
+    MLX5_GENERAL_OBJECT_TYPES_IPSEC = 0x13,
+    MLX5_GENERAL_OBJECT_TYPES_SAMPLER = 0x20,
 };
 
 #endif /* MLX5_IFC_H */

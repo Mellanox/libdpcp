@@ -106,15 +106,48 @@ int ctx::query_eqn(uint32_t cpu_num, uint32_t& eqn)
     return (ret ? DCMD_EIO : DCMD_EOK);
 }
 
-int ctx::hca_iseg_mapping(void*& pv_iseg)
+int ctx::hca_iseg_mapping()
 {
-    u32 cb_iseg;
+    uint32_t cb_iseg;
 
-    int ret = devx_query_hca_iseg_mapping(m_handle, &cb_iseg, &pv_iseg);
+    int ret = devx_query_hca_iseg_mapping(m_handle, &cb_iseg, &m_pv_iseg);
 
     if (ret) {
         log_error("devx_query_hca_iseg_mapping failed ret=0x%x\n", ret);
     }
 
     return (ret ? DCMD_EIO : DCMD_EOK);
+}
+
+uint64_t ctx::get_real_time()
+{
+    if (nullptr == m_pv_iseg) {
+        log_error("m_pv_iseg is not initialized");
+        return 0;
+    }
+
+    return (uint64_t)(DEVX_GET64(initial_seg, m_pv_iseg, real_time));
+}
+
+ibv_mr* ctx::ibv_reg_mem_reg_iova(struct ibv_pd* verbs_pd, void* addr, size_t length, uint64_t iova,
+                                  unsigned int access)
+{
+    return ibv_reg_mr_iova2((ibv_pd*)verbs_pd, addr, length, iova, access);
+}
+
+ibv_mr* ctx::ibv_reg_mem_reg(struct ibv_pd* verbs_pd, void* addr, size_t length,
+                             unsigned int access)
+{
+    return ibv_reg_mr((ibv_pd*)verbs_pd, addr, length, access);
+}
+
+int ctx::ibv_dereg_mem_reg(struct ibv_mr* ibv_mem)
+{
+    return ibv_dereg_mr(ibv_mem);
+}
+
+int ctx::create_ibv_pd(void* pd, uint32_t& pdn)
+{
+    pdn = ((ibv_pd*)pd)->handle;
+    return 0;
 }

@@ -32,7 +32,7 @@ device** provider::get_device_list(size_t& size)
         m_dev_array = new (std::nothrow) device*[num_devices];
         if (m_dev_array) {
             /* search for the given device in the device list */
-            for (int i = 0; i < num_devices; ++i) {
+            for (int i = 0; i < (int)num_devices; ++i) {
                 device* dv = create_device(device_list + i);
                 if (dv) {
                     m_dev_array[m_dev_array_size++] = dv;

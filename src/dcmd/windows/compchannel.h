@@ -1,5 +1,5 @@
 /*
-Copyright (C) Mellanox Technologies, Ltd. 2020. ALL RIGHTS RESERVED.
+Copyright (C) Mellanox Technologies, Ltd. 2020-2021. ALL RIGHTS RESERVED.
 
 This software product is a proprietary product of Mellanox Technologies, Ltd.
 (the "Company") and all right, title, and interest in and to the software
@@ -26,7 +26,7 @@ private:
     OVERLAPPED m_overlapped_ctx;
     ctx_handle m_ctx;
     obj_handle m_cq_obj;
-    event_channel m_handle;
+    static event_channel m_handle;
     bool m_binded;
     bool m_adapter_shutdown;
 

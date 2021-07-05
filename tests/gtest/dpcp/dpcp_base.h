@@ -1,5 +1,5 @@
 /*
-Copyright (C) Mellanox Technologies, Ltd. 2020. ALL RIGHTS RESERVED.
+Copyright (C) Mellanox Technologies, Ltd. 2020-2021. ALL RIGHTS RESERVED.
 
 This software product is a proprietary product of Mellanox Technologies, Ltd.
 (the "Company") and all right, title, and interest in and to the software
@@ -10,7 +10,6 @@ are licensed, not sold. All rights not licensed are reserved.
 This software product is governed by the End User License Agreement provided
 with the software product.
 */
-#pragma once
 #ifndef TESTS_GTEST_DPCP_BASE_H_
 #define TESTS_GTEST_DPCP_BASE_H_
 
@@ -19,6 +18,12 @@ with the software product.
 #include "src/dpcp/internal.h"
 
 using namespace dpcp;
+
+const uint32_t VendorIdMellanox = 0x02c9;
+const uint32_t PCIVendorIdMellanox = 0x15b3;
+const uint32_t DevPartIdConnectX5 = 0x1017;
+const uint32_t DevPartIdConnectX6DX = 0x101D;
+const uint32_t DevPartIdBlueField = 0xA2D6;
 
 struct cq_data {
     void* buf;
@@ -47,7 +52,7 @@ protected:
     rq_params m_rqp;
 
     virtual void SetUp();
-    adapter* OpenAdapter();
+    adapter* OpenAdapter(uint32_t vendor_part_id = DevPartIdConnectX5);
     int create_cq(adapter* ad, cq_data* dv_cq);
     striding_rq* open_str_rq(adapter* ad, rq_params& rqp);
     virtual void TearDown();

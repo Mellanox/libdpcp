@@ -62,8 +62,10 @@ status tis::create(const uint32_t td_id, const uint32_t pd_id)
 
     if (ret == DPCP_OK) {
         m_tisn = DEVX_GET(create_tis_out, out, tisn);
+        return DPCP_OK;
+    } else {
+        return DPCP_ERR_CREATE;
     }
-    return DPCP_OK;
 }
 
 } // namespace dpcp

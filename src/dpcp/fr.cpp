@@ -165,13 +165,14 @@ status flow_rule::apply_settings()
         DEVX_SET(fte_match_set_lyr_2_4, prm_mc, ip_version, m_mask.ip_version);
     }
     DEVX_SET(fte_match_set_lyr_2_4, prm_mc, udp_dport, m_mask.dst_port);
-#ifdef __linux__
+#if !defined(KERNEL_PRM)
     uint64_t dmac = 0;
     memcpy(&dmac, m_mask.dst_mac, sizeof(dmac));
     // will send DST_MAC only if was set in mask
     bool dmac_set = dmac ? true : false;
     if (dmac_set) {
-        copy_ether_mac(DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mc, dmac_47_16), m_mask.dst_mac);
+        copy_ether_mac((uint8_t*)DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mc, dmac_47_16),
+                       m_mask.dst_mac);
     }
     void* p_src_ip = DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mc, src_ipv4_src_ipv6);
     DEVX_SET(ipv4_layout, p_src_ip, ipv4, m_mask.src_ip);
@@ -199,10 +200,11 @@ status flow_rule::apply_settings()
         DEVX_SET(fte_match_set_lyr_2_4, prm_mv, ip_version, m_value.ip_version);
     }
     DEVX_SET(fte_match_set_lyr_2_4, prm_mv, udp_dport, m_value.dst_port);
-#ifdef __linux__
+#if !defined(KERNEL_PRM)
     if (dmac_set) {
         // Vlan_id is dynamic, will be set only when mask set
-        copy_ether_mac(DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mv, dmac_47_16), m_value.dst_mac);
+        copy_ether_mac((uint8_t*)DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mv, dmac_47_16),
+                       m_value.dst_mac);
         uint8_t* d = m_value.dst_mac;
         log_trace("dmac [%x:%x:%x:%x:%x:%x]\n", d[0], d[1], d[2], d[3], d[4], d[5]);
     }

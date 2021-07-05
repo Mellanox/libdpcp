@@ -25,7 +25,7 @@ void dpcp_base::SetUp()
     m_rqp.wqe_sz = m_rqp.rq_at.buf_stride_num * m_rqp.rq_at.buf_stride_sz / 16; // in DS (16B)
 }
 
-adapter* dpcp_base::OpenAdapter()
+adapter* dpcp_base::OpenAdapter(uint32_t vendor_part_id)
 {
     size_t num = 0;
 
@@ -41,6 +41,22 @@ adapter* dpcp_base::OpenAdapter()
     }
 
     adapter_info* ai = p_ainfo;
+    bool adapter_found = false;
+    // find the first adapter not older than ConnectX-5
+    // as Rivermax require it as minimal
+    for (int i = 0; i < (int)num; i++) {
+        ai = p_ainfo + i;
+        if ((ai->vendor_id != VendorIdMellanox) && (ai->vendor_id != PCIVendorIdMellanox)) {
+            continue;
+        }
+        if (ai->vendor_part_id >= vendor_part_id) {
+            adapter_found = true;
+            break;
+        }
+    }
+    if (!adapter_found) {
+        return nullptr;
+    }
     adapter* ad = nullptr;
     ret = pr->open_adapter(ai->id, ad);
     if (DPCP_OK == ret) {

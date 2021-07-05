@@ -27,7 +27,7 @@ obj::obj(ctx_handle handle, struct obj_desc* desc)
 
     struct mlx5dv_devx_obj* devx_ctx =
         mlx5dv_devx_obj_create(handle, (void*)desc->in, desc->inlen, desc->out, desc->outlen);
-    log_trace("errno: %d handle: %p devx_ctx: %p in: %p in_sz: %lld out: %p, out_sz: %lld\n", errno,
+    log_trace("errno: %d handle: %p devx_ctx: %p in: %p in_sz: %zd out: %p, out_sz: %zd\n", errno,
               handle, devx_ctx, desc->in, desc->inlen, desc->out, desc->outlen);
     if (IS_ERR(devx_ctx)) {
         throw DCMD_ENOTSUP;
@@ -58,7 +58,7 @@ int obj::query(struct obj_desc* desc)
     }
     int ret =
         mlx5dv_devx_obj_query(m_ctx_handle, (void*)desc->in, desc->inlen, desc->out, desc->outlen);
-    log_trace("obj::query errno: %d in: %p in_sz: %lld out: %p, out_sz: %lld\n", errno, desc->in,
+    log_trace("obj::query errno: %d in: %p in_sz: %zd out: %p, out_sz: %zd\n", errno, desc->in,
               desc->inlen, desc->out, desc->outlen);
     return (ret ? DCMD_EIO : DCMD_EOK);
 }

@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
-<!--  <Import Project="$(MpCommonTopDir)\MpProject.props"/> -->
+  <Import Project="$(ConfigTopDir)\Project.props"/>
 
   <PropertyGroup>
     <TARGETTYPE Condition="'$(OVERRIDE_TARGETTYPE)'!='true'">LIBRARY</TARGETTYPE>
-    <TARGETNAME Condition="'$(OVERRIDE_TARGETNAME)'!='true'">$(ProjectName.Replace('_wof2',''))</TARGETNAME>
+    <TARGETNAME Condition="'$(OVERRIDE_TARGETNAME)'!='true'">$(ProjectName)</TARGETNAME>
 
     <PRECOMPILED_STDAFX Condition="'$(OVERRIDE_PRECOMPILED_STDAFX)'!='true'">0</PRECOMPILED_STDAFX>
 
@@ -13,9 +13,9 @@
     <MpPrecompiledHeaderFileName>$(MpPrecompiledIncludeName).h</MpPrecompiledHeaderFileName>
     <MpPrecompiledSourceName>$(MpPrecompiledIncludeName).cpp\</MpPrecompiledSourceName>
 
-    <USER_C_FLAGS Condition="'$(OVERRIDE_USER_C_FLAGS)'!='true'"> 
-        -U_NO_CRT_STDIO_INLINE 
-        /GS /GL  /Gy /Zi /Gm- /sdl /Zc:inline /W4
+    <USER_C_FLAGS Condition="'$(OVERRIDE_USER_C_FLAGS)'!='true'">
+        -U_NO_CRT_STDIO_INLINE
+        /GS /Gy /Zi /Gm- /sdl /Zc:inline /W4
         /D "_LIB" /D "_CRT_SECURE_NO_WARNINGS" /D "_UNICODE" /D "UNICODE"
         /D "HAVE_DEVX"
         /D "_HAS_ITERATOR_DEBUGGING=0" /D "_SECURE_SCL=0"
@@ -28,11 +28,7 @@
 
     <INCLUDES Condition="'$(OVERRIDE_INCLUDES)'!='true'">
         $(INCLUDES);
-        $(MP_COMMON_INC);
-        $(SolutionDir)\..\inc;
-        $(SolutionDir)\..\core\mlx5devx\inc;
-        $(SolutionDir)\..\core2\inc;
-        $(SolutionDir)\..\driveX\mlx5\inc;
+        contrib\MLNX_WinOF2_DevX_SDK\inc;
         src\utils\windows\;
         $(ProjectDir);
         $(ProjectDir)\src;
@@ -47,15 +43,11 @@
 
     <TARGETLIBS Condition="'$(OVERRIDE_TARGETLIBS)'!='true'">
 	    $(SDK_LIB_PATH)\ws2_32.lib
-	    $(SDK_LIB_PATH)\mswsock.lib
-	    $(SDK_LIB_PATH)\iphlpapi.lib
-<!--  -->
-            $(UM_BINPLACE_PATH)\NdNetUtils.lib
-            $(UM_BINPLACE_PATH)\mlx5devx.lib
+            contrib\MLNX_WinOF2_DevX_SDK\lib\mlx5devx.lib;
     </TARGETLIBS>
 
     <LINKER_FLAGS Condition="'$(OVERRIDE_LINKER_FLAGS)'!='true'"> /MACHINE:X64 /NOLOGO </LINKER_FLAGS>
- 
+
   </PropertyGroup>
 
 </Project>

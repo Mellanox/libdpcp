@@ -30,12 +30,14 @@
     <ClCompile Include="src\dcmd\windows\umem.cpp" />
     <ClCompile Include="src\dpcp\adapter.cpp" />
     <ClCompile Include="src\dpcp\cq.cpp" />
+    <ClCompile Include="src\dpcp\dek.cpp" />
     <ClCompile Include="src\dpcp\dpcp.cpp" />
     <ClCompile Include="src\dpcp\dpcp_obj.cpp" />
     <ClCompile Include="src\dpcp\eq.cpp" />
     <ClCompile Include="src\dpcp\fr.cpp" />
     <ClCompile Include="src\dpcp\mkey.cpp" />
     <ClCompile Include="src\dpcp\rq.cpp" />
+    <ClCompile Include="src\dpcp\sq.cpp" />
     <ClCompile Include="src\dpcp\tir.cpp" />
     <ClCompile Include="src\dpcp\tis.cpp" />
     <ClCompile Include="src\utils\windows\log.cpp" />
@@ -44,6 +46,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\api\dpcp.h" />
+    <ClInclude Include="src\dcmd\base\base_ctx.h" />
+    <ClInclude Include="src\dcmd\base\base_device.h" />
+    <ClInclude Include="src\dcmd\base\base_flow.h" />
+    <ClInclude Include="src\dcmd\base\base_obj.h" />
+    <ClInclude Include="src\dcmd\base\base_provider.h" />
+    <ClInclude Include="src\dcmd\base\base_uar.h" />
+    <ClInclude Include="src\dcmd\base\base_umem.h" />
     <ClInclude Include="src\dcmd\dcmd.h" />
     <ClInclude Include="src\dcmd\windows\compchannel.h" />
     <ClInclude Include="src\dcmd\windows\ctx.h" />

@@ -14,6 +14,7 @@ with the software product.
 #ifndef SRC_DCMD_WINDOWS_FLOW_H_
 #define SRC_DCMD_WINDOWS_FLOW_H_
 
+#include "dcmd/dcmd.h"
 #include "dcmd/base/base_flow.h"
 
 namespace dcmd {

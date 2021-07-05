@@ -1,5 +1,5 @@
 /*
-Copyright (C) Mellanox Technologies, Ltd. 2001-2020. ALL RIGHTS RESERVED.
+Copyright (C) Mellanox Technologies, Ltd. 2020-2021. ALL RIGHTS RESERVED.
 
 This software product is a proprietary product of Mellanox Technologies, Ltd.
 (the "Company") and all right, title, and interest in and to the software
@@ -17,15 +17,20 @@ with the software product.
 
 using namespace dcmd;
 
+event_channel compchannel::m_handle = INVALID_HANDLE_VALUE;
+
 compchannel::compchannel(ctx_handle ctx)
     : m_ctx(ctx)
     , m_binded(false)
 {
-    int err = devx_overlapped_file_open(m_ctx, &m_handle);
-    if (err) {
-        log_error("overlapped_file_open failed ret=0x%x\n", err);
-        throw DCMD_ENOTSUP;
+    if (INVALID_HANDLE_VALUE == m_handle) {
+        int err = devx_overlapped_file_open(m_ctx, &m_handle);
+        if (err) {
+            log_error("overlapped_file_open failed ret=0x%x\n", err);
+            throw DCMD_ENOTSUP;
+        }
     }
+    log_trace("overlapped file handle %p\n", m_handle);
 }
 
 int compchannel::bind(obj_handle src_obj, bool solicited)
@@ -43,6 +48,7 @@ int compchannel::bind(obj_handle src_obj, bool solicited)
         log_error("io_enable ret = %d\n", err);
         return DCMD_EIO;
     }
+    log_trace("overlapped_io_enable ret = %d\n", err);
     m_binded = true;
     return err;
 }
@@ -66,6 +72,8 @@ int compchannel::request(compchannel_ctx& cc_ctx)
     uint32_t num_eqe = 0;
     int err = devx_overlapped_io_park(m_handle, m_cq_obj, DEVX_EVENT_TYPE_CQE, cc_ctx.overlapped,
                                       &num_eqe);
+    log_trace("m_handle %p err %d num_eqe %d ovl.event %p\n", m_handle, err, num_eqe,
+              cc_ctx.overlapped->hEvent);
     if (err) {
         if (err != -ECANCELED) {
             return DCMD_EIO;

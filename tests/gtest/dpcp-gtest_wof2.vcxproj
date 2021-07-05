@@ -29,15 +29,19 @@
     <ClCompile Include="dcmd\dcmd_obj.cpp" />
     <ClCompile Include="dcmd\dcmd_provider.cpp" />
     <ClCompile Include="dpcp\adapter_tests.cpp" />
+    <ClCompile Include="dpcp\dek_tests.cpp" />
     <ClCompile Include="dpcp\dpcp_base.cpp" />
     <ClCompile Include="dpcp\fr_tests.cpp" />
     <ClCompile Include="dpcp\mkey_tests.cpp" />
     <ClCompile Include="dpcp\obj_tests.cpp" />
     <ClCompile Include="dpcp\pd_tests.cpp" />
+    <ClCompile Include="dpcp\pp_tests.cpp" />
     <ClCompile Include="dpcp\provider_tests.cpp" />
     <ClCompile Include="dpcp\rq_tests.cpp" />
+    <ClCompile Include="dpcp\sq_tests.cpp" />
     <ClCompile Include="dpcp\td_tests.cpp" />
     <ClCompile Include="dpcp\tir_tests.cpp" />
+    <ClCompile Include="dpcp\tis_tests.cpp" />
     <ClCompile Include="dpcp\uar_tests.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>

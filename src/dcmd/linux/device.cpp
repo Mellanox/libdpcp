@@ -6,16 +6,10 @@ using namespace dcmd;
 
 device::device(dev_handle handle)
 {
-#if defined(HAVE_DEVX)
-
     m_handle = handle;
     m_id = std::string(handle->name);
     m_name = std::string(handle->name);
-
-#else
-    UNUSED(handle);
-    throw DCMD_ENOTSUP;
-#endif /* HAVE_DEVX */
+    memset(&m_device_attr, 0, sizeof(m_device_attr));
 }
 
 std::string device::get_name()

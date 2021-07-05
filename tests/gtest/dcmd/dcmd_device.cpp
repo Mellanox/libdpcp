@@ -27,23 +27,24 @@ class dcmd_device : public dcmd_base {};
  *    Check device component
  * @details
  */
-TEST_F(dcmd_device, ti_1) {
-	dcmd::provider *provider;
-	provider = provider->get_instance();
-	ASSERT_TRUE(provider != nullptr);
+TEST_F(dcmd_device, ti_1)
+{
+    dcmd::provider *provider;
+    provider = provider->get_instance();
+    ASSERT_TRUE(provider != nullptr);
 
-	dcmd::device **device_list = NULL;
-	size_t device_count = 0;
-	device_list = provider->get_device_list(device_count);
-	ASSERT_TRUE(device_list != nullptr);
-	ASSERT_LT(0, device_count);
+    dcmd::device **device_list = NULL;
+    size_t device_count = 0;
+    device_list = provider->get_device_list(device_count);
+    ASSERT_TRUE(device_list != nullptr);
+    ASSERT_LT(0, (int)device_count);
 
-	for (int i = 0; i < device_count; i++) {
-		EXPECT_TRUE(device_list[i] != nullptr);
-		log_trace("Device id: %s name: %s\n",
-				device_list[i]->get_id().c_str(),
-				device_list[i]->get_name().c_str());
-	}
+    for (int i = 0; i < (int)device_count; i++) {
+        EXPECT_TRUE(device_list[i] != nullptr);
+        log_trace("Device id: %s name: %s\n",
+        device_list[i]->get_id().c_str(),
+        device_list[i]->get_name().c_str());
+    }
 }
 
 /**
@@ -52,19 +53,20 @@ TEST_F(dcmd_device, ti_1) {
  *    Check create_ctx()
  * @details
  */
-TEST_F(dcmd_device, ti_2) {
-	dcmd::provider *provider;
-	provider = provider->get_instance();
-	ASSERT_TRUE(provider != nullptr);
+TEST_F(dcmd_device, ti_2)
+{
+    dcmd::provider *provider;
+    provider = provider->get_instance();
+    ASSERT_TRUE(provider != nullptr);
 
-	dcmd::device **device_list = NULL;
-	size_t device_count = 0;
-	device_list = provider->get_device_list(device_count);
-	ASSERT_TRUE(device_list != nullptr);
-	ASSERT_LT(0, device_count);
+    dcmd::device **device_list = NULL;
+    size_t device_count = 0;
+    device_list = provider->get_device_list(device_count);
+    ASSERT_TRUE(device_list != nullptr);
+    ASSERT_LT(0, (int)device_count);
 
-	dcmd::device *dev_ptr = device_list[0];
-	dcmd::ctx *ctx_ptr = dev_ptr->create_ctx();
-	EXPECT_TRUE(ctx_ptr != nullptr);
-	delete ctx_ptr;
+    dcmd::device *dev_ptr = device_list[0];
+    dcmd::ctx *ctx_ptr = dev_ptr->create_ctx();
+    EXPECT_TRUE(ctx_ptr != nullptr);
+    delete ctx_ptr;
 }

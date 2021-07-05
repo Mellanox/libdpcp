@@ -24,6 +24,35 @@
 
 namespace dpcp {
 
+struct mlx5_cqe64 {
+    u8 tunneled_etc;
+    u8 rsvd0;
+    __be16 wqe_id;
+    u8 lro_tcppsh_abort_dupack;
+    u8 lro_min_ttl;
+    __be16 lro_tcp_win;
+    __be32 lro_ack_seq_num;
+    __be32 rss_hash_result;
+    u8 rss_hash_type;
+    u8 ml_path;
+    u8 rsvd20[2];
+    __be16 check_sum;
+    __be16 slid;
+    __be32 flags_rqpn;
+    u8 hds_ip_ext;
+    u8 l4_hdr_type_etc;
+    __be16 vlan_info;
+    __be32 srqn; /* [31:24]: lro_num_seg, [23:0]: srqn */
+    __be32 imm_inval_pkey;
+    u8 rsvd40[4];
+    __be32 byte_cnt;
+    __be64 timestamp;
+    __be32 sop_drop_qpn;
+    __be16 wqe_counter;
+    u8 signature;
+    u8 op_own;
+};
+
 const uint32_t MAX_CQ_SZ = 1 << 22; /* in CQE number */
 
 cq::cq(adapter* ad, const cq_attr& attrs)

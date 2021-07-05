@@ -5,7 +5,6 @@
 
 # Libraries
 .libs
-*.lib
 *.a
 
 # Shared objects
@@ -53,10 +52,11 @@ jenkins/
 tags
 .vs/
 obj/
-dpcp.sln
-dpcp.vcxproj
-dpcp.vcxproj.filters
 dpcp.vcxproj.user
+dpcp_linux.sln
+dpcp_linux.vcxproj
+dpcp_linux.vcxproj.filters
+dpcp_linux.vcxproj.user
 
 # build products
 contrib/scripts/dpcp.spec

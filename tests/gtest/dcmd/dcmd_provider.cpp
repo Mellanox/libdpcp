@@ -56,7 +56,7 @@ TEST_F(dcmd_provider, ti_2)
     size_t device_count = 0;
     device_list = provider->get_device_list(device_count);
     ASSERT_NE(nullptr, device_list);
-    ASSERT_LT(0, device_count);
+    ASSERT_LT(0, (int)device_count);
     log_trace("Number of devices: %zd\n", device_count);
 }
 
@@ -77,7 +77,7 @@ TEST_F(dcmd_provider, ti_3)
     size_t device_count = 0;
     device_list = provider->get_device_list(device_count);
     ASSERT_NE(nullptr, device_list);
-    ASSERT_LT(0, device_count);
+    ASSERT_LT(0, (int)device_count);
 
     for (int i = 0; i < 10; i++) {
         dcmd::device** cur_device_list = NULL;

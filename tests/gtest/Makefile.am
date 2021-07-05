@@ -40,6 +40,7 @@ gtest_SOURCES = \
 	dpcp/provider_tests.cpp\
 	dpcp/obj_tests.cpp\
 	dpcp/pd_tests.cpp\
+	dpcp/pp_tests.cpp\
 	dpcp/td_tests.cpp\
 	dpcp/mkey_tests.cpp\
 	dpcp/uar_tests.cpp\
@@ -48,6 +49,8 @@ gtest_SOURCES = \
 	dpcp/tir_tests.cpp\
 	dpcp/tis_tests.cpp\
 	dpcp/fr_tests.cpp\
+	dpcp/dek_tests.cpp\
+	dpcp/sq_tests.cpp\
 	dpcp/adapter_tests.cpp
 
 noinst_HEADERS = \

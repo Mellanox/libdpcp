@@ -84,11 +84,27 @@ TEST_F(dpcp_tis, ti_02_create)
  */
 TEST_F(dpcp_tis, ti_03_create_tls_enabled)
 {
-    adapter* ad = OpenAdapter();
-    ASSERT_NE(nullptr, ad);
+    adapter* ad = OpenAdapter(DevPartIdConnectX6DX);
+    if (!ad) {
+        log_warn("Adapter with PCI DevID %x not found, test is not run!\n", DevPartIdConnectX6DX);
+        return;
+    }
 
     status ret = ad->open();
     ASSERT_EQ(DPCP_OK, ret);
+
+    adapter_hca_capabilities caps;
+    ret = ad->get_hca_capabilities(caps);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    bool is_tls_supported = (caps.tls_tx || caps.tls_rx)
+        && caps.general_object_types_encryption_key
+        && caps.log_max_dek && caps.tls_1_2_aes_gcm_128;
+    if (!is_tls_supported) {
+        log_trace("TLS is not supported\n");
+        delete ad;
+        return;
+    }
 
     uint32_t tdn = ad->get_td();
     ASSERT_NE(0, tdn);
@@ -134,7 +150,7 @@ TEST_F(dpcp_tis, ti_04_destroy)
     ASSERT_NE(0, pdn);
     log_trace("pdn: 0x%x\n", pdn);
 
-    uint64_t flags = tis_flags::TIS_TLS_EN;
+    uint64_t flags = tis_flags::TIS_NONE;
     tis _tis(ad->get_ctx(), flags);
 
     ret = _tis.create(tdn, pdn);
@@ -161,12 +177,29 @@ TEST_F(dpcp_tis, ti_05_destroy_tls_enabled)
     status ret = ad->open();
     ASSERT_EQ(DPCP_OK, ret);
 
+    adapter_hca_capabilities caps;
+    ret = ad->get_hca_capabilities(caps);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    bool is_tls_supported = (caps.tls_tx || caps.tls_rx)
+        && caps.general_object_types_encryption_key
+        && caps.log_max_dek && caps.tls_1_2_aes_gcm_128;
+    if (!is_tls_supported) {
+        log_trace("TLS is not supported\n");
+        delete ad;
+        return;
+    }
+
     uint32_t tdn = ad->get_td();
     ASSERT_NE(0, tdn);
 
-    uint64_t flags = tis_flags::TIS_NONE;
+    uint32_t pdn = ad->get_pd();
+    ASSERT_NE(0, pdn);
+    log_trace("pdn: 0x%x\n", pdn);
+
+    uint64_t flags = tis_flags::TIS_TLS_EN;
     tis _tis(ad->get_ctx(), flags);
-    ret = _tis.create(tdn);
+    ret = _tis.create(tdn, pdn);
     ASSERT_EQ(DPCP_OK, ret);
 
     ret = _tis.destroy();

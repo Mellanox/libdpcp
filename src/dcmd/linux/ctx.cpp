@@ -5,6 +5,10 @@
 
 using namespace dcmd;
 
+#define HCA_CORE_CLOCK_TO_REAL_TIME_CLOCK_OFFSET 64
+#define HCA_CORE_CLOCK_TO_REAL_TIME_CLOCK(hca_core_clock)                                          \
+    htobe64(*((uint64_t*)((char*)(hca_core_clock) + HCA_CORE_CLOCK_TO_REAL_TIME_CLOCK_OFFSET)))
+
 ctx::ctx(dev_handle handle)
 {
 #if defined(HAVE_DEVX)
@@ -13,6 +17,11 @@ ctx::ctx(dev_handle handle)
     struct ibv_context* ibv_ctx;
 
     memset(&dv_attr, 0, sizeof(dv_attr));
+    m_dv_context = new (std::nothrow) mlx5dv_context;
+    if (nullptr == m_dv_context) {
+        log_error("m_dv_context is not initialized");
+        throw DCMD_ENOTSUP;
+    }
     dv_attr.flags |= MLX5DV_CONTEXT_FLAGS_DEVX;
     ibv_ctx = mlx5dv_open_device(handle, &dv_attr);
     if (NULL == ibv_ctx) {
@@ -34,6 +43,7 @@ ctx::~ctx()
         ibv_close_device(m_handle);
         m_handle = nullptr;
     }
+    free(m_dv_context);
 #endif /* HAVE_DEVX */
 }
 
@@ -121,11 +131,48 @@ int ctx::query_eqn(uint32_t cpu_num, uint32_t& eqn)
     return (ret ? DCMD_EIO : DCMD_EOK);
 }
 
-// TODO: ticket RM #2577742
-int ctx::hca_iseg_mapping(void*& pv_iseg)
+int ctx::hca_iseg_mapping()
 {
-    UNUSED(pv_iseg);
-    log_warn("Not implemented now");
+    int ret = 0;
+    m_dv_context->comp_mask |= MLX5DV_CONTEXT_MASK_HCA_CORE_CLOCK;
+    ret = mlx5dv_query_device(m_handle, m_dv_context);
 
-    return 0;
+    return (ret ? DCMD_EIO : DCMD_EOK);
+}
+
+uint64_t ctx::get_real_time()
+{
+    return HCA_CORE_CLOCK_TO_REAL_TIME_CLOCK(m_dv_context->hca_core_clock);
+}
+
+ibv_mr* ctx::ibv_reg_mem_reg_iova(struct ibv_pd* verbs_pd, void* addr, size_t length, uint64_t iova,
+                                  unsigned int access)
+{
+    return ibv_reg_mr_iova((ibv_pd*)verbs_pd, addr, length, iova, access);
+}
+
+ibv_mr* ctx::ibv_reg_mem_reg(struct ibv_pd* verbs_pd, void* addr, size_t length,
+                             unsigned int access)
+{
+    return ibv_reg_mr((ibv_pd*)verbs_pd, addr, length, access);
+}
+
+int ctx::ibv_dereg_mem_reg(struct ibv_mr* ibv_mem)
+{
+    return ibv_dereg_mr(ibv_mem);
+}
+
+int ctx::create_ibv_pd(void* pd, uint32_t& pdn)
+{
+    mlx5dv_obj mlx5_obj;
+    mlx5_obj.pd.in = (ibv_pd*)pd;
+    mlx5dv_pd out_pd;
+    mlx5_obj.pd.out = &out_pd;
+
+    int ret = mlx5dv_init_obj(&mlx5_obj, MLX5DV_OBJ_PD);
+    if (ret) {
+        return DCMD_EINVAL;
+    }
+    pdn = out_pd.pdn;
+    return DCMD_EOK;
 }

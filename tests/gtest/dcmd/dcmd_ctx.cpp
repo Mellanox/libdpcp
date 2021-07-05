@@ -37,7 +37,7 @@ TEST_F(dcmd_ctx, ti_1)
     size_t device_count = 0;
     device_list = provider->get_device_list(device_count);
     ASSERT_TRUE(device_list != nullptr);
-    ASSERT_LT(0, device_count);
+    ASSERT_LT(0, (int)device_count);
 
     dcmd::device* dev_ptr = device_list[0];
     dcmd::ctx* ctx_ptr = dev_ptr->create_ctx();

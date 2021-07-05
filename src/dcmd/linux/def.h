@@ -29,6 +29,28 @@ typedef struct mlx5dv_devx_umem* umem_handle;
 typedef struct mlx5dv_devx_uar* uar_handle;
 typedef struct ibv_flow* flow_handle;
 typedef struct ibv_cq* cq_obj_handle;
+/*
+ * Packet Pacing
+ */
+typedef struct mlx5dv_pp pp_handle;
+
+inline pp_handle* devx_alloc_pp(ctx_handle ctx, const void* pp_ctx, size_t pp_sz, uint32_t flags)
+{
+    return mlx5dv_pp_alloc(ctx, pp_sz, pp_ctx, flags);
+}
+
+inline uint32_t get_pp_index(pp_handle* pp)
+{
+    if (pp) {
+        return pp->index;
+    }
+    return 0;
+}
+
+#define devx_free_pp mlx5dv_pp_free
+
+#define IS_ERR(ptr) (nullptr == ptr)
+
 #if !defined(EVENT_CHANNEL)
 typedef struct {
     int fd;

@@ -64,6 +64,12 @@
     <ClCompile Include="src\dpcp\eq.cpp">
       <Filter>dpcp</Filter>
     </ClCompile>
+    <ClCompile Include="src\dpcp\dek.cpp">
+      <Filter>dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\sq.cpp">
+      <Filter>dpcp</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\dcmd\windows\ctx.h">
@@ -114,11 +120,29 @@
     <ClInclude Include="src\dcmd\windows\uar.h">
       <Filter>dpcp</Filter>
     </ClInclude>
-    <ClInclude Include="src\dcmd\windows\eventqueue.h">
-      <Filter>dcmd</Filter>
-    </ClInclude>
     <ClInclude Include="src\dcmd\windows\compchannel.h">
       <Filter>dcmd</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\base\base_ctx.h">
+      <Filter>dcmd_base</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\base\base_device.h">
+      <Filter>dcmd_base</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\base\base_flow.h">
+      <Filter>dcmd_base</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\base\base_obj.h">
+      <Filter>dcmd_base</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\base\base_provider.h">
+      <Filter>dcmd_base</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\base\base_uar.h">
+      <Filter>dcmd_base</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\base\base_umem.h">
+      <Filter>dcmd_base</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -127,6 +151,9 @@
     </Filter>
     <Filter Include="dpcp">
       <UniqueIdentifier>{7de0feef-5e7c-4006-918b-19cced94c40b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dcmd_base">
+      <UniqueIdentifier>{02acc6d9-eae5-4baf-ba85-88270d6bd308}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
