@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MpCommonTopDir>$(SolutionDir)\..\core\common\user\MpCommon\MpCommon</MpCommonTopDir>
+  </PropertyGroup>
+  <Import Project="$(MpCommonTopDir)\MpProject.vcxproj-pre.inc" />
+  <PropertyGroup Label="PropertySheets">
+    <ConfigurationType>Application</ConfigurationType>
+    <TARGETNAME>$(ProjectName.Replace('_wof2',''))</TARGETNAME>
+    <DriverType />
+    <Configuration>Win8 Debug</Configuration>
+  </PropertyGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{594009B4-963D-4670-81C6-D533B5C1E2E2}</ProjectGuid>
+    <RootNamespace>$(MSBuildProjectName)</RootNamespace>
+    <WindowsTargetPlatformVersion>$(LatestTargetPlatformVersion)</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <ItemGroup>
+    <ClCompile Include="common\base.cpp" />
+    <ClCompile Include="common\gtest-all.cpp" />
+    <ClCompile Include="common\sys.cpp" />
+    <ClCompile Include="dcmd\dcmd_base.cpp" />
+    <ClCompile Include="dcmd\dcmd_compchannel.cpp" />
+    <ClCompile Include="dcmd\dcmd_ctx.cpp" />
+    <ClCompile Include="dcmd\dcmd_device.cpp" />
+    <ClCompile Include="dcmd\dcmd_obj.cpp" />
+    <ClCompile Include="dcmd\dcmd_provider.cpp" />
+    <ClCompile Include="dpcp\adapter_tests.cpp" />
+    <ClCompile Include="dpcp\dpcp_base.cpp" />
+    <ClCompile Include="dpcp\fr_tests.cpp" />
+    <ClCompile Include="dpcp\mkey_tests.cpp" />
+    <ClCompile Include="dpcp\obj_tests.cpp" />
+    <ClCompile Include="dpcp\pd_tests.cpp" />
+    <ClCompile Include="dpcp\provider_tests.cpp" />
+    <ClCompile Include="dpcp\rq_tests.cpp" />
+    <ClCompile Include="dpcp\td_tests.cpp" />
+    <ClCompile Include="dpcp\tir_tests.cpp" />
+    <ClCompile Include="dpcp\uar_tests.cpp" />
+    <ClCompile Include="main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="common\base.h" />
+    <ClInclude Include="common\cmn.h" />
+    <ClInclude Include="common\def.h" />
+    <ClInclude Include="common\log.h" />
+    <ClInclude Include="common\sys.h" />
+    <ClInclude Include="common\tap.h" />
+    <ClInclude Include="dcmd\dcmd_base.h" />
+    <ClInclude Include="dpcp\dpcp_base.h" />
+  </ItemGroup>
+  <Import Project="$(MpCommonTopDir)\MpProject.vcxproj-post.inc" />
+</Project>

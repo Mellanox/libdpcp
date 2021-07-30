@@ -1,0 +1,5 @@
+dpcp (@PRJ_MAJOR@.@PRJ_MINOR@.@PRJ_REVISION@) release; urgency=low
+
+  * Initial release (Closes: #12345)
+
+ -- Igor Ivanov <igori@mellanox.com>  @BUILD_DATE_CHANGELOG@

@@ -1,0 +1,56 @@
+# Object files
+*.o
+*.lo
+*.la
+
+# Libraries
+.libs
+*.lib
+*.a
+
+# Shared objects
+*.so
+*.so.*
+
+# Dependencies
+.dirstamp
+.deps
+
+# Automake
+Makefile.in
+Makefile
+aclocal.m4
+autom4te.cache/
+config.h
+config.h.in
+config.h.in~
+config.log
+config.status
+config/aux/config.guess
+config/aux/config.sub
+config/aux/install-sh
+config/aux/missing
+config/aux/decomp
+config/aux/ltmain.sh
+config/aux/compile
+config/aux/depcomp
+config/m4/libtool.m4
+config/m4/ltoptions.m4
+config/m4/ltsugar.m4
+config/m4/ltversion.m4
+config/m4/lt~obsolete.m4
+configure
+libtool
+stamp-h1
+
+# Tool
+cov-int/
+jenkins/
+
+# Project/Eclipse
+.cproject
+.project
+tags
+
+# build products
+contrib/script/dpcp.spec

@@ -1,0 +1,18 @@
+#!/usr/bin/make -f
+# -*- mode: makefile; coding: utf-8 -*-
+
+export DH_VERBOSE=1
+
+%:
+	dh $@
+
+override_dh_install:
+	@echo "Skip dh_install"
+
+# Workaround for missing dependency information in libmongoclient package
+override_dh_shlibdeps:
+	dh_shlibdeps --dpkg-shlibdeps-params=--ignore-missing-info
+
+override_dh_auto_configure:
+	@echo "Using extra configuration options: ${configure_options}"
+	dh_auto_configure -- ${configure_options}

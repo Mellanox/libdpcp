@@ -1,0 +1,19 @@
+Source: dpcp
+Section: libs
+Priority: optional
+Maintainer: Igor Ivanov <igori@mellanox.com>
+Build-Depends: debhelper (>= 7),
+ pkg-config,
+ autoconf,
+ automake,
+ libibverbs-dev
+Homepage: https://github.com/Mellanox/dpcp
+
+Package: dpcp
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Direct Packet Control Plane (DPCP) is a library to use Devx
+ .
+ Direct Packet Control Plane (DPCP) provides an unified flexible
+ interface for programming IB devices using Devx.
+
