@@ -23,8 +23,8 @@
 
 namespace dpcp {
 
-static void set_hca_device_frequency_khz_caps(adapter_hca_capabilities* external_hca_caps,
-                                              const caps_map_t& caps_map)
+static void store_hca_device_frequency_khz_caps(adapter_hca_capabilities* external_hca_caps,
+                                                const caps_map_t& caps_map)
 {
     external_hca_caps->device_frequency_khz =
         DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
@@ -32,8 +32,8 @@ static void set_hca_device_frequency_khz_caps(adapter_hca_capabilities* external
     log_trace("Capability - device_frequency_khz: %d\n", external_hca_caps->device_frequency_khz);
 }
 
-static void set_hca_tls_caps(adapter_hca_capabilities* external_hca_caps,
-                             const caps_map_t& caps_map)
+static void store_hca_tls_caps(adapter_hca_capabilities* external_hca_caps,
+                               const caps_map_t& caps_map)
 {
     external_hca_caps->tls_tx = DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
                                          capability.cmd_hca_cap.tls_tx);
@@ -44,15 +44,15 @@ static void set_hca_tls_caps(adapter_hca_capabilities* external_hca_caps,
     log_trace("Capability - tls_rx: %d\n", external_hca_caps->tls_rx);
 }
 
-static void set_hca_cap_crypto_enable(adapter_hca_capabilities* external_hca_caps,
-                                      const caps_map_t& caps_map)
+static void store_hca_cap_crypto_enable(adapter_hca_capabilities* external_hca_caps,
+                                        const caps_map_t& caps_map)
 {
     external_hca_caps->crypto_enable = DEVX_GET(
         query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second, capability.cmd_hca_cap.crypto);
     log_trace("Capability - crypto: %d\n", external_hca_caps->crypto_enable);
 }
 
-static void set_hca_general_object_types_encryption_key_caps(
+static void store_hca_general_object_types_encryption_key_caps(
     adapter_hca_capabilities* external_hca_caps, const caps_map_t& caps_map)
 {
     uint64_t general_obj_types =
@@ -66,8 +66,8 @@ static void set_hca_general_object_types_encryption_key_caps(
               external_hca_caps->general_object_types_encryption_key);
 }
 
-static void set_hca_log_max_dek_caps(adapter_hca_capabilities* external_hca_caps,
-                                     const caps_map_t& caps_map)
+static void store_hca_log_max_dek_caps(adapter_hca_capabilities* external_hca_caps,
+                                       const caps_map_t& caps_map)
 {
     external_hca_caps->log_max_dek =
         DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
@@ -75,8 +75,8 @@ static void set_hca_log_max_dek_caps(adapter_hca_capabilities* external_hca_caps
     log_trace("Capability - log_max_dek: %d\n", external_hca_caps->log_max_dek);
 }
 
-static void set_tls_1_2_aes_gcm_128_caps(adapter_hca_capabilities* external_hca_caps,
-                                         const caps_map_t& caps_map)
+static void store_hca_tls_1_2_aes_gcm_128_caps(adapter_hca_capabilities* external_hca_caps,
+                                               const caps_map_t& caps_map)
 {
     external_hca_caps->tls_1_2_aes_gcm_128 =
         DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_TLS)->second,
@@ -85,8 +85,8 @@ static void set_tls_1_2_aes_gcm_128_caps(adapter_hca_capabilities* external_hca_
               external_hca_caps->tls_1_2_aes_gcm_128);
 }
 
-static void set_sq_ts_format_caps(adapter_hca_capabilities* external_hca_caps,
-                                  const caps_map_t& caps_map)
+static void store_hca_sq_ts_format_caps(adapter_hca_capabilities* external_hca_caps,
+                                        const caps_map_t& caps_map)
 {
     external_hca_caps->sq_ts_format =
         DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
@@ -94,8 +94,8 @@ static void set_sq_ts_format_caps(adapter_hca_capabilities* external_hca_caps,
     log_trace("Capability - sq_ts_format: %d\n", external_hca_caps->sq_ts_format);
 }
 
-static void set_rq_ts_format_caps(adapter_hca_capabilities* external_hca_caps,
-                                  const caps_map_t& caps_map)
+static void store_hca_rq_ts_format_caps(adapter_hca_capabilities* external_hca_caps,
+                                        const caps_map_t& caps_map)
 {
     external_hca_caps->rq_ts_format =
         DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
@@ -103,15 +103,74 @@ static void set_rq_ts_format_caps(adapter_hca_capabilities* external_hca_caps,
     log_trace("Capability - rq_ts_format: %d\n", external_hca_caps->rq_ts_format);
 }
 
+static void store_hca_lro_caps(adapter_hca_capabilities* external_hca_caps,
+                               const caps_map_t& caps_map)
+{
+    caps_map_t::const_iterator iter = caps_map.find(MLX5_CAP_ETHERNET_OFFLOADS);
+    void* hcattr;
+    int i;
+
+    if (iter == caps_map.end()) {
+        log_fatal("Incorrect caps_map object\n");
+        return;
+    }
+
+    hcattr = DEVX_ADDR_OF(query_hca_cap_out, iter->second, capability);
+
+    external_hca_caps->lro_cap = DEVX_GET(per_protocol_networking_offload_caps, hcattr, lro_cap);
+    log_trace("Capability - lro_cap: %d\n", external_hca_caps->lro_cap);
+
+    external_hca_caps->lro_psh_flag =
+        DEVX_GET(per_protocol_networking_offload_caps, hcattr, lro_psh_flag);
+    log_trace("Capability - lro_psh_flag: %d\n", external_hca_caps->lro_psh_flag);
+
+    external_hca_caps->lro_time_stamp =
+        DEVX_GET(per_protocol_networking_offload_caps, hcattr, lro_time_stamp);
+    log_trace("Capability - lro_time_stamp: %d\n", external_hca_caps->lro_time_stamp);
+
+    external_hca_caps->lro_max_msg_sz_mode =
+        DEVX_GET(per_protocol_networking_offload_caps, hcattr, lro_max_msg_sz_mode);
+    log_trace("Capability - lro_max_msg_sz_mode: %d\n", external_hca_caps->lro_max_msg_sz_mode);
+
+    external_hca_caps->lro_min_mss_size =
+        DEVX_GET(per_protocol_networking_offload_caps, hcattr, lro_min_mss_size);
+    log_trace("Capability - lro_min_mss_size: %d\n", external_hca_caps->lro_min_mss_size);
+
+    i = 0;
+    external_hca_caps->lro_timer_supported_periods[i] = (uint8_t)DEVX_GET(
+        per_protocol_networking_offload_caps, hcattr, lro_timer_supported_periods[0]);
+    log_trace("Capability - lro_timer_supported_periods[%d]: %d\n", i,
+              external_hca_caps->lro_timer_supported_periods[i]);
+
+    i = 1;
+    external_hca_caps->lro_timer_supported_periods[i] = (uint8_t)DEVX_GET(
+        per_protocol_networking_offload_caps, hcattr, lro_timer_supported_periods[1]);
+    log_trace("Capability - lro_timer_supported_periods[%d]: %d\n", i,
+              external_hca_caps->lro_timer_supported_periods[i]);
+
+    i = 2;
+    external_hca_caps->lro_timer_supported_periods[i] = (uint8_t)DEVX_GET(
+        per_protocol_networking_offload_caps, hcattr, lro_timer_supported_periods[2]);
+    log_trace("Capability - lro_timer_supported_periods[%d]: %d\n", i,
+              external_hca_caps->lro_timer_supported_periods[i]);
+
+    i = 3;
+    external_hca_caps->lro_timer_supported_periods[i] = (uint8_t)DEVX_GET(
+        per_protocol_networking_offload_caps, hcattr, lro_timer_supported_periods[3]);
+    log_trace("Capability - lro_timer_supported_periods[%d]: %d\n", i,
+              external_hca_caps->lro_timer_supported_periods[i]);
+}
+
 static const std::vector<cap_cb_fn> caps_callbacks = {
-    set_hca_device_frequency_khz_caps,
-    set_hca_tls_caps,
-    set_hca_general_object_types_encryption_key_caps,
-    set_hca_log_max_dek_caps,
-    set_tls_1_2_aes_gcm_128_caps,
-    set_hca_cap_crypto_enable,
-    set_sq_ts_format_caps,
-    set_rq_ts_format_caps,
+    store_hca_device_frequency_khz_caps,
+    store_hca_tls_caps,
+    store_hca_general_object_types_encryption_key_caps,
+    store_hca_log_max_dek_caps,
+    store_hca_tls_1_2_aes_gcm_128_caps,
+    store_hca_cap_crypto_enable,
+    store_hca_sq_ts_format_caps,
+    store_hca_rq_ts_format_caps,
+    store_hca_lro_caps,
 };
 
 status pd_devx::create()
@@ -182,7 +241,10 @@ adapter::adapter(dcmd::device* dev, dcmd::ctx* ctx)
 {
     m_caps.insert(std::make_pair(MLX5_CAP_GENERAL, calloc(1, DEVX_ST_SZ_DW(query_hca_cap_out))));
     m_caps.insert(std::make_pair(MLX5_CAP_TLS, calloc(1, DEVX_ST_SZ_DW(query_hca_cap_out))));
-    if (m_caps[MLX5_CAP_GENERAL] != nullptr && m_caps[MLX5_CAP_TLS] != nullptr) {
+    m_caps.insert(
+        std::make_pair(MLX5_CAP_ETHERNET_OFFLOADS, calloc(1, DEVX_ST_SZ_DW(query_hca_cap_out))));
+    if (m_caps[MLX5_CAP_GENERAL] != nullptr && m_caps[MLX5_CAP_TLS] != nullptr &&
+        m_caps[MLX5_CAP_ETHERNET_OFFLOADS] != nullptr) {
         query_hca_caps();
         set_external_hca_caps();
     }
@@ -328,13 +390,33 @@ status adapter::create_tir(uint32_t rqn, tir*& t_)
     if (nullptr == tr) {
         return DPCP_ERR_NO_MEMORY;
     }
-    t_ = tr;
-    // Create TIR
+
     status ret = tr->create(m_td_id, rqn);
     if (DPCP_OK != ret) {
         delete tr;
         return DPCP_ERR_CREATE;
     }
+    t_ = tr;
+
+    return DPCP_OK;
+}
+
+status adapter::create_tir(tir::attr& tir_attr, tir*& tir_obj)
+{
+    status ret = DPCP_OK;
+    tir* tr = nullptr;
+
+    tr = new (std::nothrow) tir(get_ctx());
+    if (nullptr == tr) {
+        return DPCP_ERR_NO_MEMORY;
+    }
+
+    ret = tr->create(tir_attr);
+    if (DPCP_OK != ret) {
+        delete tr;
+        return DPCP_ERR_CREATE;
+    }
+    tir_obj = tr;
 
     return DPCP_OK;
 }
@@ -364,7 +446,7 @@ status adapter::create_tis(const uint64_t& flags, tis*& out_tis)
 status adapter::create_direct_mkey(void* address, size_t length, mkey_flags flags,
                                    direct_mkey*& dmk)
 {
-    dmk = new (std::nothrow) direct_mkey(this, address, (uint32_t)length, flags);
+    dmk = new (std::nothrow) direct_mkey(this, address, length, flags);
     log_trace("dmk: %p\n", dmk);
     if (nullptr == dmk) {
         return DPCP_ERR_NO_MEMORY;
@@ -518,23 +600,10 @@ status adapter::create_cq(const cq_attr& attrs, cq*& out_cq)
     return ret;
 }
 
-status adapter::create_striding_rq(rq_attr& rq_attr, size_t wqes_num, size_t wqe_sz,
-                                   striding_rq*& str_rq)
+status adapter::prepare_basic_rq(basic_rq& srq)
 {
-    if (nullptr == m_uarpool) {
-        // Allocate UAR pool
-        m_uarpool = new (std::nothrow) uar_collection(get_ctx());
-        if (nullptr == m_uarpool) {
-            return DPCP_ERR_NO_MEMORY;
-        }
-    }
-    striding_rq* srq = new (std::nothrow) striding_rq(this, rq_attr, wqes_num, wqe_sz);
-    if (nullptr == srq) {
-        return DPCP_ERR_NO_MEMORY;
-    }
-    str_rq = srq;
     // Obrain UAR for new RQ
-    uar rq_uar = m_uarpool->get_uar(srq);
+    uar rq_uar = m_uarpool->get_uar(&srq);
     if (nullptr == rq_uar) {
         return DPCP_ERR_ALLOC_UAR;
     }
@@ -545,35 +614,82 @@ status adapter::create_striding_rq(rq_attr& rq_attr, size_t wqes_num, size_t wqe
     }
     // Allocate WQ Buf
     void* wq_buf = nullptr;
-    size_t wq_buf_sz = srq->get_wq_buf_sz();
-    ret = srq->allocate_wq_buf(wq_buf, wq_buf_sz);
+    size_t wq_buf_sz = srq.get_wq_buf_sz();
+    ret = srq.allocate_wq_buf(wq_buf, wq_buf_sz);
     if (DPCP_OK != ret) {
         return ret;
     }
     // Register UMEM for WQ Buffer
-    ret = reg_mem(get_ctx(), (void*)wq_buf, wq_buf_sz, srq->m_wq_buf_umem, srq->m_wq_buf_umem_id);
+    ret = reg_mem(get_ctx(), (void*)wq_buf, wq_buf_sz, srq.m_wq_buf_umem, srq.m_wq_buf_umem_id);
     if (DPCP_OK != ret) {
         return ret;
     }
-    log_trace("create_striderq Buf: 0x%p sz: 0x%x umem_id: %x\n", wq_buf, (uint32_t)wq_buf_sz,
-              srq->m_wq_buf_umem_id);
+    log_trace("prepare_basic_rq Buf: 0x%p sz: 0x%x umem_id: %x\n", wq_buf, (uint32_t)wq_buf_sz,
+              srq.m_wq_buf_umem_id);
     //
     // Allocated DB
     uint32_t* db_rec = nullptr;
     size_t db_rec_sz = 0;
-    ret = srq->allocate_db_rec(db_rec, db_rec_sz);
+    ret = srq.allocate_db_rec(db_rec, db_rec_sz);
     if (DPCP_OK != ret) {
         return ret;
     }
     // Register UMEM for DoorBell record
-    ret = reg_mem(get_ctx(), (void*)db_rec, db_rec_sz, srq->m_db_rec_umem, srq->m_db_rec_umem_id);
+    ret = reg_mem(get_ctx(), (void*)db_rec, db_rec_sz, srq.m_db_rec_umem, srq.m_db_rec_umem_id);
     if (DPCP_OK != ret) {
         return ret;
     }
-    log_trace("create_striderq DB: 0x%p sz: 0x%zx umem_id: %x\n", db_rec, db_rec_sz,
-              srq->m_db_rec_umem_id);
+    log_trace("prepare_basic_rq DB: 0x%p sz: 0x%zx umem_id: %x\n", db_rec, db_rec_sz,
+              srq.m_db_rec_umem_id);
 
-    ret = srq->init(&uar_p);
+    return srq.init(&uar_p);
+}
+
+status adapter::create_striding_rq(rq_attr& rq_attr, size_t wqes_num, size_t wqe_sz,
+                                   striding_rq*& str_rq)
+{
+    rq_attr.wqe_num = wqes_num;
+    rq_attr.wqe_sz = wqe_sz;
+    return create_striding_rq(rq_attr, str_rq);
+}
+
+status adapter::create_striding_rq(rq_attr& rq_attr, striding_rq*& str_rq)
+{
+    if (!m_uarpool) {
+        // Allocate UAR pool
+        m_uarpool = new (std::nothrow) uar_collection(get_ctx());
+        if (!m_uarpool)
+            return DPCP_ERR_NO_MEMORY;
+    }
+
+    std::unique_ptr<striding_rq> srq(new (std::nothrow) striding_rq(this, rq_attr));
+    if (!srq)
+        return DPCP_ERR_NO_MEMORY;
+
+    status ret = prepare_basic_rq(*srq);
+    if (DPCP_OK == ret)
+        str_rq = srq.release();
+
+    return ret;
+}
+
+status adapter::create_regular_rq(rq_attr& rq_attr, regular_rq*& reg_rq)
+{
+    if (!m_uarpool) {
+        // Allocate UAR pool
+        m_uarpool = new (std::nothrow) uar_collection(get_ctx());
+        if (!m_uarpool)
+            return DPCP_ERR_NO_MEMORY;
+    }
+
+    std::unique_ptr<regular_rq> srq(new (std::nothrow) regular_rq(this, rq_attr));
+    if (!srq)
+        return DPCP_ERR_NO_MEMORY;
+
+    status ret = prepare_basic_rq(*srq);
+    if (DPCP_OK == ret)
+        reg_rq = srq.release();
+
     return ret;
 }
 
@@ -700,13 +816,12 @@ status adapter::create_pp_sq(sq_attr& sq_attr, pp_sq*& packet_pacing_sq)
 status adapter::query_hca_caps()
 {
     uint32_t in[DEVX_ST_SZ_DW(query_hca_cap_in)] = {};
-    enum mlx5_cap_type cap_type = MLX5_CAP_GENERAL;
-    enum mlx5_cap_mode cap_mode = HCA_CAP_OPMOD_GET_MAX;
-    uint32_t opmod = (cap_type << 1) | (cap_mode & 0x01);
+    enum mlx5_cap_mode cap_mode = HCA_CAP_OPMOD_GET_CUR;
 
+    enum mlx5_cap_type cap_type = MLX5_CAP_GENERAL;
+    uint32_t opmod = (cap_type << 1) | cap_mode;
     DEVX_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP);
     DEVX_SET(query_hca_cap_in, in, op_mod, opmod);
-
     int ret =
         m_dcmd_ctx->exec_cmd(in, sizeof(in), m_caps[cap_type], DEVX_ST_SZ_DW(query_hca_cap_out));
     if (ret) {
@@ -715,14 +830,21 @@ status adapter::query_hca_caps()
     }
 
     cap_type = MLX5_CAP_TLS;
-    opmod = (cap_type << 1) | (cap_mode & 0x01);
+    opmod = (cap_type << 1) | cap_mode;
     DEVX_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP);
     DEVX_SET(query_hca_cap_in, in, op_mod, opmod);
-
     ret = m_dcmd_ctx->exec_cmd(in, sizeof(in), m_caps[cap_type], DEVX_ST_SZ_DW(query_hca_cap_out));
     if (ret) {
-        log_trace("exec_cmd for CAP_TLS failed %d\n", ret);
-        return DPCP_ERR_QUERY;
+        log_trace("CAP_TLS query failed %d\n", ret);
+    }
+
+    cap_type = MLX5_CAP_ETHERNET_OFFLOADS;
+    opmod = (cap_type << 1) | cap_mode;
+    DEVX_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP);
+    DEVX_SET(query_hca_cap_in, in, op_mod, opmod);
+    ret = m_dcmd_ctx->exec_cmd(in, sizeof(in), m_caps[cap_type], DEVX_ST_SZ_DW(query_hca_cap_out));
+    if (ret) {
+        log_trace("MLX5_CAP_ETHERNET_OFFLOADS query failed %d\n", ret);
     }
 
     return DPCP_OK;

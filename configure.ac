@@ -13,7 +13,7 @@ dnl===-----------------------------------------------------------------------===
 #
 define([prj_ver_major], 1)
 define([prj_ver_minor], 1)
-define([prj_ver_revision], 12)
+define([prj_ver_revision], 17)
 define([prj_ver_release], esyscmd([echo ${PRJ_RELEASE:=0}]))
 
 
@@ -156,7 +156,7 @@ case $CC in
         ;;
 esac
 
-AX_CXX_COMPILE_STDCXX([11], [], [mandatory])
+AX_CXX_COMPILE_STDCXX([11], [noext], [mandatory])
 
 dnl===-----------------------------------------------------------------------===
 dnl===

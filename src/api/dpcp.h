@@ -37,7 +37,7 @@ using std::function;
 using std::unordered_map;
 #endif
 
-static const char* dpcp_version = "1.1.12";
+static const char* dpcp_version = "1.1.17";
 
 #if defined(__linux__)
 typedef void* LPOVERLAPPED;
@@ -189,7 +189,7 @@ protected:
 
 public:
     virtual status get_address(void*& address) = 0;
-    virtual status get_length(uint32_t& len) = 0;
+    virtual status get_length(size_t& len) = 0;
     virtual status get_flags(mkey_flags& flags) = 0;
     /**
      * @brief Returns global MKey counter
@@ -229,7 +229,7 @@ public:
      * @param [in]  length          Address Length in bytes
      * @param [in]  mkey_flags      Flags
      */
-    direct_mkey(adapter* ad, void* address, uint32_t length, mkey_flags flags);
+    direct_mkey(adapter* ad, void* address, size_t length, mkey_flags flags);
     /**
      * @brief Registers User MEMory in driver and HW
      * Size and pointer were provided in CTR.
@@ -254,7 +254,7 @@ public:
      *
      * @retval Returns DPCP_OK on success.
      */
-    virtual status get_length(uint32_t& len); // override;
+    virtual status get_length(size_t& len); // override;
     /**
      * @brief Returns memory region flags
      *
@@ -351,7 +351,7 @@ public:
      *
      * @retval Returns DPCP_OK on success.
      */
-    virtual status get_length(uint32_t& len);
+    virtual status get_length(size_t& len);
     /**
      * @brief Returns memory region flags
      *
@@ -395,13 +395,13 @@ enum reserved_mkey_type { MKEY_RESERVED_NONE = 0, MKEY_RESERVED_DUMP_AND_FILL = 
 class reserved_mkey : public mkey {
     friend class adapter;
     void* m_address;
-    uint32_t m_length;
+    size_t m_length;
     uint32_t m_idx; // memory key index
     reserved_mkey_type m_type;
     mkey_flags m_flags;
 
 public:
-    reserved_mkey(adapter* ad, reserved_mkey_type type, void* address, uint32_t length,
+    reserved_mkey(adapter* ad, reserved_mkey_type type, void* address, size_t length,
                   mkey_flags flags);
     /**
      * @brief Creates Reserved Memory Key for given type
@@ -420,7 +420,7 @@ public:
      *
      * @retval Returns DPCP_OK on success.
      */
-    virtual status get_length(uint32_t& len); // override;
+    virtual status get_length(size_t& len); // override;
     /**
      * @brief Returns flags
      *
@@ -724,11 +724,20 @@ enum wq_type {
     CYCLIC_STRIDING_WQ = 0x3
 };
 
+enum rq_ts_format {
+    RQ_TS_FREE_RUNNING = 0x0,
+    RQ_TS_DEFAULT = 0x1, /**< Selected by the device */
+    RQ_TS_REAL_TIME = 0x2
+};
+
 struct rq_attr {
     size_t buf_stride_sz;
     uint32_t buf_stride_num;
     uint32_t user_index;
     uint32_t cqn;
+    size_t wqe_num; // Number of WQEs in RQ, must be power of 2
+    size_t wqe_sz; // WQE size, i.e. number of DS (16B) in each RQ WQE, must be power of 2
+    uint8_t ts_format;
 };
 
 enum {
@@ -759,10 +768,11 @@ public:
 };
 
 /**
- * @brief class striding_rq - Handles Striding ReceiveQueue
+ * @brief class basic_rq - A base class for striding_rq and regular_rq
  *
  */
-class striding_rq : public rq {
+class basic_rq : public rq {
+protected:
     friend class adapter;
     uar_t* m_uar;
     adapter* m_adapter;
@@ -773,24 +783,19 @@ class striding_rq : public rq {
     uint32_t* m_db_rec;
     dcmd::umem* m_db_rec_umem;
 
-    size_t m_wqe_num; // Number of WQEs in RQ, must be power of 2
-    size_t m_wqe_sz; // WQE size, i.e. number of DS (16B) in each RQ WQE, must be
-                     // power of 2
     uint32_t m_wq_buf_sz_bytes;
     uint32_t m_wq_buf_umem_id;
     uint32_t m_db_rec_umem_id;
     rq_mem_type m_mem_type;
-    wq_type m_wq_type;
 
-    striding_rq(adapter* ad, rq_attr& attr, size_t rq_num, size_t wq_sz);
-
-    status create();
-    status init(const uar_t* rq_uar);
+    basic_rq(adapter* ad, rq_attr& attr);
     status allocate_wq_buf(void*& buf, size_t sz);
     status allocate_db_rec(uint32_t*& db_rec, size_t& sz);
+    status init(const uar_t* rq_uar);
+
+    virtual status create() = 0;
 
 public:
-    virtual ~striding_rq();
     /**
      * @brief Returns virtual address of RQ WQ buffer
      * @param [out] wq_buf_addr      RQ WQ buffer address
@@ -826,11 +831,47 @@ public:
      * @retval Returns DPCP_OK on success.
      */
     status get_wq_stride_sz(uint32_t& wq_stride_sz);
+
     inline size_t get_wq_buf_sz() const
     {
         return m_wq_buf_sz_bytes;
     }
+
     virtual status destroy();
+
+    virtual ~basic_rq();
+};
+
+/**
+ * @brief class striding_rq - Handles Striding ReceiveQueue
+ *
+ */
+class striding_rq : public basic_rq {
+    friend class adapter;
+    striding_rq(adapter* ad, rq_attr& attr);
+
+    virtual status create() override;
+
+public:
+    virtual ~striding_rq()
+    {
+    }
+};
+
+/**
+ * @brief class regular_rq - Handles Regular ReceiveQueue
+ *
+ */
+class regular_rq : public basic_rq {
+    friend class adapter;
+    regular_rq(adapter* ad, rq_attr& attr);
+
+    virtual status create() override;
+
+public:
+    virtual ~regular_rq()
+    {
+    }
 };
 
 /**
@@ -869,44 +910,69 @@ public:
  * @brief Represent and handles TIR object
  *
  */
+enum {
+    TIR_ATTR_LRO = (1 << 1),
+    TIR_ATTR_INLINE_RQN = (1 << 2),
+    TIR_ATTR_TRANSPORT_DOMAIN = (1 << 3),
+    TIR_ATTR_TLS = (1 << 4)
+};
+
 class tir : public obj {
-    rq* m_rq;
-    td* m_td;
-    uint32_t m_tirn;
-    bool m_uc_self_loopback;
-    bool m_mc_self_loopback;
+public:
+    struct attr {
+        uint32_t flags;
+        struct {
+            uint32_t timeout_period_usecs : 16;
+            uint32_t enable_mask : 4;
+            uint32_t max_msg_sz : 8;
+        } lro;
+        uint32_t inline_rqn : 24;
+        uint32_t transport_domain : 24;
+        uint32_t tls_en : 1;
+    };
 
 public:
     /**
      * @brief TIR Object constructor, object is initialized but not created yet
      *
-     * @param [in]  ctx           Pointer to adapter context
+     * @param [in]  ctx          Pointer to adapter context
      *
      */
     tir(dcmd::ctx* ctx);
     virtual ~tir();
 
     /**
-     * @brief Creates TIR object in HW
+     * @brief Create TIR object in HW
      *
      * @param [in]  td           Pointer to TransportDomain object
      * @param [in]  rq           Pointer to ReceiveQueu object
      */
     status create(uint32_t td_id, uint32_t rqn);
     /**
-     * @brief Modifies TIR object in HW
+     * @brief Create TIR object using requested properties
+     *
+     * @param [in]  tir_attr     Object attributies
      */
-    status modify();
+    status create(tir::attr& tir_attr);
+    /**
+     * @brief Modify TIR object in HW
+     */
+    status modify(tir::attr& tir_attr);
     /**
      * @brief Query TIR object in HW
      */
-    status query();
+    status query(tir::attr& tir_attr);
+    /**
+     * @brief Get TIR Number
+     */
+    inline uint32_t get_tirn()
+    {
+        return m_tirn;
+    }
 
-    bool set_uc_self_loopback(bool set);
-    bool get_uc_self_loopback();
-
-    bool set_mc_self_loopback(bool set);
-    bool get_mc_self_loopback();
+private:
+    struct attr m_attr;
+    uint32_t m_tirn;
 };
 
 /**
@@ -1197,12 +1263,27 @@ typedef struct adapter_hca_capabilities {
                              0x1: REAL_TIME_TS
                              0x2: FREE_RUNNING_AND_REAL_TIME_TS - both
                              free running real time timestamps are supported.*/
+    bool lro_cap; /**< indicates LRO support */
+    bool lro_psh_flag; /**< indicate LRO support for segments with PSH flag */
+    bool lro_time_stamp; /**< indicate LRO support for segments with TCP timestamp option */
+    uint8_t lro_max_msg_sz_mode; /**< indicate reports which LRO max message size mode
+                                    the device supports.
+                                    0x0 - TCP header + TCP payload
+                                    0x1 - L2 + L3 + TCP header + TCP payload */
+    uint16_t lro_min_mss_size; /**< the minimal size of TCP segment required for coalescing */
+    uint8_t lro_timer_supported_periods[4]; /**< Array of supported LRO timer periods in
+                                               microseconds. */
 } adapter_hca_capabilities;
 
-typedef unordered_map<int, void*> caps_map_t;
-
-typedef function<void(adapter_hca_capabilities* external_hca_caps, const caps_map_t& caps_map)>
+#if __linux__
+typedef std::tr1::unordered_map<int, void*> caps_map_t;
+typedef std::tr1::function<void(adapter_hca_capabilities* external_hca_caps, const caps_map_t& caps_map)>
     cap_cb_fn;
+#else
+typedef std::unordered_map<int, void*> caps_map_t;
+typedef std::function<void(adapter_hca_capabilities* external_hca_caps, const caps_map_t& caps_map)>
+    cap_cb_fn;
+#endif
 
 typedef enum {
     QOS_NONE,
@@ -1360,6 +1441,8 @@ private:
     std::vector<cap_cb_fn> m_caps_callbacks;
     bool m_opened;
 
+    status prepare_basic_rq(basic_rq& srq);
+
 public:
     adapter(dcmd::device* dev, dcmd::ctx* ctx);
     ~adapter();
@@ -1499,6 +1582,27 @@ public:
      * @retval      Returns DPCP_OK on success
      */
     status create_striding_rq(rq_attr& rq_attr, size_t rq_num, size_t wqe_sz, striding_rq*& rq);
+
+    /**
+     * @brief Creates and returns striding_rq
+     *
+     * @param [in]  rq_attr         RQ attributes
+     * @param [out] rq              On Success created striding_rq
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status create_striding_rq(rq_attr& rq_attr, striding_rq*& rq);
+
+    /**
+     * @brief Creates and returns regular_rq
+     *
+     * @param [in]  rq_attr         RQ attributes
+     * @param [out] rq              On Success created regular_rq
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status create_regular_rq(rq_attr& rq_attr, regular_rq*& rq);
+
     /**
      * @brief Creates and returns dpp_rq
      *
@@ -1522,6 +1626,15 @@ public:
      * @retval      Returns DPCP_OK on success
      */
     status create_tir(uint32_t rqn, tir*& tr);
+    /**
+     * @brief Creates and returns DPCP TIR
+     *
+     * @param [in]  tir_attr        Object attributes
+     * @param [out] tr              Pointer to TIR object on success
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status create_tir(tir::attr& tir_attr, tir*& tir_obj);
     /**
      * @brief Creates and returns DPCP TIS
      *

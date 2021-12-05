@@ -42,7 +42,7 @@ status comp_channel::bind(cq& in_cq)
     if (ret) {
         return ret;
     }
-    int err = m_cc->bind((cq_obj_handle)obj_h, false);
+    int err = m_cc->bind((cq_handle)obj_h, false);
     if (err) {
         return DPCP_ERR_NO_DEVICES;
     }

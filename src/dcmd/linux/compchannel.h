@@ -23,7 +23,7 @@ struct compchannel_ctx {
 class compchannel {
 private:
     ctx_handle m_ctx;
-    cq_obj_handle m_cq_obj;
+    cq_handle m_cq_obj;
     comp_channel m_event_channel;
     bool m_binded;
     bool m_solicited;
@@ -37,7 +37,7 @@ public:
     compchannel(ctx_handle handle);
     virtual ~compchannel();
 
-    int bind(cq_obj_handle cq_obj, bool solicited_only);
+    int bind(cq_handle cq_obj, bool solicited_only);
     int unbind();
     int get_comp_channel(event_channel*& ch);
     int request(compchannel_ctx& cc_ctx);

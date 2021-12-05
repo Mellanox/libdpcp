@@ -4,7 +4,7 @@ source $(dirname $0)/globals.sh
 
 do_check_filter "Checking for coverity ..." "on"
 
-do_module "tools/cov-8.7"
+do_module "tools/cov-2019.12"
 
 cd $WORKSPACE
 

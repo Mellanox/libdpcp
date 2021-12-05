@@ -21,7 +21,7 @@ compchannel::compchannel(ctx_handle ctx)
     m_event_channel = *cch;
 }
 
-int compchannel::bind(cq_obj_handle cq_obj, bool solicited_only)
+int compchannel::bind(cq_handle cq_obj, bool solicited_only)
 {
     if (cq_obj) {
         m_cq_obj = cq_obj;
@@ -64,7 +64,7 @@ int compchannel::request(compchannel_ctx& cc_ctx)
 
 int compchannel::query(void*& ctx)
 {
-    cq_obj_handle event_cq = nullptr;
+    cq_handle event_cq = nullptr;
     void* cq_ctx = nullptr;
     int err = ibv_get_cq_event(&m_event_channel, &event_cq, &cq_ctx);
 

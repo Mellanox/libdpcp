@@ -150,8 +150,8 @@ status flow_rule::apply_settings()
 
     log_trace("sz: %zd ethertype: 0x%x vlan_id: 0x%x protocol: 0x%x ip_version: %x\n", mask.buf_sz,
               m_mask.ethertype, m_mask.vlan_id, m_mask.protocol, m_mask.ip_version);
-    log_trace("dst_port: 0x%x src_ip: 0x%x dst_ip: 0x%x\n", m_mask.dst_port, m_mask.src_ip,
-              m_mask.dst_ip);
+    log_trace("src_port: 0x%x dst_port: 0x%x src_ip: 0x%x dst_ip: 0x%x\n", m_mask.src_port,
+              m_mask.dst_port, m_mask.src_ip, m_mask.dst_ip);
     void* prm_mc = DEVX_ADDR_OF(fte_match_param, &mask.buf, outer_headers);
     DEVX_SET(fte_match_set_lyr_2_4, prm_mc, ethertype, m_mask.ethertype);
     if (m_mask.vlan_id) {
@@ -164,7 +164,7 @@ status flow_rule::apply_settings()
         // IP version is dynamic too.
         DEVX_SET(fte_match_set_lyr_2_4, prm_mc, ip_version, m_mask.ip_version);
     }
-    DEVX_SET(fte_match_set_lyr_2_4, prm_mc, udp_dport, m_mask.dst_port);
+
 #if !defined(KERNEL_PRM)
     uint64_t dmac = 0;
     memcpy(&dmac, m_mask.dst_mac, sizeof(dmac));
@@ -199,7 +199,21 @@ status flow_rule::apply_settings()
         // IP version is dynamic too.
         DEVX_SET(fte_match_set_lyr_2_4, prm_mv, ip_version, m_value.ip_version);
     }
-    DEVX_SET(fte_match_set_lyr_2_4, prm_mv, udp_dport, m_value.dst_port);
+
+    if (m_value.protocol != 6U) { // If not TCP(6)
+        DEVX_SET(fte_match_set_lyr_2_4, prm_mc, udp_dport, m_mask.dst_port);
+        DEVX_SET(fte_match_set_lyr_2_4, prm_mc, udp_sport, m_mask.src_port);
+
+        DEVX_SET(fte_match_set_lyr_2_4, prm_mv, udp_dport, m_value.dst_port);
+        DEVX_SET(fte_match_set_lyr_2_4, prm_mv, udp_sport, m_value.src_port);
+    } else {
+        DEVX_SET(fte_match_set_lyr_2_4, prm_mc, tcp_dport, m_mask.dst_port);
+        DEVX_SET(fte_match_set_lyr_2_4, prm_mc, tcp_sport, m_mask.src_port);
+
+        DEVX_SET(fte_match_set_lyr_2_4, prm_mv, tcp_dport, m_value.dst_port);
+        DEVX_SET(fte_match_set_lyr_2_4, prm_mv, tcp_sport, m_value.src_port);
+    }
+
 #if !defined(KERNEL_PRM)
     if (dmac_set) {
         // Vlan_id is dynamic, will be set only when mask set
@@ -229,19 +243,22 @@ status flow_rule::apply_settings()
     uintptr_t* dst_tir_obj = new (std::nothrow) uintptr_t[dcmd_flow.num_dst_tir];
     auto dst_formats = new (std::nothrow) mlx5_ifc_dest_format_struct_bits[dcmd_flow.num_dst_tir];
     if (!dst_tir_obj || !dst_formats) {
+        delete[] dst_formats;
+        delete[] dst_tir_obj;
         return DPCP_ERR_NO_MEMORY;
     }
     memset(dst_formats, 0, DEVX_ST_SZ_BYTES(dest_format_struct) * dcmd_flow.num_dst_tir);
 
     for (uint32_t i = 0; i < dcmd_flow.num_dst_tir; i++) {
-        m_dst_tir[i]->get_handle(dst_tir_obj[i]);
-        uint32_t tir_id = 0;
-        m_dst_tir[i]->get_id(tir_id);
-        DEVX_SET(dest_format_struct, dst_formats + i, destination_type,
-                 MLX5_FLOW_DESTINATION_TYPE_TIR);
-        DEVX_SET(dest_format_struct, dst_formats + i, destination_id, tir_id);
-        uint32_t ud_id = DEVX_GET(dest_format_struct, dst_formats + i, destination_id);
-        log_trace("tir_id[%i] 0x%x (0x%x)\n", i, tir_id, ud_id);
+        if (DPCP_OK == m_dst_tir[i]->get_handle(dst_tir_obj[i])) {
+            uint32_t tir_id = 0;
+            m_dst_tir[i]->get_id(tir_id);
+            DEVX_SET(dest_format_struct, dst_formats + i, destination_type,
+                     MLX5_FLOW_DESTINATION_TYPE_TIR);
+            DEVX_SET(dest_format_struct, dst_formats + i, destination_id, tir_id);
+            uint32_t ud_id = DEVX_GET(dest_format_struct, dst_formats + i, destination_id);
+            log_trace("tir_id[%i] 0x%x (0x%x)\n", i, tir_id, ud_id);
+        }
     }
     dcmd_flow.dst_tir_obj = (obj_handle*)dst_tir_obj;
     dcmd_flow.dst_formats = dst_formats;

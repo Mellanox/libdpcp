@@ -177,7 +177,7 @@ __inline int mlx5dv_l2w_ptr_error(void const* p)
 typedef struct devx_device_bdf* dev_handle;
 typedef devx_device_ctx* ctx_handle;
 typedef struct mlx5dv_devx_obj* obj_handle;
-typedef struct mlx5dv_devx_obj* cq_obj_handle;
+typedef struct mlx5dv_devx_obj* cq_handle;
 typedef struct mlx5dv_devx_umem* umem_handle;
 typedef struct mlx5dv_devx_uar* uar_handle;
 typedef struct devx_obj_handle* flow_handle;

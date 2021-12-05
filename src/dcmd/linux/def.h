@@ -28,7 +28,7 @@ typedef struct mlx5dv_devx_obj* obj_handle;
 typedef struct mlx5dv_devx_umem* umem_handle;
 typedef struct mlx5dv_devx_uar* uar_handle;
 typedef struct ibv_flow* flow_handle;
-typedef struct ibv_cq* cq_obj_handle;
+typedef struct ibv_cq* cq_handle;
 /*
  * Packet Pacing
  */

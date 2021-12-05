@@ -42,16 +42,29 @@ adapter* dpcp_base::OpenAdapter(uint32_t vendor_part_id)
 
     adapter_info* ai = p_ainfo;
     bool adapter_found = false;
-    // find the first adapter not older than ConnectX-5
-    // as Rivermax require it as minimal
     for (int i = 0; i < (int)num; i++) {
         ai = p_ainfo + i;
+
+        // Ignore unsupported devices
         if ((ai->vendor_id != VendorIdMellanox) && (ai->vendor_id != PCIVendorIdMellanox)) {
             continue;
         }
-        if (ai->vendor_part_id >= vendor_part_id) {
-            adapter_found = true;
-            break;
+
+        // Select device requested in command line
+        if (gtest_conf.adapter[0] != '\0') {
+            if (!strcmp(ai->name.c_str(), gtest_conf.adapter) &&
+                    (vendor_part_id == 0 || ai->vendor_part_id == vendor_part_id)) {
+                adapter_found = true;
+                break;
+            }
+        } else {
+            // Find the first adapter not older than ConnectX-5
+            // or explicitly requested
+            if ((vendor_part_id == 0 && ai->vendor_part_id >= DevPartIdConnectX5) ||
+                    (ai->vendor_part_id == vendor_part_id)) {
+                adapter_found = true;
+                break;
+            }
         }
     }
     if (!adapter_found) {
@@ -60,6 +73,7 @@ adapter* dpcp_base::OpenAdapter(uint32_t vendor_part_id)
     adapter* ad = nullptr;
     ret = pr->open_adapter(ai->id, ad);
     if (DPCP_OK == ret) {
+        log_trace("selected adapter: name: %s pci: 0x%x:0x%x\n", ai->name.c_str(), ai->vendor_id, ai->vendor_part_id);
         return ad;
     }
 
@@ -147,6 +161,9 @@ striding_rq* dpcp_base::open_str_rq(adapter* ad, rq_params& rqp)
     rqp.rq_at.cqn = cqd.cqn;
     striding_rq* srq = nullptr;
     ret = ad->create_striding_rq(rqp.rq_at, rqp.rq_num, rqp.wqe_sz, srq);
+    if (DPCP_OK != ret) {
+        return nullptr;
+    }
     return srq;
 }
 

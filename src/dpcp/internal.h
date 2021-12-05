@@ -14,6 +14,7 @@
 #define SRC_DPCP_INTERNAL_H_
 
 #include <cstring>
+#include <memory>
 #include <map>
 #include <mutex>
 #include <vector>

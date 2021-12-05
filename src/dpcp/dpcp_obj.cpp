@@ -81,8 +81,8 @@ status obj::create(void* in, size_t inlen, void* out, size_t& outlen)
 
     struct dcmd::obj_desc obj_desc = {in, inlen, out, outlen};
 
-    log_trace("in: %p inlen: %zu out: %p outlen: %zu\n", obj_desc.in, obj_desc.inlen, obj_desc.out,
-              obj_desc.outlen);
+    log_trace("create in: %p inlen: %zu out: %p outlen: %zu\n", obj_desc.in, obj_desc.inlen,
+              obj_desc.out, obj_desc.outlen);
 
     m_obj_handle = m_ctx->create_obj(&obj_desc);
 

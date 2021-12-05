@@ -36,7 +36,7 @@ TEST_F(dpcp_mkey, ti_dm01_Constructor)
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
 
-    uint32_t length = 4096;
+    size_t length = 4096;
     uint8_t* buf = new (std::nothrow) uint8_t[length];
     ASSERT_NE(nullptr, buf);
 
@@ -47,7 +47,7 @@ TEST_F(dpcp_mkey, ti_dm01_Constructor)
     ASSERT_EQ(DPCP_OK, ret);
     ASSERT_EQ(buf, addr);
 
-    uint32_t len;
+    size_t len;
     ret = mk.get_length(len);
     ASSERT_EQ(DPCP_OK, ret);
     ASSERT_EQ(len, length);
@@ -101,10 +101,10 @@ TEST_F(dpcp_mkey, ti_dm03_get_length)
     ASSERT_NE(nullptr, ad);
 
     void* buf = nullptr;
-    uint32_t length = 0;
+    size_t length = 0;
     direct_mkey mk(ad, buf, length, (mkey_flags)0);
 
-    uint32_t len;
+    size_t len;
     status ret = mk.get_length(len);
     ASSERT_EQ(DPCP_ERR_OUT_OF_RANGE, ret);
     ASSERT_EQ(0, len);
@@ -129,7 +129,7 @@ TEST_F(dpcp_mkey, ti_dm04_reg_mem)
     ret = ad->open();
     ASSERT_EQ(DPCP_OK, ret);
 
-    uint32_t length = 4096;
+    size_t length = 4096;
     uint8_t* buf = new (std::nothrow) uint8_t[length];
     ASSERT_NE(nullptr, buf);
 
@@ -160,7 +160,7 @@ TEST_F(dpcp_mkey, ti_dm05_create)
     status ret = ad->open();
     ASSERT_EQ(DPCP_OK, ret);
 
-    uint32_t length = 4096;
+    size_t length = 4096;
     uint8_t* buf = new (std::nothrow) uint8_t[length];
     ASSERT_NE(nullptr, buf);
 
@@ -280,7 +280,7 @@ void prepare_bbs1(adapter* ad, pattern_mkey_bb mem_bb[1], uint8_t*& dat_buf,
 {
     const int32_t dat_stride_sz = 512;
     const int32_t dat_len = 512;
-    int32_t dat_buf_sz = strides_num * dat_stride_sz;
+    size_t dat_buf_sz = strides_num * dat_stride_sz;
     dat_buf = new (std::nothrow) uint8_t[dat_buf_sz];
     ASSERT_NE(nullptr, dat_buf);
 
@@ -344,7 +344,7 @@ void prepare_bbs2(adapter* ad, pattern_mkey_bb mem_bb[2], uint8_t*& dat_buf, uin
 {
     const int32_t hdr_stride_sz = 16;
     const int32_t hdr_len = 14;
-    int32_t hdr_buf_sz = strides_num * hdr_stride_sz;
+    size_t hdr_buf_sz = strides_num * hdr_stride_sz;
     hdr_buf = new (std::nothrow) uint8_t[hdr_buf_sz];
     ASSERT_NE(nullptr, hdr_buf);
 
@@ -354,7 +354,7 @@ void prepare_bbs2(adapter* ad, pattern_mkey_bb mem_bb[2], uint8_t*& dat_buf, uin
 
     const int32_t dat_stride_sz = 512;
     const int32_t dat_len = 512;
-    int32_t dat_buf_sz = strides_num * dat_stride_sz;
+    size_t dat_buf_sz = strides_num * dat_stride_sz;
     dat_buf = new (std::nothrow) uint8_t[dat_buf_sz];
     ASSERT_NE(nullptr, dat_buf);
 
@@ -415,7 +415,7 @@ TEST_F(dpcp_mkey, ti_pm02_Constructor)
     ASSERT_EQ(DPCP_OK, ret);
     ASSERT_EQ(stride_sz, mem_bb[0].m_length + mem_bb[1].m_length);
 
-    uint32_t len;
+    size_t len;
     ret = mk.get_length(len);
     ASSERT_EQ(DPCP_OK, ret);
     ASSERT_EQ(len, strides_num * stride_sz);
@@ -468,7 +468,7 @@ void prepare_bbs3(adapter* ad, pattern_mkey_bb mem_bb[3], uint8_t*& dat_buf, uin
 {
     const int32_t hdr_stride_sz = 54;
     const int32_t hdr_len = 54;
-    int32_t hdr_buf_sz = strides_num * hdr_stride_sz;
+    size_t hdr_buf_sz = strides_num * hdr_stride_sz;
     hdr_buf = new (std::nothrow) uint8_t[hdr_buf_sz];
     ASSERT_NE(nullptr, hdr_buf);
 
@@ -478,7 +478,7 @@ void prepare_bbs3(adapter* ad, pattern_mkey_bb mem_bb[3], uint8_t*& dat_buf, uin
 
     const int32_t dat_stride_sz = 1220;
     const int32_t dat_len = 1220;
-    int32_t dat_buf_sz = strides_num * dat_stride_sz;
+    size_t dat_buf_sz = strides_num * dat_stride_sz;
     dat_buf = new (std::nothrow) uint8_t[dat_buf_sz];
     ASSERT_NE(nullptr, dat_buf);
 
@@ -488,7 +488,7 @@ void prepare_bbs3(adapter* ad, pattern_mkey_bb mem_bb[3], uint8_t*& dat_buf, uin
 
     const int32_t pad_stride_sz = 774;
     const int32_t pad_len = 774;
-    int32_t pad_buf_sz = strides_num * pad_stride_sz;
+    size_t pad_buf_sz = strides_num * pad_stride_sz;
     pad_buf = new (std::nothrow) uint8_t[pad_buf_sz];
     ASSERT_NE(nullptr, pad_buf);
 

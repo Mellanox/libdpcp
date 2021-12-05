@@ -656,7 +656,7 @@ struct mlx5_ifc_per_protocol_networking_offload_caps_bits {
     u8 lro_cap[0x1];
     u8 lro_psh_flag[0x1];
     u8 lro_time_stamp[0x1];
-    u8 reserved_at_5[0x2];
+    u8 lro_max_msg_sz_mode[0x2];
     u8 wqe_vlan_insert[0x1];
     u8 self_lb_en_modifiable[0x1];
     u8 reserved_at_9[0x2];
@@ -2774,7 +2774,9 @@ struct mlx5_ifc_rqc_bits {
     u8 reserved_at_c[0x1];
     u8 flush_in_error_en[0x1];
     u8 hairpin[0x1];
-    u8 reserved_at_f[0x11];
+    u8 reserved_at_f[0xb];
+    u8 ts_format[0x2];
+    u8 resered_at_t[0x4];
 
     u8 reserved_at_20[0x8];
     u8 user_index[0x18];

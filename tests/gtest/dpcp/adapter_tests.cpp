@@ -27,16 +27,7 @@ using std::chrono::steady_clock;
 static adapter* s_ad = nullptr;
 static striding_rq* s_srq = nullptr;
 
-class dpcp_adapter : /*public obj,*/ public dpcp_base {
-protected:
-    void SetUp() override
-    {
-        if (errno) {
-            log_trace("dpcp_adapter errno= %d\n", errno);
-            errno = EOK;
-        }
-    }
-};
+class dpcp_adapter : public dpcp_base {};
 
 /**
  * @test dpcp_adapter.ti_01_Constructor
@@ -76,12 +67,12 @@ TEST_F(dpcp_adapter, ti_02_is_opened)
 }
 
 /**
- * @test dpcp_adapter.ti_02_set_get_pd
+ * @test dpcp_adapter.ti_03_set_get_pd
  * @brief
  *    Check set_pd()
  * @details
  */
-TEST_F(dpcp_adapter, ti_02_set_get_pd)
+TEST_F(dpcp_adapter, ti_03_set_get_pd)
 {
     void* pd;
     adapter* ad = OpenAdapter();
@@ -115,12 +106,12 @@ TEST_F(dpcp_adapter, ti_02_set_get_pd)
 }
 
 /**
- * @test dpcp_adapter.ti_03_set_get_td
+ * @test dpcp_adapter.ti_04_set_get_td
  * @brief
  *    Check set_td method
  * @details
  */
-TEST_F(dpcp_adapter, ti_03_set_get_td)
+TEST_F(dpcp_adapter, ti_04_set_get_td)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -147,13 +138,13 @@ TEST_F(dpcp_adapter, ti_03_set_get_td)
 }
 
 /**
- * @test dpcp_adapter.ti_04_create_direct_mkey
+ * @test dpcp_adapter.ti_05_create_direct_mkey
  * @brief
  *    Check adapter::create_direct_mkey method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_04_create_direct_mkey)
+TEST_F(dpcp_adapter, ti_05_create_direct_mkey)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -189,13 +180,13 @@ TEST_F(dpcp_adapter, ti_04_create_direct_mkey)
 }
 
 /**
- * @test dpcp_adapter.ti_05_mkey_zero_based
+ * @test dpcp_adapter.ti_06_mkey_zero_based
  * @brief
  *    Check adapter::create_direct_mkey method with Zero based address
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_05_mkey_zero_based)
+TEST_F(dpcp_adapter, ti_06_mkey_zero_based)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -230,13 +221,13 @@ TEST_F(dpcp_adapter, ti_05_mkey_zero_based)
 }
 
 /**
- * @test dpcp_adapter.ti_06_create_cq
+ * @test dpcp_adapter.ti_07_create_cq
  * @brief
  *    Check adapter::create_create_cq method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_06_create_cq)
+TEST_F(dpcp_adapter, ti_07_create_cq)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -267,13 +258,13 @@ TEST_F(dpcp_adapter, ti_06_create_cq)
 }
 
 /**
- * @test dpcp_adapter.ti_07_create_striding_rq
+ * @test dpcp_adapter.ti_08_create_striding_rq
  * @brief
  *    Check adapter::create_striding_rq method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_07_create_striding_rq)
+TEST_F(dpcp_adapter, ti_08_create_striding_rq)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -309,13 +300,13 @@ TEST_F(dpcp_adapter, ti_07_create_striding_rq)
 }
 
 /**
- * @test dpcp_adapter.ti_08_create_tir
+ * @test dpcp_adapter.ti_09_create_tir
  * @brief
  *    Check adapter::create_tir method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_08_create_tir)
+TEST_F(dpcp_adapter, ti_09_create_tir)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -361,13 +352,13 @@ TEST_F(dpcp_adapter, ti_08_create_tir)
 }
 
 /**
- * @test dpcp_adapter.ti_09_create_pattern_mkey
+ * @test dpcp_adapter.ti_10_create_pattern_mkey
  * @brief
  *    Check adapter::create_pattern_mkey method
  * @detail
  *
  */
-TEST_F(dpcp_adapter, ti_09_create_pattern_mkey)
+TEST_F(dpcp_adapter, ti_10_create_pattern_mkey)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -428,13 +419,13 @@ TEST_F(dpcp_adapter, ti_09_create_pattern_mkey)
     delete ad;
 }
 /**
- * @test dpcp_adapter.ti_10_create_dpp_rq
+ * @test dpcp_adapter.ti_11_create_dpp_rq
  * @brief
  *    Check adapter::create_dpp_rq method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_10_create_dpp_rq)
+TEST_F(dpcp_adapter, ti_11_create_dpp_rq)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(ad, nullptr);
@@ -495,12 +486,12 @@ TEST_F(dpcp_adapter, ti_10_create_dpp_rq)
 }
 
 /**
- * @test dpcp_adapter.ti_11_get_hca_freq
+ * @test dpcp_adapter.ti_12_get_hca_freq
  * @brief
  *    Check query_hca_freq method
  * @details
  */
-TEST_F(dpcp_adapter, ti_11_get_hca_freq)
+TEST_F(dpcp_adapter, ti_12_get_hca_freq)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(ad, nullptr);
@@ -521,10 +512,10 @@ TEST_F(dpcp_adapter, ti_11_get_hca_freq)
 }
 
 /**
- * @test dpcp_adapter.ti_10_get_real_time
+ * @test dpcp_adapter.ti_13_get_real_time
  *
  */
-TEST_F(dpcp_adapter, ti_10_get_real_time)
+TEST_F(dpcp_adapter, ti_13_get_real_time)
 {
     adapter* ad = OpenAdapter(DevPartIdBlueField);
     if (!ad) {
@@ -572,13 +563,13 @@ TEST_F(dpcp_adapter, ti_10_get_real_time)
     ASSERT_LE(delta, 50000);
 }
 /*
- * @test dpcp_adapter.ti_12_create_pp_sq
+ * @test dpcp_adapter.ti_14_create_pp_sq
  * @brief
  *    Check adapter::create_pp_sq method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_12_create_pp_sq)
+TEST_F(dpcp_adapter, ti_14_create_pp_sq)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -628,12 +619,12 @@ TEST_F(dpcp_adapter, ti_12_create_pp_sq)
 
 #if defined(__linux__)
 /**
- * @test dpcp_adapter.ti_13_set_get_ibv_pd
+ * @test dpcp_adapter.ti_15_set_get_ibv_pd
  * @brief
  *    Check set_pd() with ibv_pd* and get_ibv_pd
  * @details
  */
-TEST_F(dpcp_adapter, ti_13_set_get_ibv_pd)
+TEST_F(dpcp_adapter, ti_15_set_get_ibv_pd)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -676,12 +667,12 @@ TEST_F(dpcp_adapter, ti_13_set_get_ibv_pd)
 }
 
 /**
- * @test dpcp_adapter.ti_13_get_hca_capabilities
+ * @test dpcp_adapter.ti_16_get_hca_capabilities
  * @brief
  *    Check query_hca_freq method
  * @details
  */
-TEST_F(dpcp_adapter, ti_13_get_hca_capabilities)
+TEST_F(dpcp_adapter, ti_16_get_hca_capabilities)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(ad, nullptr);
@@ -704,18 +695,19 @@ TEST_F(dpcp_adapter, ti_13_get_hca_capabilities)
     log_trace("Capability - tls_1_2_aes_gcm_128: %d\n", caps.tls_1_2_aes_gcm_128);
     log_trace("Capability - sq_ts_format: %d\n", caps.sq_ts_format);
     log_trace("Capability - rq_ts_format: %d\n", caps.rq_ts_format);
+    log_trace("Capability - lro_cap: %d\n", caps.lro_cap);
 
     delete ad;
 }
 
 /**
- * @test dpcp_adapter.ti_14_create_tis
+ * @test dpcp_adapter.ti_17_create_tis
  * @brief
  *    Check adapter::create_tis method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_14_create_tis)
+TEST_F(dpcp_adapter, ti_17_create_tis)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -739,13 +731,13 @@ TEST_F(dpcp_adapter, ti_14_create_tis)
 }
 
 /**
- * @test dpcp_adapter.ti_15_create_tls_tis
+ * @test dpcp_adapter.ti_18_create_tls_tis
  * @brief
  *    Check adapter::create_tls with @ref tis_flags::TIS_TLS_EN method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_15_create_tls_tis)
+TEST_F(dpcp_adapter, ti_18_create_tls_tis)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -782,13 +774,13 @@ TEST_F(dpcp_adapter, ti_15_create_tls_tis)
 }
 
 /**
- * @test dpcp_adapter.ti_16_create_dek
+ * @test dpcp_adapter.ti_19_create_dek
  * @brief
  *    Check adapter::create_dek method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_16_create_dek)
+TEST_F(dpcp_adapter, ti_19_create_dek)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -827,3 +819,45 @@ TEST_F(dpcp_adapter, ti_16_create_dek)
     delete ad;
 }
 #endif
+
+/**
+ * @test dpcp_adapter.ti_20_create_tir_by_attr
+ * @brief
+ *    Check adapter::create_tir method
+ * @details
+ *
+ */
+TEST_F(dpcp_adapter, ti_20_create_tir_by_attr)
+{
+    adapter* adapter_obj = OpenAdapter();
+    ASSERT_NE(nullptr, adapter_obj);
+
+    status ret = adapter_obj->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    uint32_t tdn = adapter_obj->get_td();
+    ASSERT_NE(0, tdn);
+
+    striding_rq* srq_obj = open_str_rq(adapter_obj, m_rqp);
+    ASSERT_NE(nullptr, srq_obj);
+
+    uint32_t rqn = 0;
+    ret = srq_obj->get_id(rqn);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE(0, rqn);
+    log_trace("tdn: 0x%x rqn: 0x%x\n", tdn, rqn);
+
+    tir* tir_obj = nullptr;
+    struct tir::attr tir_attr;
+    memset(&tir_attr, 0, sizeof(tir_attr));
+    tir_attr.flags = TIR_ATTR_INLINE_RQN | TIR_ATTR_TRANSPORT_DOMAIN;
+    tir_attr.inline_rqn = rqn;
+    tir_attr.transport_domain = tdn;
+    ret = adapter_obj->create_tir(tir_attr, tir_obj);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE(nullptr, tir_obj);
+
+    delete tir_obj;
+    delete srq_obj;
+    delete adapter_obj;
+}

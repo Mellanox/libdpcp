@@ -55,6 +55,7 @@ static int _def_config(void)
     memset(&gtest_conf, 0, sizeof(gtest_conf));
     gtest_conf.log_level = 4;
     gtest_conf.random_seed = time(NULL) % 32768;
+    gtest_conf.adapter[0] = '\0';
     return rc;
 }
 
@@ -62,12 +63,13 @@ static int _set_config(int argc, char** argv)
 {
     int rc = 0;
     static struct option long_options[] = {{"debug", required_argument, 0, 'd'},
+                                           {"adapter", required_argument, 0, 'a'},
                                            {"help", no_argument, 0, 'h'},
                                            {NULL, no_argument, 0, 0}};
     int op;
     int option_index;
 
-    while ((op = getopt_long(argc, argv, "d:h", long_options, &option_index)) != -1) {
+    while ((op = getopt_long(argc, argv, "d:a:h", long_options, &option_index)) != -1) {
         switch (op) {
         case 'd':
             errno = 0;
@@ -75,6 +77,11 @@ static int _set_config(int argc, char** argv)
             if (0 != errno) {
                 rc = -EINVAL;
                 log_error("Invalid option value <%s>\n", optarg);
+            }
+            break;
+        case 'a':
+            if (optarg) {
+                strncpy(gtest_conf.adapter, optarg, sizeof(gtest_conf.adapter) - 1);
             }
             break;
         case 'h':
@@ -94,6 +101,7 @@ static int _set_config(int argc, char** argv)
         log_info("CONFIGURATION:\n");
         log_info("log level: %d\n", gtest_conf.log_level);
         log_info("seed: %d\n", gtest_conf.random_seed);
+        log_info("adapter: %s\n", gtest_conf.adapter);
     }
 
     return rc;
@@ -104,6 +112,7 @@ static void _usage(void)
     printf("Usage: gtest [options]\n"
            "\t--random,-s <count>     Seed (default %d).\n"
            "\t--debug,-d <level>      Output verbose level (default: %d).\n"
+           "\t--adapter,-a <name>     Adapter name.\n"
            "\t--help,-h               Print help and exit\n",
 
            gtest_conf.random_seed, gtest_conf.log_level);

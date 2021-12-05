@@ -52,7 +52,7 @@ protected:
     rq_params m_rqp;
 
     virtual void SetUp();
-    adapter* OpenAdapter(uint32_t vendor_part_id = DevPartIdConnectX5);
+    adapter* OpenAdapter(uint32_t vendor_part_id = 0);
     int create_cq(adapter* ad, cq_data* dv_cq);
     striding_rq* open_str_rq(adapter* ad, rq_params& rqp);
     virtual void TearDown();

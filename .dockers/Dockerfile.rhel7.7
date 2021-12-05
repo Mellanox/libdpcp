@@ -1,0 +1,47 @@
+ARG ARCH=x86_64
+FROM harbor.mellanox.com/swx-infra/$ARCH/rhel7.7/builder:mofed-5.2-2.1.2.0
+ARG _UID=6213
+ARG _GID=11429
+ARG _LOGIN=swx-jenkins
+ARG _HOME=/var/home/
+
+RUN yum install -y \
+    atk \
+    autoconf \
+    automake \
+    cairo \
+    gcc-gfortran \
+    gcc-c++ \
+    git \
+    gtk2 \
+    libnl3 \
+    libtool \
+    libusbx \
+    fuse-libs \
+    lsof \
+    make \
+    pciutils \
+    perl \
+    rpm-build \
+    sudo \
+    tcl \
+    tcsh \
+    tk \
+    wget \
+    environment-modules \
+    net-tools
+
+RUN echo "$_LOGIN ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
+    mkdir -p ${_HOME} && \
+    groupadd -f -g "$_GID" "$_LOGIN" && \
+    useradd -u "$_UID" -g "$_GID" -s /bin/bash -m -d ${_HOME} "${_LOGIN}" && \
+    chown ${_LOGIN} ${_HOME}
+
+# W/A for RHEL/CentOS 7 to allow sudo (by commenting out "session required pam_limits.so")
+RUN for FILE in sudo-i sudo system-auth; do sed -i 's/session.*required.*pam_limits.so/#&/' /etc/pam.d/$FILE; done
+
+ENV MODULEPATH /hpc/local/etc/modulefiles
+SHELL ["/bin/bash"]
+
+USER "$_LOGIN"
+ENTRYPOINT [ "/bin/bash", "--login", "--rcfile", "/etc/bashrc", "-c" ]

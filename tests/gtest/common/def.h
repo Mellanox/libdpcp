@@ -112,6 +112,7 @@ with the software product.
 struct gtest_configure_t {
     int log_level;
     int random_seed;
+    char adapter[16];
 };
 
 #endif /* TESTS_GTEST_COMMON_DEF_H_ */

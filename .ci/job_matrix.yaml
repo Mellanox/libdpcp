@@ -1,0 +1,157 @@
+---
+job: rivermax-ci-demo-test
+
+registry_host: harbor.mellanox.com
+registry_path: /rivermax
+# rivermax user
+registry_auth: 65eb3652-9da0-4f39-8a4c-f61972fb65a1
+
+kubernetes:
+  cloud: swx-k8s-spray
+
+  limits: '{memory: 16Gi}'
+  requests: '{memory: 16Gi}'
+
+  # swx-jenkins
+  #runAsUser: '6213'
+
+  # release_rivermax
+  #runAsGroup: '11429'
+
+  # Use JNLP images with swx-jenkins user (TODO: think about making these images default and multi-arch).
+  # K8s cluster nodes should run the folowing commands to allow running containers under swx-jenkins:
+  #     sudo setfacl --modify user:swx-jenkins:rw /var/run/docker.sock
+  #     sudo gpasswd -a swx-jenkins docker
+  #     sudo service docker restart
+  arch_table:
+    x86_64:
+      jnlpImage: 'harbor.mellanox.com/swx-infra/swx-jenkins-agent-jnlp:x86_64'
+    aarch64:
+      jnlpImage: 'harbor.mellanox.com/swx-infra/swx-jenkins-agent-jnlp:aarch64'
+
+volumes:
+  - {mountPath: /hpc/local, hostPath: /hpc/local}
+  - {mountPath: /auto/sw_tools, hostPath: /auto/sw_tools}
+  - {mountPath: /auto/mtrswgwork, hostPath: /auto/mtrswgwork}
+  # /.autodirect/sw/release/mlnx_ofed is a primary nfs volume for mlnx_ofed
+  # Probably there is a race condition for autofs mount point while starting container with:
+  # /auto/sw/release/mlnx_ofed
+  - {mountPath: /auto/sw/release/mlnx_ofed, hostPath: /.autodirect/sw/release/mlnx_ofed}
+  - {mountPath: /auto/sw/release/sw_acceleration, hostPath: /auto/sw/release/sw_acceleration}
+
+
+runs_on_dockers:
+  - {file: '.dockers/Dockerfile.ubuntu18.04', arch: 'x86_64', name: 'ubuntu18.04', uri: 'dpcp/x86_64/ubuntu18.04/builder', tag: 'mofed-5.2-2.1.2.0'}
+  - {file: '.dockers/Dockerfile.rhel7.7', arch: 'x86_64', name: 'rhel7.7', uri: 'dpcp/x86_64/rhel7.7/builder', tag: 'mofed-5.2-2.1.2.0'}
+  - {file: '.dockers/Dockerfile.fedora32', arch: 'x86_64', name: 'fedora32', uri: 'dpcp/x86_64/fedora32', tag: 'clang', category: 'tool'}
+
+runs_on_agents:
+  - {nodeLabel: 'r-aa-fatty09', category: 'base'}
+
+# Fail job if one of the steps fails or continue
+failFast: false
+
+steps:
+  - name: Setup
+    run: |
+        set +x
+        echo
+        echo "======================================================"
+        echo "name: ${name}"
+        echo "arch: ${arch}"
+        echo "url: ${uri}"
+        echo "tag: ${tag}"
+        echo "variant: ${variant}"
+        echo "category: ${category}"
+        echo "======================================================"
+        echo
+        printenv
+    parallel: false
+
+  - name: Autogen
+    run: |
+      ./autogen.sh -s
+    parallel: false
+
+  - name: Build
+    run: |
+        env JENKINS_RUN_TESTS=no \
+            jenkins_test_build=yes \
+            jenkins_test_compiler=no \
+            jenkins_test_rpm=yes \
+            jenkins_test_cov=no \
+            jenkins_test_cppcheck=no \
+            jenkins_test_csbuild=no \
+            jenkins_test_gtest=no \
+            jenkins_test_style=no \
+            ./contrib/test_jenkins.sh
+    archiveArtifacts: 'jenkins/dpcp-${BUILD_ID}-*.tar.gz'
+
+  - name: Gtest
+    run: |
+        env JENKINS_RUN_TESTS=no \
+            jenkins_test_build=yes \
+            jenkins_test_compiler=no \
+            jenkins_test_rpm=no \
+            jenkins_test_cov=no \
+            jenkins_test_cppcheck=no \
+            jenkins_test_csbuild=no \
+            jenkins_test_gtest=yes \
+            jenkins_test_style=no \
+            ./contrib/test_jenkins.sh
+    agentSelector:
+      - "{nodeLabel: 'r-aa-fatty09', variant:1}"
+
+  - name: Coverity
+    run: |
+        env JENKINS_RUN_TESTS=yes \
+            jenkins_test_rpm=no \
+            jenkins_test_cov=yes \
+            jenkins_test_cppcheck=no \
+            jenkins_test_csbuild=no \
+            jenkins_test_gtest=no \
+            jenkins_test_style=no \
+            ./contrib/test_jenkins.sh
+    publishHTML:
+      reportDir: 'jenkins/default/cov/cov_build_${BUILD_NUMBER}/output/errors/'
+      reportFiles: 'jenkins/default/cov/cov_build_${BUILD_NUMBER}/output/errors/index.html'
+      reportName: Coverity Report
+      allowMissing: true
+    containerSelector:
+      - "{name: 'ubuntu18.04', variant: 1}"
+    archiveArtifacts-onfail: |
+      jenkins/**/*.tar.gz
+    archiveTap-onfail: |
+      jenkins/**/*.tap
+
+  - name: Build RPM/DEB
+    run: |
+        env JENKINS_RUN_TESTS=no \
+            jenkins_test_build=yes \
+            jenkins_test_compiler=no \
+            jenkins_test_rpm=yes \
+            jenkins_test_cov=no \
+            jenkins_test_cppcheck=no \
+            jenkins_test_csbuild=no \
+            jenkins_test_gtest=no \
+            jenkins_test_style=no \
+            ./contrib/test_jenkins.sh
+
+  - name: Style Check
+    run: |
+        JENKINS_RUN_TESTS=yes \
+            jenkins_test_build=no \
+            jenkins_test_compiler=no \
+            jenkins_test_rpm=no \
+            jenkins_test_cov=no \
+            jenkins_test_cppcheck=no \
+            jenkins_test_csbuild=no \
+            jenkins_test_gtest=no \
+            jenkins_test_style=yes \
+            ./contrib/test_jenkins.sh
+    containerSelector:
+      - "{name: 'fedora32', category: 'tool'}"
+    archiveArtifacts: 'jenkins/*.tar.gz'
+    archiveTap-onfail: |
+      jenkins/**/*.tap
+

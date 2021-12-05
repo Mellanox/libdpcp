@@ -44,7 +44,7 @@ status mkey::get_mkey_num(int& num)
     return DPCP_OK;
 }
 
-direct_mkey::direct_mkey(adapter* ad, void* address, uint32_t length, mkey_flags flags)
+direct_mkey::direct_mkey(adapter* ad, void* address, size_t length, mkey_flags flags)
     : mkey(ad->get_ctx())
     , m_adapter(ad)
     , m_umem(nullptr)
@@ -95,9 +95,9 @@ status direct_mkey::get_address(void*& address)
     return DPCP_OK;
 }
 
-status direct_mkey::get_length(uint32_t& len)
+status direct_mkey::get_length(size_t& len)
 {
-    len = (uint32_t)m_length;
+    len = m_length;
     if (0 == len) {
         return DPCP_ERR_OUT_OF_RANGE;
     }
@@ -317,13 +317,13 @@ status pattern_mkey::get_address(void*& address)
     return DPCP_OK;
 }
 
-status pattern_mkey::get_length(uint32_t& len_)
+status pattern_mkey::get_length(size_t& len_)
 {
     size_t len = m_stride_sz * m_stride_num;
     if (0 == len) {
         return DPCP_ERR_OUT_OF_RANGE;
     }
-    len_ = (uint32_t)len;
+    len_ = len;
     return DPCP_OK;
 }
 
@@ -469,7 +469,7 @@ status pattern_mkey::create()
     return ret;
 }
 
-reserved_mkey::reserved_mkey(adapter* ad, reserved_mkey_type type, void* address, uint32_t length,
+reserved_mkey::reserved_mkey(adapter* ad, reserved_mkey_type type, void* address, size_t length,
                              mkey_flags flags)
     : mkey(ad->get_ctx())
     , m_address(address)
@@ -503,7 +503,7 @@ status reserved_mkey::get_address(void*& address)
     return DPCP_OK;
 }
 
-status reserved_mkey::get_length(uint32_t& len)
+status reserved_mkey::get_length(size_t& len)
 {
     if (!m_idx) {
         return DPCP_ERR_CREATE;

@@ -59,6 +59,9 @@ jenkins_test_style=${jenkins_test_style:="yes"}
 
 
 echo Starting on host: $(hostname)
+if [ "${name}" == "" ]; then
+    name=$(hostname -s)
+fi
 
 cd $WORKSPACE
 
@@ -68,7 +71,7 @@ for target_v in "${target_list[@]}"; do
     ret=0
     IFS=':' read target_name target_option <<< "$target_v"
 
-    export jenkins_test_artifacts="${WORKSPACE}/${prefix}/dpcp-${BUILD_NUMBER}-$(hostname -s)-${target_name}"
+    export jenkins_test_artifacts="${WORKSPACE}/${prefix}/dpcp-${BUILD_NUMBER}-${name}-${target_name}"
     export jenkins_test_custom_configure="${target_option}"
     export jenkins_target="${target_name}"
     set +x
