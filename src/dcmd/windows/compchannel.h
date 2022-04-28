@@ -26,7 +26,7 @@ private:
     OVERLAPPED m_overlapped_ctx;
     ctx_handle m_ctx;
     obj_handle m_cq_obj;
-    static event_channel m_handle;
+    event_channel m_handle;
     bool m_binded;
     bool m_adapter_shutdown;
 

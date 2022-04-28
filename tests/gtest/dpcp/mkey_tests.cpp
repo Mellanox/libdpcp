@@ -559,3 +559,179 @@ TEST_F(dpcp_mkey, ti_pm04_create_pad)
     release_bbs3(mem_bb, dat_buf, hdr_buf, pad_buf);
     delete ad;
 }
+/**
+ * @test dpcp_mkey.ti_rm01_create
+ * @brief
+ *    Check ref_mkey::create create method
+ * @details
+ *
+ */
+TEST_F(dpcp_mkey, ti_rm01_create_full)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+
+    status ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    size_t length = 4096;
+    uint8_t* buf = new (std::nothrow) uint8_t[length];
+    ASSERT_NE(nullptr, buf);
+
+    direct_mkey parent(ad, buf, length, (mkey_flags)0);
+
+    void* pd;
+    ret = ad->get_ibv_pd(pd);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    ret = parent.reg_mem(pd);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    ret = parent.create();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    uint32_t parent_id;
+    ret = parent.get_id(parent_id);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    uint32_t id;
+    void* addr;
+    size_t len;
+    mkey_flags flags;
+
+    // reference the whole memory region
+    ref_mkey ref(ad, buf, length);
+    // create
+    ret = ref.create(&parent);
+    ASSERT_EQ(DPCP_OK, ret);
+    // check id
+    ret = ref.get_id(id);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(id, parent_id);
+    // check address
+    ret = ref.get_address(addr);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(addr, buf);
+    // check length
+    ret = ref.get_length(len);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(len, length);
+    // check address
+    ret = ref.get_flags(flags);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(flags, (mkey_flags)0);
+
+    delete[] buf;
+    delete ad;
+}
+/**
+ * @test dpcp_mkey.ti_rm02_create_range
+ * @brief
+ *    Check ref_mkey::create create method (out of range)
+ * @details
+ *
+ */
+TEST_F(dpcp_mkey, ti_rm02_create_range)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+
+    status ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    size_t length = 4096;
+    uint8_t* buf = new (std::nothrow) uint8_t[length];
+    ASSERT_NE(nullptr, buf);
+
+    direct_mkey parent(ad, buf, length, (mkey_flags)0);
+
+    void* pd;
+    ret = ad->get_ibv_pd(pd);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    ret = parent.reg_mem(pd);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    ret = parent.create();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    uint32_t parent_id;
+    ret = parent.get_id(parent_id);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    uint32_t id;
+    void* addr;
+    size_t len;
+    mkey_flags flags;
+
+    // start is out of region
+    ref_mkey ref_left(ad, buf - 1, length);
+    ret = ref_left.create(&parent);
+    ASSERT_EQ(DPCP_ERR_OUT_OF_RANGE, ret);
+
+    // end is out of region
+    ref_mkey ref_right(ad, buf + 1, length);
+    ret = ref_right.create(&parent);
+    ASSERT_EQ(DPCP_ERR_OUT_OF_RANGE, ret);
+
+    delete[] buf;
+    delete ad;
+}
+/**
+ * @test dpcp_mkey.ti_rm03_create_badarg
+ * @brief
+ *    Check ref_mkey::create create method (bad arguments)
+ * @details
+ *
+ */
+TEST_F(dpcp_mkey, ti_rm03_create_badarg)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+
+    status ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    size_t length = 4096;
+    uint8_t* buf = new (std::nothrow) uint8_t[length];
+    ASSERT_NE(nullptr, buf);
+
+    direct_mkey parent(ad, buf, length, (mkey_flags)0);
+
+    void* pd;
+    ret = ad->get_ibv_pd(pd);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    ret = parent.reg_mem(pd);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    ret = parent.create();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    uint32_t parent_id;
+    ret = parent.get_id(parent_id);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    uint32_t id;
+    void* addr;
+    size_t len;
+    mkey_flags flags;
+
+    // null parent
+    ref_mkey ref_null_parent(ad, buf, length);
+    ret = ref_null_parent.create(nullptr);
+    ASSERT_EQ(DPCP_ERR_INVALID_PARAM, ret);
+
+    // null address
+    ref_mkey ref_null_addr(ad, nullptr, length);
+    ret = ref_null_addr.create(&parent);
+    ASSERT_EQ(DPCP_ERR_INVALID_PARAM, ret);
+
+    // zero length
+    ref_mkey ref_null_len(ad, buf, 0);
+    ret = ref_null_len.create(&parent);
+    ASSERT_EQ(DPCP_ERR_INVALID_PARAM, ret);
+
+    delete[] buf;
+    delete ad;
+}

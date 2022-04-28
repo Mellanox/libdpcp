@@ -17,10 +17,9 @@ with the software product.
 
 using namespace dcmd;
 
-event_channel compchannel::m_handle = INVALID_HANDLE_VALUE;
-
 compchannel::compchannel(ctx_handle ctx)
     : m_ctx(ctx)
+    , m_handle(INVALID_HANDLE_VALUE)
     , m_binded(false)
 {
     if (INVALID_HANDLE_VALUE == m_handle) {
@@ -72,8 +71,9 @@ int compchannel::request(compchannel_ctx& cc_ctx)
     uint32_t num_eqe = 0;
     int err = devx_overlapped_io_park(m_handle, m_cq_obj, DEVX_EVENT_TYPE_CQE, cc_ctx.overlapped,
                                       &num_eqe);
-    log_trace("m_handle %p err %d num_eqe %d ovl.event %p\n", m_handle, err, num_eqe,
-              cc_ctx.overlapped->hEvent);
+#if defined(DPCP_DEBUG)
+    log_trace("m_handle %p err %d num_eqe %d ovl %p\n", m_handle, err, num_eqe, cc_ctx.overlapped);
+#endif
     if (err) {
         if (err != -ECANCELED) {
             return DCMD_EIO;

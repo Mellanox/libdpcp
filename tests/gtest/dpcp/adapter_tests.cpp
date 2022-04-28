@@ -861,3 +861,115 @@ TEST_F(dpcp_adapter, ti_20_create_tir_by_attr)
     delete srq_obj;
     delete adapter_obj;
 }
+
+/**
+ * @test dpcp_adapter.ti_21_create_ref_mkey
+ * @brief
+ *    Check adapter::create_ref_mkey method
+ * @details
+ *
+ */
+TEST_F(dpcp_adapter, ti_21_create_ref_mkey)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+
+    status ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+    int32_t length = 4096;
+    uint8_t* buf = new (std::nothrow) uint8_t[length];
+    ASSERT_NE(nullptr, buf);
+
+    direct_mkey* parent = nullptr;
+    ret = ad->create_direct_mkey(buf, length, (mkey_flags)0, parent);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    uint32_t parent_id;
+    ret = parent->get_id(parent_id);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    // create reference
+    ref_mkey* ref = nullptr;
+    ret = ad->create_ref_mkey(parent, buf + 1, length - 2, ref);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    void* addr;
+    ret = ref->get_address(addr);
+    ASSERT_NE(nullptr, addr);
+    ASSERT_EQ(buf + 1, addr);
+
+    uint32_t new_id;
+    ret = ref->get_id(new_id);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(new_id, parent_id);
+
+    size_t new_length;
+    ret = ref->get_length(new_length);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(new_length, length - 2);
+
+    delete ref;
+    delete parent;
+    delete ad;
+}
+
+/**
+ * @test dpcp_adapter.ti_22_create_flow_table_by_attr
+ * @brief
+ *    Check adapter::create_flow_table method
+ * @details
+ *
+ */
+TEST_F(dpcp_adapter, ti_22_create_flow_table_by_attr)
+{
+    adapter* adapter_obj = OpenAdapter();
+    ASSERT_NE(nullptr, adapter_obj);
+
+    std::shared_ptr<flow_table> table;
+    flow_table_attr attr;
+    attr.def_miss_action = flow_table_miss_action::FT_MISS_ACTION_DEF;
+    attr.level = 1;
+    attr.log_size = 0;
+    attr.type = flow_table_type::FT_RX;
+
+    status ret = adapter_obj->create_flow_table(attr, table);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    ret = table->create();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    delete adapter_obj;
+}
+
+/**
+ * @test dpcp_adapter.ti_23_get_root_flow_table_tx_rx
+ * @brief
+ *    Check adapter::get_root_table method
+ * @details
+ *
+ */
+TEST_F(dpcp_adapter, ti_23_get_root_flow_table_tx_rx)
+{
+    adapter* adapter_obj = OpenAdapter();
+    ASSERT_NE(nullptr, adapter_obj);
+
+    // Get root table rx, check that we get the same pointer if we call twice.
+    std::shared_ptr<flow_table> root_rx1(adapter_obj->get_root_table(flow_table_type::FT_RX));
+    ASSERT_NE(root_rx1, nullptr);
+    std::shared_ptr<flow_table> root_rx2(adapter_obj->get_root_table(flow_table_type::FT_RX));
+    ASSERT_NE(root_rx2, nullptr);
+    ASSERT_EQ(root_rx1, root_rx2);
+
+    // Get root table tx, check that we get the same pointer if we call twice.
+    std::shared_ptr<flow_table> root_tx1(adapter_obj->get_root_table(flow_table_type::FT_TX));
+    ASSERT_NE(root_tx1, nullptr);
+    std::shared_ptr<flow_table> root_tx2(adapter_obj->get_root_table(flow_table_type::FT_TX));
+    ASSERT_NE(root_tx2, nullptr);
+    ASSERT_EQ(root_tx1, root_tx2);
+
+    // Ceck RX and TX is not the same obj
+    ASSERT_NE(root_tx1, root_rx1);
+
+    delete adapter_obj;
+}
+

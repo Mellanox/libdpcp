@@ -538,4 +538,100 @@ status reserved_mkey::get_id(uint32_t& id)
     id = m_idx;
     return DPCP_OK;
 }
+
+ref_mkey::ref_mkey(adapter* ad, void* address, size_t length)
+    : mkey(ad->get_ctx())
+    , m_address(address)
+    , m_length(length)
+    , m_idx(0)
+    , m_flags(MKEY_NONE)
+{
+    log_trace("REF KEY CTR ad: %p\n", ad);
+}
+
+status ref_mkey::create(mkey* parent)
+{
+    status ret = DPCP_OK;
+
+    log_trace("ref_mkey::create: parent: 0x%p addr: %p len: %zd\n", parent, m_address, m_length);
+
+    if (parent == nullptr || m_address == nullptr || m_length == 0) {
+        return DPCP_ERR_INVALID_PARAM;
+    }
+
+    ret = parent->get_id(m_idx);
+    if (DPCP_OK != ret) {
+        log_trace("Can't get id for MKey %p ret = %d\n", parent, ret);
+        return ret;
+    }
+
+    void* parent_addr = nullptr;
+    ret = parent->get_address(parent_addr);
+    if (DPCP_OK != ret) {
+        log_trace("Can't get address for MKey %p ret = %d\n", parent, ret);
+        return ret;
+    }
+
+    size_t parent_length = 0;
+    ret = parent->get_length(parent_length);
+    if (DPCP_OK != ret) {
+        log_trace("Can't get address for MKey %p ret = %d\n", parent, ret);
+        return ret;
+    }
+
+    ret = parent->get_flags(m_flags);
+    if (DPCP_OK != ret) {
+        log_trace("Can't get flags for MKey %p ret = %d\n", parent, ret);
+        return ret;
+    }
+
+    if ((m_address < parent_addr) ||
+        ((char*)m_address + m_length > (char*)parent_addr + parent_length)) {
+        log_trace("Address %p (size %zd) is not a subregion of %p (addr %p size %zd)\n", m_address,
+                  m_length, parent, parent_addr, parent_length);
+        return DPCP_ERR_OUT_OF_RANGE;
+    }
+
+    return DPCP_OK;
+}
+
+status ref_mkey::get_address(void*& address)
+{
+    if (!m_idx) {
+        return DPCP_ERR_CREATE;
+    }
+    address = m_address;
+    return DPCP_OK;
+}
+
+status ref_mkey::get_length(size_t& len)
+{
+    if (!m_idx) {
+        return DPCP_ERR_CREATE;
+    }
+    len = m_length;
+    if (0 == len) {
+        return DPCP_ERR_OUT_OF_RANGE;
+    }
+    return DPCP_OK;
+}
+
+status ref_mkey::get_flags(mkey_flags& flags)
+{
+    if (!m_idx) {
+        return DPCP_ERR_CREATE;
+    }
+    flags = m_flags;
+    return DPCP_OK;
+}
+
+status ref_mkey::get_id(uint32_t& id)
+{
+    if (!m_idx) {
+        return DPCP_ERR_CREATE;
+    }
+    id = m_idx;
+    return DPCP_OK;
+}
+
 } // namespace dpcp

@@ -176,17 +176,37 @@ TEST_F(dpcp_sq, ti_08_modify_state)
 {
     status ret = s_ppsq->modify_state(SQ_RDY);
     ASSERT_EQ(DPCP_OK, ret);
+}
+/**
+ * @test dpcp_sq.ti_09_modify_pp
+ * @brief
+ *    Check pp_sq::modify method
+ * @details
+ *
+ */
+TEST_F(dpcp_sq, ti_09_modify_pp)
+{
+    qos_attributes qos_attr;
+    qos_attr.qos_type = QOS_TYPE::QOS_PACKET_PACING;
+    qos_attr.qos_attr.packet_pacing_attr.burst_sz = 1;
+    qos_attr.qos_attr.packet_pacing_attr.packet_sz = 1400;
+    qos_attr.qos_attr.packet_pacing_attr.sustained_rate = 2400000;
+    s_sqattr.qos_attrs_sz = 1;
+    s_sqattr.qos_attrs = &qos_attr;
+
+    status ret = s_ppsq->modify(s_sqattr);
+    ASSERT_EQ(DPCP_OK, ret);
 
     delete s_ppsq;
 }
 /**
-* @test dpcp_sq.ti_01_create_without_pp
-* @brief
-*    Check pp_sq::create method
-* @details
-*
-*/
-TEST_F(dpcp_sq, ti_01_create_without_pp)
+ * @test dpcp_sq.ti_01_create_without_pp
+ * @brief
+ *    Check pp_sq::create method
+ * @details
+ *
+ */
+TEST_F(dpcp_sq, ti_10_create_without_pp)
 {
     qos_attributes qos_attr;
     qos_attr.qos_type = QOS_TYPE::QOS_PACKET_PACING;
@@ -206,6 +226,59 @@ TEST_F(dpcp_sq, ti_01_create_without_pp)
     ASSERT_EQ(DPCP_OK, ret);
     ASSERT_NE(nullptr, ppsq);
 
+    delete ppsq;
+}
+
+/**
+ * @test dpcp_sq.ti_11_create_modify_pp
+ * @brief
+ *    Check pp_sq::create method
+ * @details
+ *
+ */
+TEST_F(dpcp_sq, ti_11_create_modify_pp)
+{
+    qos_attributes qos_attr;
+    qos_attr.qos_type = QOS_TYPE::QOS_PACKET_PACING;
+    qos_attr.qos_attr.packet_pacing_attr.burst_sz = 1;
+    qos_attr.qos_attr.packet_pacing_attr.packet_sz = 1000;
+    qos_attr.qos_attr.packet_pacing_attr.sustained_rate = 1000000;
+    s_sqattr.qos_attrs_sz = 1;
+    s_sqattr.qos_attrs = &qos_attr;
+    s_sqattr.wqe_sz = 64;
+    s_sqattr.wqe_num = 32768;
+    s_sqattr.user_index = 0;
+    s_sqattr.cqn = s_cqd.cqn;
+    s_sqattr.tis_num = s_tis_n;
+
+    pp_sq* ppsq = nullptr;
+    status ret = s_ad->create_pp_sq(s_sqattr, ppsq);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE(nullptr, ppsq);
+
+    ret = ppsq->modify_state(SQ_RDY);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    qos_attributes qos_attr2;
+    qos_attr2.qos_type = QOS_TYPE::QOS_PACKET_PACING;
+    qos_attr2.qos_attr.packet_pacing_attr.burst_sz = 0;
+    qos_attr2.qos_attr.packet_pacing_attr.packet_sz = 0;
+    qos_attr2.qos_attr.packet_pacing_attr.sustained_rate = 0;
+    s_sqattr.qos_attrs_sz = 1;
+    s_sqattr.qos_attrs = &qos_attr2;
+
+    ret = ppsq->modify(s_sqattr);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    qos_attributes qos_attr3;
+    qos_attr3.qos_type = QOS_TYPE::QOS_PACKET_PACING;
+    qos_attr3.qos_attr.packet_pacing_attr.burst_sz = 1;
+    qos_attr3.qos_attr.packet_pacing_attr.packet_sz = 1400;
+    qos_attr3.qos_attr.packet_pacing_attr.sustained_rate = 2400000;
+    s_sqattr.qos_attrs_sz = 1;
+    s_sqattr.qos_attrs = &qos_attr3;
+
+    ret = ppsq->modify(s_sqattr);
     delete ppsq;
     delete s_tis;
     delete s_ad;

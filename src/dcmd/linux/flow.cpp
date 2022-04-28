@@ -1,5 +1,6 @@
 #include <string>
 
+#include <utils/os.h>
 #include "dcmd/dcmd.h"
 
 using namespace dcmd;
@@ -29,6 +30,7 @@ flow::flow(ctx_handle handle, struct flow_desc* desc)
     }
 
     size_t num_actions = (desc->flow_id ? (desc->num_dst_tir + 1) : desc->num_dst_tir);
+    num_actions += desc->modify_actions ? 1 : 0;
     struct mlx5dv_flow_action_attr actions_attr[num_actions];
     int i = 0;
     int j = 0;
@@ -36,6 +38,18 @@ flow::flow(ctx_handle handle, struct flow_desc* desc)
     if (desc->flow_id) {
         actions_attr[i].type = MLX5DV_FLOW_ACTION_TAG;
         actions_attr[i].tag_value = desc->flow_id;
+        i++;
+    }
+    if (desc->modify_actions) {
+        actions_attr[i].type = MLX5DV_FLOW_ACTION_IBV_FLOW_ACTION;
+        actions_attr[i].action = mlx5dv_create_flow_action_modify_header(
+            handle,
+            sizeof(modify_action) * desc->num_of_actions,
+            (uint64_t *)desc->modify_actions,
+            MLX5_IB_UAPI_FLOW_TABLE_TYPE_NIC_RX);
+        if (!actions_attr[i].action) {
+            throw DCMD_ENOTSUP;
+        }
         i++;
     }
     for (j = 0; j < (int)desc->num_dst_tir; j++, i++) {

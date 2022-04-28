@@ -97,12 +97,14 @@ struct mlx5_ifc_devx_fs_rule_add_in_bits
 
     u8  prio[0x8];
     u8  is_flow_counter[0x1];
-    u8  reserved_1[0x7];
+    u8  has_modify_header_id[0x1];
+    u8  reserved_1[0x6];
     u8  extra_dests_count[0x8];
     u8  match_criteria_enable[0x8];
     u8  reserved_2[0x8];
     u8  flow_tag[0x18];
-    u8  reserved_x[0x100];
+    u8  modify_header_id[0x20];
+    u8  reserved_x[0xE0];
 };
 
 #pragma pack(pop)
@@ -176,25 +178,6 @@ struct mlx5_ifc_devx_create_mr_out_bits
 };
 
 #pragma pack(pop)
-
-enum DEVX_COMM_CHANNEL_ACTION
-{
-    // devx_vf_comm_channel_action_promis_input/output
-    DEVX_COMM_CHANNEL_ACTION_PROMISC = 1,
-};
-
-// DEVX_COMM_CHANNEL_ACTION_PROMISC_DEVX
-struct devx_vf_comm_channel_action_promis_input
-{
-    uint8_t enable;
-    uint8_t reserved[3];
-};
-
-// DEVX_COMM_CHANNEL_ACTION_PROMISC_DEVX
-struct devx_vf_comm_channel_action_promis_output
-{
-    int errno_code;
-};
 
 #ifdef __cplusplus
 } // extern "C" {

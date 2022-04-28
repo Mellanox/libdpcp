@@ -17,11 +17,22 @@
 
 #include <algorithm>
 #include <vector>
+#include <cmath>
 
 #include "utils/os.h"
 #include "dpcp/internal.h"
 
 namespace dpcp {
+
+static const std::vector<int> s_supported_cap_types {
+    MLX5_CAP_GENERAL,
+    MLX5_CAP_TLS,
+    MLX5_CAP_PARSE_GRAPH_NODE,
+    MLX5_CAP_ETHERNET_OFFLOADS,
+    MLX5_CAP_GENERAL_2,
+    MLX5_CAP_FLOW_TABLE,
+    MLX5_CAP_DPP,
+};
 
 static void store_hca_device_frequency_khz_caps(adapter_hca_capabilities* external_hca_caps,
                                                 const caps_map_t& caps_map)
@@ -161,6 +172,200 @@ static void store_hca_lro_caps(adapter_hca_capabilities* external_hca_caps,
               external_hca_caps->lro_timer_supported_periods[i]);
 }
 
+static void store_hca_dpp_caps(adapter_hca_capabilities* external_hca_caps,
+                                       const caps_map_t& caps_map)
+{
+    external_hca_caps->dpp =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+                 capability.cmd_hca_cap.dpp);
+    log_trace("Capability - dpp: %d\n", external_hca_caps->dpp);
+
+    external_hca_caps->dpp_wire_protocol =
+        DEVX_GET64(query_hca_cap_out, caps_map.find(MLX5_CAP_DPP)->second,
+                 capability.dpp_cap.dpp_wire_protocol);
+    log_trace("Capability - dpp_wire_protocol: 0x%llx\n",
+              static_cast<unsigned long long>(external_hca_caps->dpp_wire_protocol));
+
+    external_hca_caps->dpp_max_scatter_offset =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_DPP)->second,
+                 capability.dpp_cap.dpp_max_scatter_offset);
+    log_trace("Capability - dpp_max_scatter_offset: %d\n", external_hca_caps->dpp_max_scatter_offset);
+}
+
+static void store_hca_parse_graph_node_caps(adapter_hca_capabilities* external_hca_caps,
+                                            const caps_map_t& caps_map)
+{
+    auto* parse_graph_cap = caps_map.find(MLX5_CAP_PARSE_GRAPH_NODE)->second;
+    uint64_t general_obj_types =
+        DEVX_GET64(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+                   capability.cmd_hca_cap.general_obj_types);
+
+    if (general_obj_types & MLX5_HCA_CAP_GENERAL_OBJECT_TYPES_PARSE_GRAPH_NODE) {
+        external_hca_caps->general_object_types_parse_graph_node = true;
+    }
+
+    external_hca_caps->parse_graph_node_in = DEVX_GET(
+        query_hca_cap_out, parse_graph_cap, capability.parse_graph_node_cap.parse_graph_node_in);
+    external_hca_caps->parse_graph_header_length_mode =
+        DEVX_GET(query_hca_cap_out, parse_graph_cap,
+                 capability.parse_graph_node_cap.parse_graph_header_length_mode);
+    external_hca_caps->parse_graph_flow_match_sample_offset_mode =
+        DEVX_GET(query_hca_cap_out, parse_graph_cap,
+                 capability.parse_graph_node_cap.parse_graph_flow_match_sample_offset_mode);
+    external_hca_caps->max_num_parse_graph_arc_in =
+        DEVX_GET(query_hca_cap_out, parse_graph_cap,
+                 capability.parse_graph_node_cap.max_num_parse_graph_arc_in);
+    external_hca_caps->max_num_parse_graph_flow_match_sample =
+        DEVX_GET(query_hca_cap_out, parse_graph_cap,
+                 capability.parse_graph_node_cap.max_num_parse_graph_flow_match_sample);
+    external_hca_caps->parse_graph_flow_match_sample_id_in_out =
+        DEVX_GET(query_hca_cap_out, parse_graph_cap,
+                 capability.parse_graph_node_cap.parse_graph_flow_match_sample_id_in_out);
+    external_hca_caps->max_parse_graph_header_length_base_value =
+        DEVX_GET(query_hca_cap_out, parse_graph_cap,
+                 capability.parse_graph_node_cap.max_parse_graph_header_length_base_value);
+    external_hca_caps->max_parse_graph_flow_match_sample_field_base_offset_value = DEVX_GET(
+        query_hca_cap_out, parse_graph_cap,
+        capability.parse_graph_node_cap.max_parse_graph_flow_match_sample_field_base_offset_value);
+    external_hca_caps->parse_graph_header_length_field_mask_width =
+        DEVX_GET(query_hca_cap_out, parse_graph_cap,
+                 capability.parse_graph_node_cap.parse_graph_header_length_field_mask_width);
+
+    log_trace("Capability - general_object_types_parse_graph_node: %d\n",
+              external_hca_caps->general_object_types_parse_graph_node);
+    log_trace("Capability - parse_graph_node_in: 0x%x\n", external_hca_caps->parse_graph_node_in);
+    log_trace("Capability - parse_graph_header_length_mode: 0x%x\n",
+              external_hca_caps->parse_graph_header_length_mode);
+    log_trace("Capability - parse_graph_flow_match_sample_offset_mode: 0x%x\n",
+              external_hca_caps->parse_graph_flow_match_sample_offset_mode);
+    log_trace("Capability - max_num_parse_graph_arc_in: %d\n",
+              external_hca_caps->max_num_parse_graph_arc_in);
+    log_trace("Capability - max_num_parse_graph_flow_match_sample: %d\n",
+              external_hca_caps->max_num_parse_graph_flow_match_sample);
+    log_trace("Capability - parse_graph_flow_match_sample_id_in_out: %d\n",
+              external_hca_caps->parse_graph_flow_match_sample_id_in_out);
+    log_trace("Capability - max_parse_graph_header_length_base_value: %d\n",
+              external_hca_caps->max_parse_graph_header_length_base_value);
+    log_trace("Capability - max_parse_graph_flow_match_sample_field_base_offset_value: %d\n",
+              external_hca_caps->max_parse_graph_flow_match_sample_field_base_offset_value);
+    log_trace("Capability - parse_graph_header_length_field_mask_width: %d\n",
+              external_hca_caps->parse_graph_header_length_field_mask_width);
+}
+
+// TODO: disable if not exist in HCA.nic_flow_table_cap_enabled
+static void store_hca_2_reformat_caps(adapter_hca_capabilities* external_hca_caps,
+                                        const caps_map_t& caps_map)
+{
+    external_hca_caps->max_reformat_insert_size =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL_2)->second,
+                 capability.cmd_hca_cap_2.max_reformat_insert_size);
+    log_trace("Capability - max_reformat_insert_size: %d\n", external_hca_caps->max_reformat_insert_size);
+
+    external_hca_caps->max_reformat_insert_offset =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL_2)->second,
+                 capability.cmd_hca_cap_2.max_reformat_insert_offset);
+    log_trace("Capability - max_reformat_insert_offset: %d\n", external_hca_caps->max_reformat_insert_offset);
+}
+
+static void store_hca_flow_table_caps (adapter_hca_capabilities* external_hca_caps,
+                                        const caps_map_t& caps_map)
+{
+    external_hca_caps->nic_flow_table_cap_enabled =
+    DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+                 capability.cmd_hca_cap.nic_flow_table);
+    log_trace("Capability - nic_flow_table_cap_enabled: %d\n", external_hca_caps->nic_flow_table_cap_enabled);
+
+    external_hca_caps->nic_receive_max_steering_depth =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                 capability.flow_table_nic_cap.nic_receive_max_steering_depth);
+    log_trace("Capability - nic_receive_max_steering_depth: %d\n", external_hca_caps->nic_receive_max_steering_depth);
+
+    external_hca_caps->log_max_packet_reformat_context =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                 capability.flow_table_nic_cap.log_max_packet_reformat_context);
+    log_trace("Capability - log_max_packet_reformat_context: %d\n", external_hca_caps->log_max_packet_reformat_context);
+}
+
+static void store_hca_flow_table_nic_receive_caps (adapter_hca_capabilities* external_hca_caps,
+                                        const caps_map_t& caps_map)
+{
+    external_hca_caps->ft_support =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                 capability.flow_table_nic_cap.flow_table_properties_nic_receive.ft_support);
+    log_trace("Capability - ft_support: %d\n", external_hca_caps->ft_support);
+
+    external_hca_caps->flow_tag =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                 capability.flow_table_nic_cap.flow_table_properties_nic_receive.flow_tag);
+    log_trace("Capability - flow_tag: %d\n", external_hca_caps->flow_tag);
+
+    external_hca_caps->flow_modify_en =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                 capability.flow_table_nic_cap.flow_table_properties_nic_receive.flow_modify_en);
+    log_trace("Capability - flow_modify_en: %d\n", external_hca_caps->flow_modify_en);
+
+    external_hca_caps->reformat =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                 capability.flow_table_nic_cap.flow_table_properties_nic_receive.reformat);
+    log_trace("Capability - reformat: %d\n", external_hca_caps->reformat);
+
+    external_hca_caps->reformat_and_modify_action =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                 capability.flow_table_nic_cap.flow_table_properties_nic_receive.reformat_and_modify_action);
+    log_trace("Capability - reformat_and_modify_action: %d\n", external_hca_caps->reformat_and_modify_action);
+
+    external_hca_caps->reformat_and_fwd_to_table =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                 capability.flow_table_nic_cap.flow_table_properties_nic_receive.reformat_and_fwd_to_table);
+    log_trace("Capability - reformat_and_fwd_to_table: %d\n", external_hca_caps->reformat_and_fwd_to_table);
+
+    external_hca_caps->log_max_ft_size =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                 capability.flow_table_nic_cap.flow_table_properties_nic_receive.log_max_ft_size);
+    log_trace("Capability - log_max_ft_size: %d\n", external_hca_caps->log_max_ft_size);
+
+    external_hca_caps->log_max_modify_header_context =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                 capability.flow_table_nic_cap.flow_table_properties_nic_receive.log_max_modify_header_context);
+    log_trace("Capability - log_max_modify_header_context: %d\n", external_hca_caps->log_max_modify_header_context);
+
+    external_hca_caps->max_modify_header_actions =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                 capability.flow_table_nic_cap.flow_table_properties_nic_receive.max_modify_header_actions);
+    log_trace("Capability - max_modify_header_actions: %d\n", external_hca_caps->max_modify_header_actions);
+
+    external_hca_caps->max_ft_level =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                 capability.flow_table_nic_cap.flow_table_properties_nic_receive.max_ft_level);
+    log_trace("Capability - max_ft_level: %d\n", external_hca_caps->max_ft_level);
+
+    external_hca_caps->reformat_insert =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                 capability.flow_table_nic_cap.flow_table_properties_nic_receive.reformat_insert);
+    log_trace("Capability - reformat_insert: %d\n", external_hca_caps->reformat_insert);
+
+    external_hca_caps->log_max_ft_num =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                 capability.flow_table_nic_cap.flow_table_properties_nic_receive.log_max_ft_num);
+    log_trace("Capability - log_max_ft_num: %d\n", external_hca_caps->log_max_ft_num);
+
+    external_hca_caps->log_max_modify_header_context =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                 capability.flow_table_nic_cap.flow_table_properties_nic_receive.log_max_modify_header_context);
+    log_trace("Capability - log_max_modify_header_context: %d\n", external_hca_caps->log_max_modify_header_context);
+
+    external_hca_caps->log_max_flow =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                 capability.flow_table_nic_cap.flow_table_properties_nic_receive.log_max_flow);
+    log_trace("Capability - log_max_flow: %d\n", external_hca_caps->log_max_flow);
+
+    external_hca_caps->set_action_field_support_outer_ether_type =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                 capability.flow_table_nic_cap.header_modify_nic_receive.set_action_field_support.outer_ether_type);
+    log_trace("Capability - set_action_field_support_outer_ether_type: %d\n",
+        external_hca_caps->set_action_field_support_outer_ether_type);
+}
+
 static const std::vector<cap_cb_fn> caps_callbacks = {
     store_hca_device_frequency_khz_caps,
     store_hca_tls_caps,
@@ -171,6 +376,11 @@ static const std::vector<cap_cb_fn> caps_callbacks = {
     store_hca_sq_ts_format_caps,
     store_hca_rq_ts_format_caps,
     store_hca_lro_caps,
+    store_hca_dpp_caps,
+    store_hca_parse_graph_node_caps,
+    store_hca_2_reformat_caps,
+    store_hca_flow_table_caps,
+    store_hca_flow_table_nic_receive_caps,
 };
 
 status pd_devx::create()
@@ -239,15 +449,12 @@ adapter::adapter(dcmd::device* dev, dcmd::ctx* ctx)
     , m_caps_callbacks(caps_callbacks)
     , m_opened(false)
 {
-    m_caps.insert(std::make_pair(MLX5_CAP_GENERAL, calloc(1, DEVX_ST_SZ_DW(query_hca_cap_out))));
-    m_caps.insert(std::make_pair(MLX5_CAP_TLS, calloc(1, DEVX_ST_SZ_DW(query_hca_cap_out))));
-    m_caps.insert(
-        std::make_pair(MLX5_CAP_ETHERNET_OFFLOADS, calloc(1, DEVX_ST_SZ_DW(query_hca_cap_out))));
-    if (m_caps[MLX5_CAP_GENERAL] != nullptr && m_caps[MLX5_CAP_TLS] != nullptr &&
-        m_caps[MLX5_CAP_ETHERNET_OFFLOADS] != nullptr) {
-        query_hca_caps();
-        set_external_hca_caps();
+    for (auto cap_type : s_supported_cap_types) {
+        m_caps.insert(std::make_pair(cap_type, calloc(1, DEVX_ST_SZ_BYTES(query_hca_cap_out))));
     }
+
+    query_hca_caps();
+    set_external_hca_caps();
 }
 
 status adapter::set_pd(uint32_t pdn, void* ibv_pd)
@@ -302,6 +509,7 @@ status adapter::create_own_pd()
 
     return ret;
 }
+
 std::string adapter::get_name()
 {
     return m_dcmd_dev->get_name();
@@ -526,6 +734,23 @@ status adapter::create_reserved_mkey(reserved_mkey_type type, void* address, siz
     return DPCP_OK;
 }
 
+status adapter::create_ref_mkey(mkey* parent, void* address, size_t length, ref_mkey*& mkey)
+{
+    mkey = new (std::nothrow) ref_mkey(this, address, length);
+    log_trace("refmk: %p\n", mkey);
+    if (nullptr == mkey) {
+        return DPCP_ERR_NO_MEMORY;
+    }
+    // Create MKey
+    status ret = mkey->create(parent);
+    if (DPCP_OK != ret) {
+        delete mkey;
+        return DPCP_ERR_CREATE;
+    }
+
+    return DPCP_OK;
+}
+
 status adapter::create_cq(const cq_attr& attrs, cq*& out_cq)
 {
     // CQ_SIZE is mandatory
@@ -722,6 +947,29 @@ status adapter::create_dpp_rq(rq_attr& rq_attr, dpcp_dpp_protocol dpp_protocol, 
     return ret;
 }
 
+std::shared_ptr<flow_table> adapter::get_root_table(flow_table_type type)
+{
+    if (type >= flow_table_type::FT_END || type < 0) {
+        return std::shared_ptr<flow_table>();
+    }
+
+    if (!m_root_table_arr[type]) {
+        m_root_table_arr[type].reset(new (std::nothrow) flow_table(m_dcmd_ctx, type));
+    }
+
+    return m_root_table_arr[type];
+}
+
+status adapter::create_flow_table(flow_table_attr& attr, std::shared_ptr<flow_table>& table)
+{
+    table.reset(new (std::nothrow) flow_table(m_dcmd_ctx, attr));
+    if (!table) {
+        return DPCP_ERR_NO_MEMORY;
+    }
+
+    return DPCP_OK;
+}
+
 status adapter::create_flow_rule(uint16_t priority, match_params& match_criteria, flow_rule*& rule)
 {
     flow_rule* fr = new (std::nothrow) flow_rule(m_dcmd_ctx, priority, match_criteria);
@@ -815,36 +1063,20 @@ status adapter::create_pp_sq(sq_attr& sq_attr, pp_sq*& packet_pacing_sq)
 
 status adapter::query_hca_caps()
 {
-    uint32_t in[DEVX_ST_SZ_DW(query_hca_cap_in)] = {};
+    uint32_t in[DEVX_ST_SZ_DW(query_hca_cap_in)] = {0};
     enum mlx5_cap_mode cap_mode = HCA_CAP_OPMOD_GET_CUR;
+    int ret;
+    uint32_t opmod;
 
-    enum mlx5_cap_type cap_type = MLX5_CAP_GENERAL;
-    uint32_t opmod = (cap_type << 1) | cap_mode;
-    DEVX_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP);
-    DEVX_SET(query_hca_cap_in, in, op_mod, opmod);
-    int ret =
-        m_dcmd_ctx->exec_cmd(in, sizeof(in), m_caps[cap_type], DEVX_ST_SZ_DW(query_hca_cap_out));
-    if (ret) {
-        log_trace("exec_cmd for HCA_CAP failed %d\n", ret);
-        return DPCP_ERR_QUERY;
-    }
-
-    cap_type = MLX5_CAP_TLS;
-    opmod = (cap_type << 1) | cap_mode;
-    DEVX_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP);
-    DEVX_SET(query_hca_cap_in, in, op_mod, opmod);
-    ret = m_dcmd_ctx->exec_cmd(in, sizeof(in), m_caps[cap_type], DEVX_ST_SZ_DW(query_hca_cap_out));
-    if (ret) {
-        log_trace("CAP_TLS query failed %d\n", ret);
-    }
-
-    cap_type = MLX5_CAP_ETHERNET_OFFLOADS;
-    opmod = (cap_type << 1) | cap_mode;
-    DEVX_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP);
-    DEVX_SET(query_hca_cap_in, in, op_mod, opmod);
-    ret = m_dcmd_ctx->exec_cmd(in, sizeof(in), m_caps[cap_type], DEVX_ST_SZ_DW(query_hca_cap_out));
-    if (ret) {
-        log_trace("MLX5_CAP_ETHERNET_OFFLOADS query failed %d\n", ret);
+    for (auto cap_type : s_supported_cap_types) {
+        opmod = (cap_type << 1) | cap_mode;
+        DEVX_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP);
+        DEVX_SET(query_hca_cap_in, in, op_mod, opmod);
+        ret = m_dcmd_ctx->exec_cmd(in, sizeof(in), m_caps[cap_type],
+                                   DEVX_ST_SZ_BYTES(query_hca_cap_out));
+        if (ret) {
+            log_trace("Cap type: %d query failed %d\n", cap_type, ret);
+        }
     }
 
     return DPCP_OK;
@@ -914,6 +1146,9 @@ adapter::~adapter()
     if (m_uarpool) {
         delete m_uarpool;
         m_uarpool = nullptr;
+    }
+    for (auto cap_type : m_caps) {
+        free(cap_type.second);
     }
     if (m_external_hca_caps) {
         delete m_external_hca_caps;
@@ -1073,6 +1308,121 @@ status packet_pacing::create()
     m_index = get_pp_index(m_pp_handle);
     log_trace("packet pacing index: %u for rate: %d burst: %d packet_sz: %d\n", m_index,
               m_attr.sustained_rate, m_attr.burst_sz, m_attr.packet_sz);
+    return DPCP_OK;
+}
+
+status adapter::create_parser_graph_node(const parser_graph_node_attr& attributes,
+                                         parser_graph_node*& out_parser_graph_node)
+{
+    auto caps = m_external_hca_caps;
+
+    bool general_object_types_parse_graph_node_supported =
+        caps->general_object_types_parse_graph_node;
+    if (!general_object_types_parse_graph_node_supported) {
+        log_error("The adapter doesn't support the creation of general object parse graph node");
+        return DPCP_ERR_NO_SUPPORT;
+    }
+
+    bool parse_graph_header_length_mode_supported =
+        ((1 << attributes.header_length_mode.to_ulong()) & caps->parse_graph_header_length_mode) !=
+        0;
+    if (!parse_graph_header_length_mode_supported) {
+        log_error("The header_length_mode attribute is not supported");
+        return DPCP_ERR_NO_SUPPORT;
+    }
+
+    bool parse_graph_header_length_field_mask_width_supported;
+    if (attributes.header_length_field_mask == 0) {
+        parse_graph_header_length_field_mask_width_supported = true;
+    } else {
+        parse_graph_header_length_field_mask_width_supported =
+            (attributes.header_length_field_mask &
+             static_cast<uint32_t>((1 << caps->parse_graph_header_length_field_mask_width) - 1)) !=
+            0;
+    }
+    if (!parse_graph_header_length_field_mask_width_supported) {
+        log_error("The header_length_field_mask attribute"
+                  " uses more than the supported number of bits");
+        return DPCP_ERR_NO_SUPPORT;
+    }
+
+    bool max_parse_graph_header_length_base_value_supported =
+        (attributes.header_length_base_value <= caps->max_parse_graph_header_length_base_value);
+    if (!max_parse_graph_header_length_base_value_supported) {
+        log_error("The header_length_base_value attribute "
+                  "exceeds the maximum value supported");
+        return DPCP_ERR_NO_SUPPORT;
+    }
+
+    // Supporting 1 input arc now, using vector to be able to extend in the future
+    // without breaking backward compatibility.
+    constexpr uint8_t max_in_arcs = 1;
+    bool max_num_parse_graph_arc_in_supported =
+        (attributes.in_arcs.size() <=
+         std::min<uint8_t>(caps->max_num_parse_graph_arc_in, max_in_arcs));
+    if (!max_num_parse_graph_arc_in_supported) {
+        log_error("The number of in_arcs attribute exceeds the maximum value supported");
+        return DPCP_ERR_NO_SUPPORT;
+    }
+
+    constexpr int first_arc = 0;
+    bool parse_graph_node_in_supported =
+        (1 << attributes.in_arcs[first_arc].arc_parse_graph_node & caps->parse_graph_node_in) != 0;
+    if (!parse_graph_node_in_supported) {
+        log_error("The arc_parse_graph_node attribute is not supported");
+        return DPCP_ERR_NO_SUPPORT;
+    }
+
+    bool max_num_parse_graph_flow_match_sample_supported =
+        (attributes.samples.size() <= caps->max_num_parse_graph_flow_match_sample);
+    if (!max_num_parse_graph_flow_match_sample_supported) {
+        log_error("The number of samples attribute exceeds the maximum value supported");
+        return DPCP_ERR_NO_SUPPORT;
+    }
+
+    for (auto& sample : attributes.samples) {
+        if (!sample.enabled) {
+            continue;
+        }
+
+        bool max_parse_graph_flow_match_sample_field_base_offset_value_supported =
+            (sample.field_base_offset <=
+             caps->max_parse_graph_flow_match_sample_field_base_offset_value);
+        if (!max_parse_graph_flow_match_sample_field_base_offset_value_supported) {
+            log_error("The field_base_offset attribute of the sample"
+                      " exceeds the maximum value supported");
+            return DPCP_ERR_NO_SUPPORT;
+        }
+
+        bool parse_graph_flow_match_sample_offset_mode_supported =
+            ((1 << sample.offset_mode.to_ulong()) & caps->parse_graph_header_length_mode) != 0;
+        if (!parse_graph_flow_match_sample_offset_mode_supported) {
+            log_error("The offset_mode attribute of the sample is not supported");
+            return DPCP_ERR_NO_SUPPORT;
+        }
+
+        bool parse_graph_flow_match_sample_id_in_out_supported =
+            sample.field_id == 0 ? true : caps->parse_graph_flow_match_sample_id_in_out;
+        if (!parse_graph_flow_match_sample_id_in_out_supported) {
+            log_error("Setting field_id attribute of the sample is not supported");
+            return DPCP_ERR_NO_SUPPORT;
+        }
+    }
+
+    parser_graph_node* _parser_graph_node =
+        new (std::nothrow) parser_graph_node(get_ctx(), attributes);
+    if (_parser_graph_node == nullptr) {
+        return DPCP_ERR_NO_MEMORY;
+    }
+
+    status ret = _parser_graph_node->create();
+    if (ret != DPCP_OK) {
+        delete _parser_graph_node;
+        return DPCP_ERR_CREATE;
+    }
+
+    out_parser_graph_node = _parser_graph_node;
+
     return DPCP_OK;
 }
 

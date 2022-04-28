@@ -374,4 +374,76 @@ status pp_sq::get_bf_reg(uint64_t*& bf_reg, size_t offset)
     return DPCP_ERR_NO_SUPPORT;
 }
 
+status pp_sq::modify(sq_attr& attr)
+{
+    /* Setting Packet Pacing */
+    if ((attr.qos_attrs_sz != 1) || (attr.qos_attrs == nullptr) ||
+        (attr.qos_attrs->qos_type != QOS_TYPE::QOS_PACKET_PACING)) {
+        log_error("Packet Pacing wasn't set, attrs_sz: %d\n", attr.qos_attrs_sz);
+        return DPCP_ERR_INVALID_PARAM;
+    }
+    qos_packet_pacing& pp_attr = attr.qos_attrs->qos_attr.packet_pacing_attr;
+    status ret = DPCP_OK;
+    packet_pacing* pp = nullptr;
+    uint32_t pp_idx = 0;
+    if (pp_attr.sustained_rate) {
+        // Per PRM doc burst_sz = 0  is valid "and indicates packet bursts will be limited
+        // to the device defauts". Packet_sz = 0 is also valid and "indicates the packet
+        // size is unknown, and assumed to be MTU"
+        pp = new (std::nothrow) packet_pacing(get_ctx(), pp_attr);
+        if (!pp) {
+            log_error("Packet Pacing wasn't set for rate %d\n", pp_attr.sustained_rate);
+            return DPCP_ERR_CREATE;
+        }
+        ret = pp->create();
+        if (DPCP_OK != ret) {
+            log_error("Packet Pacing wasn't set for rate %d pkt_sz %d burst %d\n",
+                      pp_attr.sustained_rate, pp_attr.packet_sz, pp_attr.burst_sz);
+            delete pp;
+            return ret;
+        }
+        pp_idx = pp->get_index() & 0xFFFF;
+    } else {
+        log_warn("Packet Pacing wasn't set, sustainated rate is 0 - SQ will use full bandwidth\n");
+    }
+
+    uint32_t in[DEVX_ST_SZ_DW(modify_sq_in)] = {};
+    uint32_t out[DEVX_ST_SZ_DW(modify_sq_out)] = {};
+    size_t outlen = sizeof(out);
+    //
+    // Set PP index to be modified in bitmask
+    uint64_t bitmask = 0x1;
+    DEVX_SET64(modify_sq_in, in, modify_bitmask, bitmask);
+    uint32_t sqn = 0;
+    ret = obj::get_id(sqn);
+    if ((DPCP_OK != ret) || (0 == sqn)) {
+        log_trace("modify_state failed sqn=0x%x ret=%d\n", sqn, ret);
+        delete pp;
+        return DPCP_ERR_INVALID_ID;
+    }
+    DEVX_SET(modify_sq_in, in, sqn, sqn);
+    sq_state new_state = SQ_RDY;
+    DEVX_SET(modify_sq_in, in, sq_state, new_state);
+    void* p_sqc = DEVX_ADDR_OF(modify_sq_in, in, ctx);
+    // There is state in ctx, it also should be set
+    DEVX_SET(sqc, p_sqc, state, new_state);
+    // Packet Pacing Index
+    DEVX_SET(sqc, p_sqc, packet_pacing_rate_limit_index, pp_idx);
+    DEVX_SET(modify_sq_in, in, opcode, MLX5_CMD_OP_MODIFY_SQ);
+    ret = obj::modify(in, sizeof(in), out, outlen);
+    // Query if state was set correctly
+    if (DPCP_OK != ret) {
+        delete pp;
+        return ret;
+    }
+    // delete old pp
+    delete (packet_pacing*)m_pp;
+    m_pp = pp;
+    m_pp_idx = pp ? pp->get_index() : 0;
+
+    log_trace("New Packet Pacing was set for rate %d pkt_sz %d burst %d IDX %d\n",
+              pp_attr.sustained_rate, pp_attr.packet_sz, pp_attr.burst_sz, m_pp_idx);
+    return ret;
+}
+
 } // namespace dpcp

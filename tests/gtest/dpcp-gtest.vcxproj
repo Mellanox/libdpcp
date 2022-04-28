@@ -2,7 +2,7 @@
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <ConfigTopDir>$(ProjectDir)..\..\config\windows</ConfigTopDir>
-  </PropertyGroup> 
+  </PropertyGroup>
   <Import Project="$(ConfigTopDir)\Project.vcxproj-pre.inc" />
   <PropertyGroup Label="PropertySheets">
     <ConfigurationType>Application</ConfigurationType>
@@ -32,6 +32,7 @@
     <ClCompile Include="dpcp\fr_tests.cpp" />
     <ClCompile Include="dpcp\mkey_tests.cpp" />
     <ClCompile Include="dpcp\obj_tests.cpp" />
+    <ClCompile Include="dpcp\parser_graph_node_tests.cpp" />
     <ClCompile Include="dpcp\pd_tests.cpp" />
     <ClCompile Include="dpcp\pp_tests.cpp" />
     <ClCompile Include="dpcp\provider_tests.cpp" />

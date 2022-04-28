@@ -94,7 +94,41 @@ struct umem_desc {
     size_t size;
     uint32_t access;
 };
+#ifdef _WIN32
+// TODO: GalN to rethink with another fix and remove the warning disablement.
+#pragma warning(disable : 4201)
+#endif // _WIN32
 
+// Same struct as defined in DPDK - mlx5_modification_cmd
+// TODO: Need to think if we want to put it in other header file.
+struct modify_action {
+    union {
+        uint32_t data0;
+        struct {
+            uint32_t length:5;  /* Number of bits to be written starting from offset. 0 means length of 32 bits */
+            uint32_t rsvd0:3;
+            uint32_t offset:5;  /* The start offset in the field to be modified */
+            uint32_t rsvd1:3;
+            uint32_t field:12;  /* The field of packet to be modified. ..., OUT_UDP_DPORT [0xC], METADATA_REG_C_0 [0x51], ... */
+            uint32_t action_type:4; /* Action Type: SET [0x1], ADD [0x2], COPY[0x3] */
+        };
+    };
+    union {                 /* The data to be written on the specific field */
+        uint32_t data1;
+        uint8_t data[4];
+        struct {
+            uint32_t rsvd2:8;
+            uint32_t dst_offset:5;
+            uint32_t rsvd3:3;
+            uint32_t dst_field:12;
+            uint32_t rsvd4:4;
+        };
+    };
+};
+#ifdef _WIN32
+// TODO: GalN to rethink with another fix and remove the warning disablement.
+#pragma warning(default : 4201)
+#endif // _WIN32
 struct flow_desc {
     struct flow_match_parameters* match_criteria;
     struct flow_match_parameters* match_value;
@@ -103,6 +137,8 @@ struct flow_desc {
     uint32_t flow_id;
     size_t num_dst_tir;
     uint16_t priority;
+    modify_action* modify_actions;
+    size_t num_of_actions;
 };
 
 } /* namespace dcmd */

@@ -19,6 +19,7 @@
 
 #include "utils/os.h"
 #include "dpcp/internal.h"
+#include "dcmd/dcmd.h"
 
 namespace dpcp {
 
@@ -33,6 +34,8 @@ flow_rule::flow_rule(dcmd::ctx* ctx, uint16_t priority, match_params& match_crit
     , m_flow_id(0)
     , m_priority(priority)
     , m_changed(false)
+    , m_modify_actions(nullptr)
+    , m_num_of_actions()
 {
 }
 
@@ -40,6 +43,9 @@ flow_rule::~flow_rule()
 {
     revoke_settings();
     m_dst_tir.clear();
+    if (m_modify_actions) {
+        delete[] m_modify_actions;
+    }
 }
 
 status flow_rule::set_match_value(match_params& val)
@@ -98,12 +104,33 @@ status flow_rule::get_tir(uint32_t index, tir*& tr)
     return DPCP_OK;
 }
 
+status flow_rule::set_modify_header(dcmd::modify_action* modify_actions, size_t num_of_actions)
+{
+    m_modify_actions = new struct dcmd::modify_action[num_of_actions]; /* XXX should test for allocation success */
+    for (size_t i = 0; i < num_of_actions; ++i) {
+        m_modify_actions[i] = modify_actions[i];
+    }
+    m_num_of_actions = num_of_actions;
+
+    return DPCP_OK;
+}
+
 status flow_rule::add_dest_tir(tir* tr)
 {
     if (nullptr == tr) {
         return DPCP_ERR_INVALID_PARAM;
     }
     m_dst_tir.push_back(tr);
+    m_changed = true;
+    return DPCP_OK;
+}
+
+status flow_rule::add_dest_table(flow_table* dst_table)
+{
+    if (nullptr == dst_table) {
+        return DPCP_ERR_INVALID_PARAM;
+    }
+    m_dst_tir.push_back(dst_table);
     m_changed = true;
     return DPCP_OK;
 }
@@ -148,10 +175,11 @@ status flow_rule::apply_settings()
     memset(&mask, 0, sizeof(mask));
     mask.buf_sz = sizeof(mask.buf);
 
-    log_trace("sz: %zd ethertype: 0x%x vlan_id: 0x%x protocol: 0x%x ip_version: %x\n", mask.buf_sz,
-              m_mask.ethertype, m_mask.vlan_id, m_mask.protocol, m_mask.ip_version);
-    log_trace("src_port: 0x%x dst_port: 0x%x src_ip: 0x%x dst_ip: 0x%x\n", m_mask.src_port,
-              m_mask.dst_port, m_mask.src_ip, m_mask.dst_ip);
+    log_trace("sz: %zd ethertype: 0x%x vlan_id: 0x%x protocol: 0x%x ip_version: %x "
+              "src_port: 0x%x dst_port: 0x%x\n",
+              mask.buf_sz, m_mask.ethertype, m_mask.vlan_id, m_mask.protocol, m_mask.ip_version,
+              m_mask.src_port, m_mask.dst_port);
+
     void* prm_mc = DEVX_ADDR_OF(fte_match_param, &mask.buf, outer_headers);
     DEVX_SET(fte_match_set_lyr_2_4, prm_mc, ethertype, m_mask.ethertype);
     if (m_mask.vlan_id) {
@@ -174,10 +202,38 @@ status flow_rule::apply_settings()
         copy_ether_mac((uint8_t*)DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mc, dmac_47_16),
                        m_mask.dst_mac);
     }
-    void* p_src_ip = DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mc, src_ipv4_src_ipv6);
-    DEVX_SET(ipv4_layout, p_src_ip, ipv4, m_mask.src_ip);
-    void* p_dst_ip = DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mc, dst_ipv4_dst_ipv6);
-    DEVX_SET(ipv4_layout, p_dst_ip, ipv4, m_mask.dst_ip);
+
+    uint64_t smac = 0;
+    memcpy(&smac, m_mask.src_mac, sizeof(smac));
+    // will send SRC_MAC only if was set in mask
+    bool smac_set = smac ? true : false;
+    if (smac_set) {
+        copy_ether_mac((uint8_t*)DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mc, smac_47_16),
+                       m_mask.src_mac);
+    }
+
+    if ((m_mask.ethertype == 0xffff && m_value.ethertype == 0x0800) &&
+        (m_mask.ip_version == 0xf && m_value.ip_version == 4)) {
+        void* p_src_ip = DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mc, src_ipv4_src_ipv6);
+        void* p_dst_ip = DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mc, dst_ipv4_dst_ipv6);
+        if ((m_mask.src_ip || (m_mask.src_ip == m_mask.src.ipv4)) &&
+            (m_mask.dst_ip || (m_mask.dst_ip == m_mask.dst.ipv4))) {
+            DEVX_SET(ipv4_layout, p_src_ip, ipv4, m_mask.src_ip);
+            DEVX_SET(ipv4_layout, p_dst_ip, ipv4, m_mask.dst_ip);
+        } else {
+            DEVX_SET(ipv4_layout, p_src_ip, ipv4, m_mask.src.ipv4);
+            DEVX_SET(ipv4_layout, p_dst_ip, ipv4, m_mask.dst.ipv4);
+        }
+    }
+    if ((m_mask.ethertype == 0xffff && m_value.ethertype == 0x86DD) &&
+        (m_mask.ip_version == 0xf && m_value.ip_version == 6)) {
+        void* p_src_ip = DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mc, src_ipv4_src_ipv6);
+        void* p_dst_ip = DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mc, dst_ipv4_dst_ipv6);
+        memcpy(DEVX_ADDR_OF(ipv6_layout, p_src_ip, ipv6), m_mask.src.ipv6,
+               DEVX_FLD_SZ_BYTES(ipv6_layout, ipv6));
+        memcpy(DEVX_ADDR_OF(ipv6_layout, p_dst_ip, ipv6), m_mask.dst.ipv6,
+               DEVX_FLD_SZ_BYTES(ipv6_layout, ipv6));
+    }
 #else
     DEVX_SET(fte_match_set_lyr_2_4, prm_mc, src_ip[3], m_mask.src_ip);
     DEVX_SET(fte_match_set_lyr_2_4, prm_mc, dst_ip[3], m_mask.dst_ip);
@@ -222,10 +278,36 @@ status flow_rule::apply_settings()
         uint8_t* d = m_value.dst_mac;
         log_trace("dmac [%x:%x:%x:%x:%x:%x]\n", d[0], d[1], d[2], d[3], d[4], d[5]);
     }
-    p_src_ip = DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mv, src_ipv4_src_ipv6);
-    DEVX_SET(ipv4_layout, p_src_ip, ipv4, m_value.src_ip);
-    p_dst_ip = DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mv, dst_ipv4_dst_ipv6);
-    DEVX_SET(ipv4_layout, p_dst_ip, ipv4, m_value.dst_ip);
+
+    if (smac_set) {
+        copy_ether_mac((uint8_t*)DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mv, smac_47_16),
+                       m_value.src_mac);
+        uint8_t* d = m_value.src_mac;
+        log_trace("smac [%x:%x:%x:%x:%x:%x]\n", d[0], d[1], d[2], d[3], d[4], d[5]);
+    }
+
+    if ((m_mask.ethertype == 0xffff && m_value.ethertype == 0x0800) &&
+        (m_mask.ip_version == 0xf && m_value.ip_version == 4)) {
+        void* p_src_ip = DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mv, src_ipv4_src_ipv6);
+        void* p_dst_ip = DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mv, dst_ipv4_dst_ipv6);
+        if ((m_value.src_ip || (m_value.src_ip == m_value.src.ipv4)) &&
+            (m_value.dst_ip || (m_value.dst_ip == m_value.dst.ipv4))) {
+            DEVX_SET(ipv4_layout, p_src_ip, ipv4, m_value.src_ip);
+            DEVX_SET(ipv4_layout, p_dst_ip, ipv4, m_value.dst_ip);
+        } else {
+            DEVX_SET(ipv4_layout, p_src_ip, ipv4, m_value.src.ipv4);
+            DEVX_SET(ipv4_layout, p_dst_ip, ipv4, m_value.dst.ipv4);
+        }
+    }
+    if ((m_mask.ethertype == 0xffff && m_value.ethertype == 0x86DD) &&
+        (m_mask.ip_version == 0xf && m_value.ip_version == 6)) {
+        void* p_src_ip = DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mv, src_ipv4_src_ipv6);
+        void* p_dst_ip = DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mv, dst_ipv4_dst_ipv6);
+        memcpy(DEVX_ADDR_OF(ipv6_layout, p_src_ip, ipv6), m_value.src.ipv6,
+               DEVX_FLD_SZ_BYTES(ipv6_layout, ipv6));
+        memcpy(DEVX_ADDR_OF(ipv6_layout, p_dst_ip, ipv6), m_value.dst.ipv6,
+               DEVX_FLD_SZ_BYTES(ipv6_layout, ipv6));
+    }
 #else
     DEVX_SET(fte_match_set_lyr_2_4, prm_mv, src_ip[3], m_value.src_ip);
     DEVX_SET(fte_match_set_lyr_2_4, prm_mv, dst_ip[3], m_value.dst_ip);
@@ -254,7 +336,7 @@ status flow_rule::apply_settings()
             uint32_t tir_id = 0;
             m_dst_tir[i]->get_id(tir_id);
             DEVX_SET(dest_format_struct, dst_formats + i, destination_type,
-                     MLX5_FLOW_DESTINATION_TYPE_TIR);
+                     (dynamic_cast<tir*>(m_dst_tir[i]) ? MLX5_FLOW_DESTINATION_TYPE_TIR : MLX5_FLOW_DESTINATION_TYPE_FLOW_TABLE));
             DEVX_SET(dest_format_struct, dst_formats + i, destination_id, tir_id);
             uint32_t ud_id = DEVX_GET(dest_format_struct, dst_formats + i, destination_id);
             log_trace("tir_id[%i] 0x%x (0x%x)\n", i, tir_id, ud_id);
@@ -262,6 +344,8 @@ status flow_rule::apply_settings()
     }
     dcmd_flow.dst_tir_obj = (obj_handle*)dst_tir_obj;
     dcmd_flow.dst_formats = dst_formats;
+    dcmd_flow.modify_actions = m_modify_actions;
+    dcmd_flow.num_of_actions = m_num_of_actions;
 
     m_flow = ctx->create_flow(&dcmd_flow);
 

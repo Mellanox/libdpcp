@@ -70,6 +70,9 @@
     <ClCompile Include="src\dpcp\sq.cpp">
       <Filter>dpcp</Filter>
     </ClCompile>
+    <ClCompile Include="src\dpcp\parser_graph_node.cpp">
+      <Filter>dpcp</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\dcmd\windows\ctx.h">

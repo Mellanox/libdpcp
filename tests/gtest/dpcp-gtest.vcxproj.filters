@@ -76,6 +76,9 @@
     <ClCompile Include="dpcp\sq_tests.cpp">
       <Filter>dpcp_tests</Filter>
     </ClCompile>
+    <ClCompile Include="dpcp\parser_graph_node_tests.cpp">
+      <Filter>dpcp_tests</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common\cmn.h">

@@ -18,8 +18,10 @@ with the software product.
 
 inline size_t get_page_size()
 {
-    return sysconf(_SC_PAGESIZE);
+    long page_size = sysconf(_SC_PAGESIZE);
+    return (page_size > 0 ? (size_t)page_size : 4096);
 }
+
 size_t get_cacheline_size();
 
 #endif /* SRC_UTILS_LINUX_UTILS_H_ */

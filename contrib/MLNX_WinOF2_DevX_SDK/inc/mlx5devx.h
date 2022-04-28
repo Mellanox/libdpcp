@@ -20,7 +20,25 @@
 #endif
 
 #ifndef MP_KERNEL_MODE_CODE
+#include <sal.h>
 #include <stdint.h>
+#endif
+
+// MinGW helper
+#ifndef __deref_out
+#define __deref_out _Outptr_
+#endif
+
+#ifndef __deref_out_opt
+#define __deref_out_opt _Outptr_result_maybenull_
+#endif
+
+#ifndef __deref_out_bcount
+#define __deref_out_bcount _Outptr_result_bytebuffer_
+#endif
+
+#ifndef __out_bcount_opt
+#define __out_bcount_opt _Out_writes_bytes_opt_
 #endif
 
 #include "mlx5_ifc_devx.h"
@@ -36,7 +54,7 @@ extern "C" {
 // and PTR_ERR to extract the error code (negative)
 // Note that ibv_functions return NULL on error w/ devx_errno
 //
-#define L2W_RETURN_ERRNO   __checkReturn __success(return == 0) int
+#define L2W_RETURN_ERRNO   __checkReturn _Success_(return == 0) int
 
 __checkReturn _Ret_notnull_ int*
 devx_errno_ptr(void);
@@ -45,8 +63,6 @@ devx_errno_ptr(void);
 
 #define MLX5_DEVX_DEVICE_NAME_SIZE 128
 #define MLX5_DEVX_DEVICE_PNP_SIZE 128
-
-#define HAVE_MLX5_WIN_VF_COMM_CHANNEL 1 //VF comm channel supported in this devx.
 
 // bus, device and function
 struct devx_device_bdf
@@ -253,7 +269,7 @@ __checkReturn _Ret_maybenull_
 struct devx_obj_handle*
 devx_umem_reg(
     __in devx_device_ctx*       device,
-    __bcount(size)    void*     addr,
+    _Out_writes_bytes_to_(size, 0) void* addr,
     __in              size_t    size,
     __in              int       access,
     __out             uint32_t* id
@@ -353,6 +369,21 @@ enum MLX5_DEVX_FS_RULES
 
     // match destination IPv4 and TCP port with cvlan
     MLX5_DEVX_FS_RULE_DST_IPV4_TCP_CVLAN = (1 << 13),
+
+    // match Ethernet MAC and VLAN
+    MLX5_DEVX_FS_RULE_DST_ETH_MAC_VLAN = (1 << 14),
+
+    // match IPv6 multicast and VLAN,
+    MLX5_DEVX_FS_RULE_DST_IPV6_VLAN = (1 << 15),
+
+    // match IPv6 multicast, VLAN and IP
+    MLX5_DEVX_FS_RULE_DST_ETH_MAC_VLAN_IP = (1 << 16),
+
+    // match IPv6 multicast, VLAN and IP
+    MLX5_DEVX_FS_RULE_DST_IPV6_VLAN_IP = (1 << 17),
+
+    // match all multicast
+    MLX5_DEVX_FS_RULE_DST_ALL_MULTICAST = (1 << 18),
 };
 
 //
@@ -375,20 +406,17 @@ devx_fs_rule_del(
     __in struct devx_obj_handle* obj
 );
 
+
 //
-// devx_set_vf_comm_channel
-// action_type - see DEVX_COMM_CHANNEL_ACTION
+// devx_set_promisc_vport
+// fEnable - enable or disable promiscous mode on vport
 //
 L2W_RETURN_ERRNO
-devx_vf_comm_channel(
+devx_set_promisc_vport(
     __in                  devx_device_ctx* ctx,
-    __in                  uint16_t         action_type,
-    __in                  uint8_t          fWrite,
-    __in_bcount(inlen)    void*            in,
-    __in                  size_t           inlen,
-    __out_bcount(*outlen) void*            out,
-    __inout               size_t*          outlen
+    __in                  uint8_t          fEnable
 );
+#define HAVE_DEVXWIN_VF_PROMISC
 
 struct rte_pci_addr;
 
@@ -443,6 +471,45 @@ devx_query_hca_iseg_mapping(
     __in        devx_device_ctx*        device,
     __out       uint32_t*               cb_iseg,
     __deref_out_bcount(*cb_iseg) void** pp_iseg
+);
+
+struct devx_ptp_context;
+
+//
+//
+// devx_ptp_create
+// return devx_ptp_context to use for calculate ptp time
+// **ppPtpCtx - the new context
+// *pDevxCtx - devx adapter context
+//  flags - for future usage
+//
+L2W_RETURN_ERRNO
+devx_ptp_create(
+    __deref_out struct devx_ptp_context** ppPtpCtx,
+    __in devx_device_ctx* pDevxCtx,
+    __in uint32_t flags
+);
+
+//
+//
+// devx_ptp_destroy
+// destroy devx_ptp_context
+// *pPtpCtx - context to delete
+//
+void
+devx_ptp_destroy(
+    __in struct devx_ptp_context* pPtpCtx
+);
+
+//
+//
+// devx_ptp_query_time
+// return the calculated ptp time
+// *pPtpCtx - ptp context which was created to calculate the ptp time
+//
+__checkReturn uint64_t
+devx_ptp_query_time(
+    __in struct devx_ptp_context* pPtpCtx
 );
 
 //
@@ -724,8 +791,10 @@ devx_query_shutdown_event(
     __out struct devx_shutdown_event* info
 );
 
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 6101) // A successful path through the function does not set
+#endif
 
 //
 // dexv_ioctl_out_param
@@ -738,14 +807,17 @@ dexv_ioctl_out_param(__out_opt void* p)
     UNREFERENCED_PARAMETER(p);
 }
 
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
 
 //
 // DEVX_IOCTL_OPCODE
 //
 enum DEVX_IOCTL_OPCODE
 {
-    DEVX_IOCTL_OPCODE_RESOLVE_FROM_IP = 1,
+    DEVX_IOCTL_OPCODE_RESOLVE_FROM_IP   = 1,
+    DEVX_IOCTL_OPCODE_DUMP_PHYSICAL_MEM = 2,
 };
 
 //
@@ -784,6 +856,64 @@ devx_ioctl_resolve_from_ip(
     aData.info = info;
 
     return devx_ioctl(DEVX_IOCTL_OPCODE_RESOLVE_FROM_IP, sizeof(aData), &aData);
+}
+
+typedef struct
+{
+    uint64_t c_pages;
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4200) // Zero sized array
+#endif
+    struct
+    {
+        uint64_t index;  // 4kb index
+        uint64_t length; // contiguous length
+    }
+    pages[];
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+}
+devx_physical_memory_info;
+
+typedef struct
+{
+    devx_device_ctx*           device;
+    size_t                     length;
+    void*                      buffer;
+    size_t*                    cb_info;
+    devx_physical_memory_info* info;
+    uint8_t                    raw_dump; // just 4kb pages
+}
+DEVX_IOCTL_DUMP_PHYSICAL_MEM;
+
+//
+// devx_ioctl_dump_physical_memory
+// info == NULL - printf the pages
+//
+__inline
+L2W_RETURN_ERRNO
+devx_ioctl_dump_physical_memory(
+    __in                       devx_device_ctx*           device,
+    __in                       size_t                     length,
+    __in_bcount(length)        void*                      buffer,
+    __inout                    size_t*                    cb_info,
+    __out_bcount_opt(*cb_info) devx_physical_memory_info* info,
+    __in                       uint8_t                    raw_dump
+){
+    DEVX_IOCTL_DUMP_PHYSICAL_MEM aData;
+
+    dexv_ioctl_out_param(info);
+
+    aData.device   = device;
+    aData.length   = length;
+    aData.buffer   = buffer;
+    aData.cb_info  = cb_info;
+    aData.info     = info;
+    aData.raw_dump = raw_dump;
+
+    return devx_ioctl(DEVX_IOCTL_OPCODE_DUMP_PHYSICAL_MEM, sizeof(aData), &aData);
 }
 
 #ifdef __cplusplus

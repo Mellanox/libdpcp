@@ -15,7 +15,12 @@ with the software product.
 
 #include <bitset>
 #include <string>
+#include <cstring>
 #include <vector>
+#include <memory>
+#include <unordered_set>
+#include <typeinfo>
+#include <typeindex>
 
 #if __cplusplus < 201103L
 #include <stdint.h>
@@ -23,21 +28,13 @@ with the software product.
 #include <cstdint>
 #endif
 
-#if __linux__
-#include <tr1/functional>
-#include <tr1/unordered_map>
-
-using std::tr1::function;
-using std::tr1::unordered_map;
-#else
 #include <functional>
 #include <unordered_map>
 
 using std::function;
 using std::unordered_map;
-#endif
 
-static const char* dpcp_version = "1.1.17";
+static const char* dpcp_version = "1.1.25";
 
 #if defined(__linux__)
 typedef void* LPOVERLAPPED;
@@ -61,9 +58,26 @@ class provider;
 class uar;
 class umem;
 class compchannel;
+struct modify_action;
 } // namespace dcmd
 
 namespace dpcp {
+
+// DPCP forward declarations
+class adapter;
+class flow_table;
+class flow_group;
+class flow_rule;
+class flow_action;
+class flow_rule_ex;
+class flow_matcher;
+class pd;
+class td;
+class uar_collection;
+struct flow_table_attr;
+struct flow_group_attr;
+struct flow_rule_attr_ex;
+struct uar_t;
 
 enum status {
     DPCP_OK = 0, /**< Operation finished successfully*/
@@ -86,6 +100,7 @@ enum status {
 enum dpcp_dpp_protocol {
     DPCP_DPP_2110 = 0x0, /**< 16 bit RTP sequence number */
     DPCP_DPP_2110_EXT = 0x1, /**< 32 bit RTP sequence number */
+    DPCP_DPP_ORAN_ECPRI = 0x4, /**< ORAN eCPRI protocol */
     DPCP_DPP_NOT_INITIALIZED
 };
 
@@ -165,12 +180,6 @@ public:
     status query(void* in, size_t in_sz, void* out, size_t& out_sz);
     virtual status destroy();
 };
-
-class pd;
-class td;
-class adapter;
-class uar_collection;
-struct uar_t;
 
 typedef dcmd::uar* uar;
 
@@ -445,6 +454,64 @@ public:
      * @retval Returns DPCP_OK on success.
      */
     virtual ~reserved_mkey();
+};
+
+/**
+ * @brief class ref_mkey - References memory region associated with another (parent) memory key.
+ *
+ * This class is used to pass subregions of one or more registered memory
+ * regions into @ref pattern_mkey. Creation method validates that memory region
+ * specified by address and length is a subregion of parent's memory.
+ */
+class ref_mkey : public mkey {
+    friend class adapter;
+    void* m_address;
+    size_t m_length;
+    uint32_t m_idx; // memory key index
+    mkey_flags m_flags;
+
+public:
+    /**
+     * @brief Constructor of ref_mkey
+     *
+     * @param [in]  ad              Pointer to Adapter
+     * @param [in]  address         Virtual Address
+     * @param [in]  length          Address Length in bytes
+     */
+    ref_mkey(adapter* ad, void* address, size_t length);
+
+    /**
+     * @brief Creates Memory Key referncing parent key memory
+     *
+     * @param [in]  parent          Parent memory key
+     * @retval Returns DPCP_OK on success.
+     */
+    status create(mkey* parent);
+
+    /**
+     * @brief Returns virtual address of memory region.
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    virtual status get_address(void*& address); // override;
+    /**
+     * @brief Returns length of memory region
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    virtual status get_length(size_t& len); // override;
+    /**
+     * @brief Returns memory region flags
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    virtual status get_flags(mkey_flags& flags); // override;
+    /**
+     * @brief Returns MKEY ID created by create()
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    virtual status get_id(uint32_t& id); // override;
 };
 
 /**
@@ -738,6 +805,7 @@ struct rq_attr {
     size_t wqe_num; // Number of WQEs in RQ, must be power of 2
     size_t wqe_sz; // WQE size, i.e. number of DS (16B) in each RQ WQE, must be power of 2
     uint8_t ts_format;
+    uint8_t dpp_scatter_offset;
 };
 
 enum {
@@ -1029,19 +1097,616 @@ public:
     }
 };
 
+/**
+ * @brief Represent flow table types
+ */
+enum flow_table_type {
+    FT_RX = 0x0, /**< Flow table from type NIC receive */
+    FT_TX = 0x1, /**< Flow table from type NIC transmit */
+    FT_END,
+};
+
+/**
+ * @brief Represent flow table operation modes
+ */
+enum flow_table_op_mod {
+    FT_OP_MOD_NORMAL = 0x0, /**< Regular flow table */
+};
+
+/**
+ * @brief Represent flow table action when packet missed all rules.
+ */
+enum flow_table_miss_action {
+    FT_MISS_ACTION_DEF = 0x0, /**< Default miss table action according to table type default:
+                                   FT_RX - drop packet.
+                                   FT_TX - forward packet to NIC Vport. */
+    FT_MISS_ACTION_FWD = 0x1, /**< Forward to specific table identified by @ref table_miss */
+};
+
+/**
+ * @brief Represent flow table flags.
+ */
+enum flow_table_flags {
+    FT_EN_REFORMAT = 0x1, /**< If set, flow table supports Reformat action */
+    FT_EN_DECAP = 0x2,    /**< If set, flow table supports DECAP actions */
+};
+
+/**
+ * @brief Represent flow table action when packet missed all rules.
+ */
+struct flow_table_attr {
+    uint32_t flags; /**< Flow table flags define in @ref flow_table_flags */
+    std::shared_ptr<flow_table> table_miss; /**< Valid when @ref FT_MISS_ACTION_FWD is set.
+                                            Identify the next table in case of miss in the current table lookup.
+                                            Table type of miss_table_id must be the same as table type of
+                                            current table. */
+    uint8_t log_size; /**< Log 2 of the table size (given in number of flows) */
+    uint8_t level; /**< Location in table chaining hierarchy, only root table can be 0.*/
+    flow_table_type type;
+    flow_table_op_mod op_mod;
+    flow_table_miss_action def_miss_action;
+
+    flow_table_attr() :
+        flags(0),
+        log_size(0),
+        level(0)
+    {
+    }
+};
+
+/**
+ * @brief flow table class.
+ */
+class flow_table : public obj {
+// Allow adapter to create kernel flow table with the private constructor.
+friend class adapter;
+
+private:
+    flow_table_attr m_attr;
+    uint32_t m_table_id;
+    bool m_is_initialized;
+    bool m_is_kernel_table;
+    std::unordered_set<flow_group*> m_groups;
+
+public:
+    /**
+     * @brief Flow table constructor.
+     *
+     * @param [in] ctx: dcmd context.
+     * @param [in] params: plaw table parameters.
+     *
+     * @note: The constrructor will not create the flow table object
+     *        in the HW, need to call to @ref create to allocate it on the HW.
+     */
+    flow_table(dcmd::ctx* ctx, const flow_table_attr& attr);
+    /**
+     * @brief Copy constructor of flow group.
+     *
+     * @note: Copy of flow table object is not allowed.
+     */
+    flow_table(const flow_table& table) = delete;
+    /**
+     * @brief Assignment operator of flow group.
+     *
+     * @note: Copy of flow table object is not allowed.
+     */
+    flow_table& operator=(const flow_table& table) = delete;
+    /**
+     * @brief Creates flow table object in HW.
+     *
+     * @retval Returns @ref dpcp::status with the status code.
+     */
+    status create();
+    /**
+     * @brief Query flow table object.
+     *
+     * @retval Returns @ref dpcp::status with the status code.
+     */
+    status query(flow_table_attr& attr);
+    /**
+     * @brief Get flow table id.
+     *
+     * @param [out] table_id: flow table id.
+     *
+     * @retval Returns @ref dpcp::status with the status code.
+     */
+    status get_table_id(uint32_t& table_id) const;
+    /**
+     * @brief Get flow table level.
+     *
+     * @param [out] table_level: flow table level.
+     *
+     * @retval Returns @ref dpcp::status with the status code.
+     */
+    status get_table_level(uint8_t& table_level) const;
+    /**
+     * @brief Get flow table type.
+     *
+     * @retval Returns @ref dpcp::status with the status code.
+     */
+    status get_table_type(flow_table_type& table_type) const;
+    /**
+     * @brief Check if root table.
+     *
+     * @retval Returns true or false.
+     */
+    bool is_kernel_table() const;
+    /**
+     * @brief Add flow group to flow table.
+     *
+     * @param [in] params: Flow group parameters.
+     * @param [out] group: Pointer to flow group.
+     *
+     * @retval Returns @ref dpcp::status with the status code.
+     */
+    status add_flow_group(const flow_group_attr& attr, flow_group*& group);
+    /**
+     * @brief Remove flow group from flow table.
+     *
+     * @param [in/out] group: Pointer to flow group.
+     *
+     * @retval Returns @ref dpcp::status with the status code.
+     */
+    status remove_flow_group(flow_group*& group);
+    /**
+     * @brief Flow table distructor
+     */
+    virtual ~flow_table();
+
+private:
+    /**
+     * @brief Flow table constructor.
+     *
+     * @param [in] ctx: dcmd context.
+     * @param [in] type: flow table type.
+     *
+     * @note: This constractor should be used only for kernel root table.
+     */
+    flow_table(dcmd::ctx* ctx, flow_table_type type);
+    status set_miss_action(void* in);
+};
+
+/**
+ * @brief Represent flex parser sample field.
+ */
+struct parser_sample_field {
+    uint32_t val; /**< Sample value to match/mask */
+    uint32_t id; /**< Sample id received by @ref get_sample_ids from class @ref parser_graph_node  */
+};
+
+/**
+ * @brief Represent layer 2 match params.
+ */
+struct match_params_lyr_2 {
+    uint8_t src_mac[8];
+    uint8_t dst_mac[8];
+    uint16_t ethertype;
+    uint16_t first_vlan_id;
+};
+
+/**
+ * @brief Represent layer 3 match params.
+ */
+struct match_params_lyr_3 {
+    uint32_t src_ip;
+    uint32_t dst_ip;
+    uint8_t ip_protocol;
+    // TODO: should handle ipv6?
+};
+
+enum match_params_lyr_4_type {
+    NONE = 0x0,
+    TCP,
+    UDP,
+};
+
+/**
+ * @brief Represent layer 4 match params abstruct.
+ */
+struct match_params_lyr_4 {
+    match_params_lyr_4_type type;
+    uint16_t src_port;
+    uint16_t dst_port;
+    // Add union for l4 type specific params.
+};
+
+// TODO: need to check if and where to do htobe.
+/**
+ * @brief Represent match params.
+ */
+struct match_params_ex {
+    match_params_lyr_2 match_lyr2;
+    match_params_lyr_3 match_lyr3;
+    match_params_lyr_4 match_lyr4;
+    std::vector<parser_sample_field> match_parser_sample_field_vec; /**< Samples received by @ref parser_graph_node. */
+
+    match_params_ex()
+    {
+        memset(&match_lyr2, 0, sizeof(match_lyr2));
+        memset(&match_lyr3, 0, sizeof(match_lyr3));
+        memset(&match_lyr4, 0, sizeof(match_lyr4));
+    }
+};
+
+/**
+ * @brief Represent match criteria enable flags.
+ */
+enum flow_group_match_criteria_enable {
+    FG_MATCH_OUTER_HDR = 0x1, /**< Enable match on outer header fields */
+    FG_MATCH_PARSER_FIELDS = 0x20, /**< Enable match on samples received by @ref parser_graph_node.*/
+};
+
+/**
+ * @brief Represent match params.
+ */
+ // TODO: On root table we do not need all params.
+struct flow_group_attr {
+    uint32_t start_flow_index; /**< The first flow rule included in the group.*/
+    uint32_t end_flow_index; /**< The last flow rule included in the group.*/
+    uint8_t match_criteria_enable; /**< Bitmask representing which of the headers and parameters in
+                                        match_criteria are used in defining the Flow,
+                                        @ref flow_group_match_criteria_enable. */
+    match_params_ex match_criteria; /**< The match parameters defining all the flows belonging to the group. */
+
+    flow_group_attr() :
+        start_flow_index(0),
+        end_flow_index(0),
+        match_criteria_enable(0)
+    {
+    }
+};
+
+/**
+ * @brief Represent flow group assosiated with @ref calss flow_table.
+ *        A group define a set of rules that has the same attributes to match on.
+ *        The cratiria for the match is the same for all rules in the same group
+ *        and only the value is changed between the rules.
+ */
+class flow_group : public obj {
+    // Allow creating flow group only from flow table.
+    friend class flow_table;
+
+    flow_group_attr m_attr;
+    const flow_table* m_table;
+    uint32_t m_group_id;
+    bool m_is_initialized;
+    std::unordered_set<flow_rule_ex*> m_rules;
+    flow_matcher* m_matcher;
+
+public:
+    /**
+     * @brief Copy constructor of flow group.
+     *
+     * @note: Copy of flow group object is not allowed.
+     */
+    flow_group(const flow_group& group) = delete;
+    /**
+     * @brief Assignment operator of flow group.
+     *
+     * @note: Copy of flow group object is not allowed.
+     */
+    flow_group& operator=(const flow_group&) = delete;
+    /**
+     * @brief Creates flow group object in HW
+     *
+     * @note the flow group configurations will not be applied in the HW untill
+     *       the creat() will be called.
+     *
+     * @retval Returns @ref dpcp::status with the status code.
+     */
+    status create();
+    /**
+     * @brief Add flow rule to group.
+     *
+     * @param [in] attr: flow rule attr.
+     * @param [out] rule: flow rule object.
+     *
+     * @retval Returns @ref dpcp::status with the status code.
+     */
+    status add_flow_rule(const flow_rule_attr_ex& attr, flow_rule_ex*& rule);
+     /**
+     * @brief Remove flow rule from group.
+     *
+     * @param [in/out] rule: flow rule.
+     *
+     * @retval Returns @ref dpcp::status with the status code.
+     */
+    status remove_flow_rule(flow_rule_ex*& rule);
+    /**
+     * @brief Get group id.
+     *
+     * @param [out] group_id: group id
+     *
+     * @retval Returns @ref dpcp::status with the status code
+     */
+    status get_group_id(uint32_t& group_id) const;
+    /**
+     * @brief Get table id that the group was added to.
+     *
+     * @param [out] table_id: table id
+     *
+     * @retval Returns @ref dpcp::status with the status code
+     */
+    status get_table_id(uint32_t& table_id) const;
+    /**
+     * @brief Get group match criteria.
+     *
+     * @param [out] match: match params.
+     *
+     * @retval Returns @ref dpcp::status with the status code
+     */
+    status get_match_criteria(match_params_ex& match) const;
+    /**
+     * @brief Distructor of flow group.
+     */
+    virtual ~flow_group();
+
+private:
+    /**
+     * @brief Flow group constructor
+     *
+     * @param [in] ctx: dcmd context
+     * @param [in] params: plow group parameters
+     *
+     * @note: The constrructor is private, groups can be constructed only by @ref flow_table::add_flow_group.
+     *        The constrructor will not allocate the object in the HW, should call @ref flow_group::create()
+     */
+    flow_group(dcmd::ctx* ctx, const flow_group_attr& attr, const flow_table* table);
+};
+
+enum flow_action_reformat_anchor {
+    MAC_START = 0x1,
+    IP_START = 0x7,
+    TCP_UDP_START = 0x9,
+};
+
+enum flow_action_modify_field {
+    OUT_SMAC_47_16 = 0x1,
+    OUT_SMAC_15_0 = 0x2,
+    OUT_ETHERTYPE = 0x3,
+    OUT_DMAC_47_16 = 0x4,
+    OUT_DMAC_15_0 = 0x5,
+    OUT_IP_DSCP = 0x6,
+    OUT_TCP_FLAGS = 0x7,
+    OUT_TCP_SPORT = 0x8,
+    OUT_TCP_DPORT = 0x9,
+    OUT_IP_TTL = 0xa,
+    OUT_UDP_SPORT = 0xb,
+    OUT_UDP_DPORT = 0xc,
+};
+
+enum flow_action_modify_type {
+    SET = 0x1,
+};
+
+enum flow_action_reformat_type {
+    INSERT_HDR = 0xf,
+};
+
+/**
+  * @brief: Flow action reformat insert attributes
+  */
+struct flow_action_reformat_insert_attr {
+    flow_action_reformat_type type; /**< Flow action reformat type, must be set to
+                                         @ref flow_action_reformat_type::INSERT_HDR
+                                         Note: this field should always be first.  */
+    flow_action_reformat_anchor start_hdr; /**< Indicates the header used to reference the location of the
+                                                inserted header */
+    uint8_t offset; /**< Indicates the offset of the inserted header from the reference point defined in
+                         @ref start_hdr, given in Bytes */
+    std::bitset<10> data_len; /**< Data length to insert */
+    void* data; /**< Data should hold the header to insert */
+};
+
+/**
+  * @brief: Flow action reformat attributes.
+  */
+union flow_action_reformat_attr {
+    flow_action_reformat_type type; /**< Flow action reformat type (insert, remove ...). */
+    flow_action_reformat_insert_attr insert; /**< list of modify actions to perform */
+
+    // TODO: GalN to decide how to handle this.
+    // I am not sure this is the way to go with, we might need to change the union to inheritance.
+    flow_action_reformat_attr() { };
+};
+
+/**
+  * @brief: Flow action modify from type set attributes.
+  */
+struct flow_action_modify_set_attr {
+    flow_action_modify_type type; /**< Flow action modify type, must be set to @ref flow_action_modify_type::SET
+                                       Note: this field should always be first.*/
+    flow_action_modify_field field; /**< Field to be modifyed */
+    std::bitset<5> offset; /**< The offset inside the field */
+    std::bitset<5> length; /**< Number of bits to be written starting from offset. 0
+                                means length of 32 bits. */
+    uint32_t data; /**< The data to be written on the specific field.
+                         Data must be allocated starting from bit 0. */
+};
+
+/**
+  * @brief: Union represent flow_action_modify attributes by type.
+  *         To support new modify types (copy, add) please add attributes
+  *         struct to the union.
+  *
+  * @note: All modify types attributes bust have @flow_action_modify_type field fisrt.
+  */
+union flow_action_modify_type_attr {
+    flow_action_modify_type type; /**< Flow action modify type (set, add, copy) */
+    flow_action_modify_set_attr set; /**< Flow action modify from type set attributes */
+    // Add new flow_action_modify type here.
+
+    // TODO: GalN to decide how to handle this.
+    // I am not sure this is the way to go with, we might need to change the union to inheritance.
+    flow_action_modify_type_attr() { };
+};
+
+/**
+  * @brief: Flow action modify attributes.
+  */
+struct flow_action_modify_attr {
+    flow_table_type table_type; /**< Flow table type that the action will be applied on. */
+    std::vector<flow_action_modify_type_attr> actions; /**< list of modify actions to perform */
+};
+
+/**
+  * @brief: Flow action generator.
+  */
+class flow_action_generator {
+    dcmd::ctx* m_ctx;
+
+public:
+    flow_action_generator(dcmd::ctx* ctx);
+    /**
+     * @brief Create flow action tag, each packet matched on the flow rule assosiated
+     *        With this flow action will be marked with flow tag id that will be accessible
+     *        in the complition queue element.
+     *
+     * @param [in] id: Flow tag id.
+     *
+     * @retval flow_action action fointer or nullptr.
+     */
+    std::shared_ptr<flow_action> create_flow_action_tag(uint32_t id);
+    /**
+     * @brief Create flow action forward, will forward the packets upon match to destination list.
+     *        The destinations ca be from diferent type (tir, flow_table)
+     *
+     * @param [in] dests: Destination ojects, currently support @ref tir, @ref flow_table.
+     *
+     * @retval flow_action action fointer or nullptr.
+     */
+    std::shared_ptr<flow_action> create_flow_action_fwd(std::vector<obj*> dests);
+    /**
+     * @brief Create flow action reformat, allow to change the packet header.
+     *
+     * @param [in] attr: Reformat action attributes.
+     *
+     * @retval flow_action action fointer or nullptr.
+     */
+    std::shared_ptr<flow_action> create_flow_action_reformat(flow_action_reformat_attr& attr);
+    /**
+     * @brief Create flow action modify, allow to modify the packet header fields.
+     *
+     * @param [in] attr: Reformat action attributes.
+     *
+     * @retval flow_action action fointer or nullptr.
+     */
+    std::shared_ptr<flow_action> create_flow_action_modify(flow_action_modify_attr& attr);
+};
+
+/**
+ * @brief flow_rule_ex attributes.
+ */
+struct flow_rule_attr_ex {
+   uint16_t priority; /*< flow rule priority */
+   match_params_ex match_value; /*< flow rule match value, should be same fields as the masks provided to flow_group. */
+   uint32_t flow_index; /*< The location of the rule on the flow table, index 0 will matched first. */
+   std::vector<std::shared_ptr<flow_action>> actions; /* Flow actions to perform on the packet when rule matched */
+
+   flow_rule_attr_ex() :
+       priority(0),
+       flow_index(0)
+   {
+   }
+};
+
+/**
+ * @brief class flow_rule_ex.
+ */
+class flow_rule_ex : public obj {
+    // Allow creating flow rule only from flow group.
+    friend class flow_group;
+    typedef unordered_map<std::type_index, std::shared_ptr<flow_action>> action_map_t;
+
+private:
+    match_params_ex m_match_value;
+    uint16_t m_priority;
+    bool m_is_initialized;
+    const flow_table* m_table;
+    const flow_group* m_group;
+    uint32_t m_flow_index;
+    bool m_is_valid_actions;
+    action_map_t m_actions; /*< unordered_map, key is the the object type, value is shared_ptr to obj */
+    const flow_matcher* m_matcher;
+    flow_rule* m_flow;
+
+public:
+    /**
+     * @brief Copy constructor of flow rule.
+     *
+     * @note: Copy of flow rule object is not allowed.
+     */
+    flow_rule_ex(const flow_rule_ex& fr) = delete;
+    /**
+     * @brief Assignment operator of flow rule.
+     *
+     * @note: Copy of flow rule object is not allowed.
+     */
+    const flow_rule_ex& operator=(const flow_rule_ex& fr) = delete;
+    /**
+     * @brief Get flow_rule match values
+     *
+     * @param [out] match_val: Flow Rule Match Value
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    status get_match_value(match_params_ex& match_val);
+    /**
+     * @brief Get flow rule priority.
+     *
+     * @param [out] priority: priority.
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    status get_priority(uint16_t& priority);
+    /**
+     * @brief Create flow rule HW object.
+     *
+     * @note: only after create is called the flow rule settings will actually configured
+     *        on the HW
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    status create();
+    virtual ~flow_rule_ex();
+
+private:
+    /**
+     * @brief flow rule extended constructor.
+     *        Costructor is private, can create flow rule only from @ ref flow_group::add_flow_rule.
+     */
+     flow_rule_ex(dcmd::ctx* ctx, const flow_rule_attr_ex& attr,
+        const flow_table* table, const flow_group* group, const flow_matcher* matcher);
+
+     // Help functions.
+     status alloc_in_buff(size_t& in_len, void*& in);
+     void free_in_buff(void*& in);
+     status config_flow_rule(void* in);
+     status create_root_flow_rule();
+};
+
 struct match_params {
     uint8_t dst_mac[8]; // 6 bytes + 2 (EOS+alignment)
+    uint8_t src_mac[8]; // 6 bytes + 2 (EOS+alignment)
     uint16_t ethertype;
     uint16_t vlan_id; // 12 bits
-    uint32_t dst_ip;
-    uint32_t src_ip;
+    uint32_t dst_ip; // deprecated
+    uint32_t src_ip; // deprecated
     uint16_t dst_port;
     uint16_t src_port;
     uint8_t protocol;
     uint8_t ip_version; // 4 bits
+    union {
+        uint32_t ipv4;
+        uint8_t ipv6[16];
+    } dst;
+    union {
+        uint32_t ipv4;
+        uint8_t ipv6[16];
+    } src;
 };
 
-typedef std::vector<tir*> dst_tir_vec;
+typedef std::vector<obj*> dst_tir_vec;
 /**
  * @brief class flow_rule - Represent receive flow rule
  *
@@ -1058,6 +1723,8 @@ class flow_rule : public obj {
     uint32_t m_flow_id;
     uint16_t m_priority;
     bool m_changed;
+    dcmd::modify_action* m_modify_actions;
+    size_t m_num_of_actions;
 
 public:
     flow_rule(dcmd::ctx* dcmd_ctx, uint16_t priority, match_params& match_criteria);
@@ -1111,6 +1778,8 @@ public:
      * @retval Returns DPCP_OK on success.
      */
     status add_dest_tir(tir* dst_tir);
+
+    status add_dest_table(flow_table* dst_table);
     /**
      * @brief Remove DPCP tir from flow rule destination list
      *
@@ -1137,6 +1806,9 @@ public:
      * @retval Returns DPCP_OK on success.
      */
     status get_tir(uint32_t index, tir*& tr);
+    // TODO: This is teporary API, in GA flow_rule will not be part of DPCP and will be replaced by
+    // flow_rule_ex, if we decide to keep it for backward comp, rethink is needed for this API.
+    status set_modify_header(dcmd::modify_action * modify_actions, size_t num_of_actions);
     /**
      * @brief Apply flow settings that were configured for this flow rule.
      * Notice: only after apply is called flow settings will actually configured
@@ -1273,17 +1945,76 @@ typedef struct adapter_hca_capabilities {
     uint16_t lro_min_mss_size; /**< the minimal size of TCP segment required for coalescing */
     uint8_t lro_timer_supported_periods[4]; /**< Array of supported LRO timer periods in
                                                microseconds. */
+    bool dpp; /** <is Direct Packet Placement supported */
+    uint64_t dpp_wire_protocol; /**< Direct Packet Placement protocol. List of supported protocols @ref dpcp_dpp_protocol */
+    uint16_t dpp_max_scatter_offset; /**< Direct Packet Placement protocol max scatter offset supported */
+    bool general_object_types_parse_graph_node; /**< If set, creation of programmable parse graph
+                                                   node is supported. */
+    uint32_t parse_graph_node_in; /**< Bitmask for the supported protocol headers that programmable
+                                     parse graph may use as existing nodes in the parse graph and
+                                     define an input arcs. See @ref
+                                     parse_graph_arc_node_index ENUM. */
+    uint16_t
+        parse_graph_header_length_mode; /**< Bitmask indicating which modes are supported
+                                             for @ref parser_graph_node_attr.header_length_mode
+                                             in parser graph node object. Set bit indicates it is
+                                             supported. See @ref parse_graph_node_len_mode ENUM. */
+    uint16_t
+        parse_graph_flow_match_sample_offset_mode; /**< Bitmask indicating which modes are supported
+                                                        for flow_match_sample_offset_mode in parser
+                                                        graph node object. Set bit indicates it is
+                                                        supported. See @ref
+                                                        parse_graph_flow_match_sample_offset_mode
+                                                        ENUM. */
+    uint8_t max_num_parse_graph_arc_in; /**< Maximal number of input arcs supported for a single
+                                           parser graph node object. */
+    uint8_t
+        max_num_parse_graph_flow_match_sample; /**< Maximal number of flow match samples supported
+                                                    for a single parser graph node object. */
+    bool parse_graph_flow_match_sample_id_in_out; /**< If set, the device supports setting the value
+                                                     of the @ref
+                                                     parse_graph_flow_match_sample_attr.field_id.
+                                                       If set the device will do best effort to use
+                                                     the same field id. */
+    uint16_t
+        max_parse_graph_header_length_base_value; /**< Maximal value for the header length base. */
+    uint8_t
+        max_parse_graph_flow_match_sample_field_base_offset_value; /**< Maximal value for match
+                                                                      sample field base offset. */
+    uint8_t
+        parse_graph_header_length_field_mask_width; /**< Number of valid bits in @ref
+                                                       parser_graph_node_attr.header_length_field_mask,
+                                                       For example, value 5 indicates bits[4:0]
+                                                       are valid*/
+    uint8_t max_reformat_insert_size; /**< Maximum buffer size in reformat insert action */
+    uint8_t max_reformat_insert_offset; /**< Maximum offset from anchor in reformat insert action */
+
+    bool nic_flow_table_cap_enabled; /**< Capability to query flow table HCH.cap */
+    uint32_t nic_receive_max_steering_depth;  /**< Capability to query flow table HCH.cap */
+    uint8_t log_max_packet_reformat_context;
+
+    // TODO: reconfirm flags type, need to think how to seperate flow tales type cap.
+    // flow table from type RX capabilities.
+    bool ft_support;  /**< is RX flow table supported */
+    bool flow_tag;  /**< is flow tag supported */
+    bool flow_modify_en; /**< is modify header supported */
+    bool reformat; /**< is reformat header supported */
+    bool reformat_and_modify_action; /**< is reformat and modify supported together for the same rule supported */
+    bool reformat_and_fwd_to_table; /**< is reformat and forward to flow table supported
+                                         together for the same rule supported */
+    uint8_t log_max_ft_size; /**< flow table RX max log size */
+    uint8_t log_max_modify_header_context; /**< flow table RX max modify context */
+    uint32_t max_modify_header_actions; /**< fow table RX max log size */
+    uint32_t max_ft_level; /**< fow table RX max level */
+    bool reformat_insert; /**< fow table RX, is insert header supported */
+    uint8_t log_max_ft_num; /**< fow table RX, max flow tables */
+    uint8_t log_max_flow; /**< fow table RX, max flows total for this type */
+    bool set_action_field_support_outer_ether_type; /**< is modify set action supported on ethertype outer header */
 } adapter_hca_capabilities;
 
-#if __linux__
-typedef std::tr1::unordered_map<int, void*> caps_map_t;
-typedef std::tr1::function<void(adapter_hca_capabilities* external_hca_caps, const caps_map_t& caps_map)>
-    cap_cb_fn;
-#else
 typedef std::unordered_map<int, void*> caps_map_t;
 typedef std::function<void(adapter_hca_capabilities* external_hca_caps, const caps_map_t& caps_map)>
     cap_cb_fn;
-#endif
 
 typedef enum {
     QOS_NONE,
@@ -1342,7 +2073,7 @@ public:
 };
 
 /**
- * @brief class striding_rq - Handles Striding ReceiveQueue
+ * @brief class pp_sq - Handles Send Queue with Packet Pacing rate
  *
  */
 class pp_sq : public sq {
@@ -1407,11 +2138,261 @@ public:
      * @retval Returns DPCP_OK on success.
      */
     status get_uar_page(volatile void*& uar_page);
+    /**
+     * @brief Returns Send Queue WQ buffer size in bytes
+     *
+     * @retval WQ buffer size.
+     */
     inline size_t get_wq_buf_sz() const
     {
         return m_wq_buf_sz_bytes;
     }
+    /**
+     * @brief Modifies Send Queue for new Packet Pacing rate
+     * @param [in] attr  Send Queue attributes, qos_attributes with packet pacing is mandatory
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    status modify(sq_attr& attr);
     virtual status destroy();
+};
+
+/**
+ * @brief: Header tunneling type for parser graph node sampling.
+ *
+ * The same parser node can be used for parsing a header that
+ * will be in an outer part of a tunnel or in inner of a tunnel.
+ * Those are the indicators which of the options will be sampled.
+ */
+enum parse_graph_flow_match_sample_tunnel_mode {
+    PARSE_GRAPH_FLOW_MATCH_SAMPLE_TUNNEL_OUTER = 0x0, /**< The outer part of the tunneled header. */
+    PARSE_GRAPH_FLOW_MATCH_SAMPLE_TUNNEL_INNER = 0x1, /**< The inner part of the tunneled header. */
+    PARSE_GRAPH_FLOW_MATCH_SAMPLE_TUNNEL_FIRST = 0x2 /**< Not a tunneled header. */
+};
+
+/**
+ * @brief: Length mode of parser graph node.
+ *
+ * Defines the mode in which header length is calculated.
+ */
+enum parse_graph_node_len_mode {
+    PARSE_GRAPH_NODE_LEN_FIXED =
+        0x0, /**< The header has a fixed size defined by the protocol standard;
+                  Header length = @ref parser_graph_node_attr.header_length_base_value */
+    PARSE_GRAPH_NODE_LEN_FIELD =
+        0x1, /**< The header includes a field indicating the exact header length;
+                  Header length = @ref parser_graph_node_attr.header_length_base_value +
+                  <length field> << @ref parser_graph_node_attr.header_length_field_shift */
+    PARSE_GRAPH_NODE_LEN_BITMASK =
+        0x2 /**< The header includes a set of flags indicating which optional fields
+                 are included;
+                 Header length = @ref parser_graph_node_attr.header_length_base_value +
+                 <number of set flags> << @ref parser_graph_node_attr.header_length_field_shift */
+};
+
+/**
+ * @brief: Offset mode for parser graph node samples.
+ *
+ * Defines the mode in which the offset of the sampled field for flow match is calculated.
+ */
+enum parse_graph_flow_match_sample_offset_mode {
+    PARSE_GRAPH_SAMPLE_OFFSET_FIXED =
+        0x0, /**< The field has a fixed offset relative to the start of the header
+                  defined by the protocol standard;
+                  Sample offset = @ref parse_graph_flow_match_sample_attr.field_base_offset */
+    PARSE_GRAPH_SAMPLE_OFFSET_FIELD =
+        0x1, /**< The header includes a field indicating the offset of the sampled field;
+                  Sample offset = @ref parse_graph_flow_match_sample_attr.field_base_offset +
+                  <offset field> << @ref parse_graph_flow_match_sample_attr.field_offset_shift */
+    PARSE_GRAPH_SAMPLE_OFFSET_BITMASK =
+        0x2 /**< The header includes a set of flags indicating which optional fields
+                 are included, the sample field offset depends on the number of
+                 existing optional fields;
+                 Sample offset = @ref parse_graph_flow_match_sample_attr.field_base_offset +
+                 <number of set flags> << @ref parse_graph_flow_match_sample_attr.field_offset_shift
+              */
+};
+
+/**
+ * @brief: Parser graph node index for an input/output arc.
+ */
+enum parse_graph_arc_node_index {
+    PARSE_GRAPH_ARC_NODE_NULL = 0x0,
+    PARSE_GRAPH_ARC_NODE_HEAD = 0x1,
+    PARSE_GRAPH_ARC_NODE_MAC = 0x2,
+    PARSE_GRAPH_ARC_NODE_IP = 0x3,
+    PARSE_GRAPH_ARC_NODE_GRE = 0x4,
+    PARSE_GRAPH_ARC_NODE_UDP = 0x5,
+    PARSE_GRAPH_ARC_NODE_MPLS = 0x6,
+    PARSE_GRAPH_ARC_NODE_TCP = 0x7,
+    PARSE_GRAPH_ARC_NODE_VXLAN_GPE = 0x8,
+    PARSE_GRAPH_ARC_NODE_GENEVE = 0x9,
+    PARSE_GRAPH_ARC_NODE_IPSEC_ESP = 0xa,
+    PARSE_GRAPH_ARC_NODE_IPV4 = 0xb,
+    PARSE_GRAPH_ARC_NODE_IPV6 = 0xc,
+    PARSE_GRAPH_ARC_NODE_PROGRAMMABLE = 0x1f,
+};
+
+/**
+ * @brief: Parser graph node arc attributes.
+ */
+struct parse_graph_arc_attr {
+    uint16_t compare_condition_value; /**< The parser will follow this arc if the data in this field
+                                         is equal to the field indicating the next header type in
+                                         the source header. Bits beyond the size of the next header
+                                         field are reserved*/
+    bool start_inner_tunnel; /**< When set, the source header is considered the end of an
+                                encapsulation header, and the following header will be considered
+                                part of the encapsulated (inner) packet. When cleared, the
+                                encapsulation status (inner/outer) of the
+                                  header is unmodified (from previous header). */
+    uint8_t arc_parse_graph_node; /**< For an input arc, indicates the parse graph node leading to
+                                     the programmed node. For an output arc, indicates the parse
+                                     graph node to which the programmed node leads.
+                                       See node indexes in @ref parse_graph_arc_node_index. */
+    uint32_t parse_graph_node_handle; /**< Programmable parse graph node handle. Valid when @ref
+                                         arc_parse_graph_node is @ref
+                                         PARSE_GRAPH_ARC_NODE_PROGRAMMABLE. */
+};
+
+/**
+ * @brief: Parser graph node flow match sample attributes.
+ */
+struct parse_graph_flow_match_sample_attr {
+    bool enabled; /**< When set, the parser should sample an additional field used for
+                       flow matching and packet header modifications. */
+    uint16_t field_offset; /**< Offset of the field indicating the sample field offset (explicit
+                              offset or bitmask), from the start of the header. Given in bits. Valid
+                              only if @ref enabled is set. For @ref offset_mode @ref
+                              PARSE_GRAPH_SAMPLE_OFFSET_FIXED, this field is reserved. */
+    std::bitset<4> offset_mode; /**< Defines the mode in which the offset of the sampled field for
+                                   flow match is calculated, see modes in @ref
+                                   parse_graph_flow_match_sample_offset_mode. */
+    uint32_t field_offset_mask; /**< Bitmask for the field indicating the sample field location
+                                     (explicit offset or bitmask). Cleared bits in the mask will
+                                   clear the corresponding bits in the field location.
+                                     Valid only if @ref enabled is set. */
+    std::bitset<4>
+        field_offset_shift; /**< Indicates the ratio between the sample field location (explicit
+                                 offset or calculated by bitmask) units and bytes. Offset will be
+                                 multiplied by 2^field_offset_shift to get the sample field offset
+                               in bytes. Valid only if @ref enabled is set. */
+    uint8_t
+        field_base_offset; /**< For @ref offset_mode @ref PARSE_GRAPH_SAMPLE_OFFSET_FIXED,
+                                this is the sample field offset, and must non-negative.
+                                For other @ref offset_mode this value will be added to the
+                              calculated offset. Value is signed and given in bytes. Valid only if
+                              @ref enabled is set. */
+    std::bitset<3> tunnel_mode; /**< As the same parser node can be used for parsing a header that
+                                     will be in an outer part of a tunnel or in inner of a tunnel.
+                                     This field indicates which option will be sampled,
+                                     see @ref parse_graph_flow_match_sample_tunnel_mode.
+                                     Valid only if @ref enabled is set. */
+    uint32_t
+        field_id; /**< The ID used for defining a flow match criteria using the sampled header. */
+};
+
+/**
+ * @brief: Parser graph node attributes.
+ */
+struct parser_graph_node_attr {
+    uint16_t header_length_base_value; /**< For @ref PARSE_GRAPH_NODE_LEN_FIXED this is the header
+                                          length, and must be non-negative. For other @ref
+                                          parse_graph_node_len_mode this value will be added to
+                                          calculated header length. Value is signed and given in
+                                          bytes. */
+    uint16_t header_length_field_offset; /**< Offset of the field indicating the header length
+                                            (explicit length or bitmask), from the start of the
+                                            header. Given in bits. For @ref
+                                            PARSE_GRAPH_NODE_LEN_FIXED, this field is reserved. */
+    uint32_t
+        header_length_field_mask; /**< Bitmask for the field indicating the header length (explicit
+                                     length or bitmask). Cleared bits in the mask will clear the
+                                     corresponding bits in the header length field. Valid bits in
+                                     the mask are indicated by
+                                       @ref
+                                     adapter_hca_capabilities.parse_graph_header_length_field_mask_width.
+                                       All other bits are reserved. */
+    std::bitset<4> header_length_mode; /**< Defines the mode in which header length is calculated,
+                                            see @ref parse_graph_node_len_mode. */
+    std::bitset<4> header_length_field_shift; /**< Indicates the ratio between the header length
+                                                 field (explicit length or calculated by bitmask)
+                                                 units and bytes. Header length will be multiplied
+                                                 by 2^header_length_field_shift to get the header
+                                                 length in bytes. */
+    std::vector<parse_graph_flow_match_sample_attr>
+        samples; /**< Indicates the parameters of the flow matching and packet
+                      header modifications. */
+    std::vector<parse_graph_arc_attr> in_arcs; /**< Indicates the parameters of the arcs pointing
+                                               from the parse graph to the programmed node. */
+};
+
+/**
+ * @brief: Parser graph node.
+ *
+ * This class implements the programmable parser graph node, also called Flex Parser.
+ * It allows to sample fields from custom protocol headers. Those fields can be later
+ * referred in the packet steering process.
+ */
+class parser_graph_node : public obj {
+private:
+    parser_graph_node_attr m_attrs;
+    std::vector<uint32_t> m_sample_ids;
+    uint32_t m_parser_graph_node_id;
+
+public:
+    /**
+     * @brief: Parser graph node constructor.
+     *
+     * @param [in] ctx - DCMD context.
+     * @param [in] attrs - Parser graph node attributes.
+     */
+    parser_graph_node(dcmd::ctx* ctx, const parser_graph_node_attr& attrs);
+    ~parser_graph_node();
+    parser_graph_node(const parser_graph_node&) = delete;
+    void operator=(const parser_graph_node&) = delete;
+    /**
+     * @brief: Returns number of samples in this parser graph node.
+     *
+     * @return: Number of samples in the node.
+     */
+    uint16_t get_num_of_samples() const
+    {
+        return static_cast<uint16_t>(m_sample_ids.size());
+    }
+    /**
+     * @brief: Returns sample IDs.
+     *
+     * @note: In order to get updated sample IDs, the user should first run @ref query.
+     *
+     * @return: Sample IDs vector.
+     */
+    const std::vector<uint32_t>& get_sample_ids() const
+    {
+        return m_sample_ids;
+    }
+    /**
+     * @brief: Creates parser graph node in the HW using the object initialized attributes.
+     *
+     * @retval: Status of the operation.
+     */
+    status create();
+    /**
+     * @brief: Queries parser graph node.
+     *
+     * The method will query and set the sample IDs of the node.
+     *
+     * @return: Status of the operation.
+     */
+    status query();
+    /**
+     * @brief: Returns parser graph node ID.
+     *
+     * @note: The ID is valid after a successful call to @ref create.
+     *
+     * @retval: Returns DPCP_OK on success.
+     */
+    virtual status get_id(uint32_t& id) override;
 };
 
 struct adapter_info {
@@ -1440,7 +2421,9 @@ private:
     adapter_hca_capabilities* m_external_hca_caps;
     std::vector<cap_cb_fn> m_caps_callbacks;
     bool m_opened;
-
+    std::shared_ptr<flow_table> m_root_table_arr[flow_table_type::FT_END]; /**< Represent root table,
+                                                                                              by defualt it is allocated
+                                                                                              by the kernel. */
     status prepare_basic_rq(basic_rq& srq);
 
 public:
@@ -1562,6 +2545,17 @@ public:
     status create_reserved_mkey(reserved_mkey_type type, void* addr, size_t length,
                                 mkey_flags flags, reserved_mkey*& mkey);
     /**
+     * @brief Creates and returns ref_mkey
+     *
+     * @param [in]  parent          Parent Memory Key to reference
+     * @param [in]  address         Virtual Address
+     * @param [in]  length          Address Length in bytes
+     * @param [out] mkey            On Success created direct_mkey
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status create_ref_mkey(mkey* parent, void* address, size_t length, ref_mkey*& mkey);
+    /**
      * @brief Creates and returns CQ
      *
      * @param [in]  attr            CQ attributes for create
@@ -1644,6 +2638,23 @@ public:
      * @retval Returns @ref dpcp::status with the status code
      */
     status create_tis(const uint64_t& flags, tis*& _tis);
+    /**
+     * @brief Get root flow table by type
+     *
+     * @param [in] type: Flow table type
+     *
+     * @retval Returns pointer to @ref flow_table or nullptr
+     */
+    std::shared_ptr<flow_table> get_root_table(flow_table_type type);
+    /**
+     * @brief Creates and returns flow_rule
+     *
+     * @param [in]  attr            Flow table attributes
+     * @param [out] flow_table      Flow table object on success
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status create_flow_table(flow_table_attr& attr, std::shared_ptr<flow_table>& flow_table);
     /**
      * @brief Creates and returns flow_rule
      *
@@ -1728,6 +2739,20 @@ public:
      *              Returns DPCP_ERR_NO_MEMORY if devx_pd* was not allocated successfully
      */
     status create_own_pd();
+
+    /**
+     * @brief Creates and returns DPCP Parser Graph Node.
+     *
+     * @param [in] attributes           Reference to parser graph node attributes.
+     * @param [out] _parser_graph_node  Pointer to Parser graph node object on success.
+     *
+     * @note: The call supported when @ref
+     * adapter_hca_capabilities::general_object_types_parse_graph_node is on.
+     *
+     * @retval: Returns @ref dpcp::status with the status code.
+     */
+    status create_parser_graph_node(const parser_graph_node_attr& attributes,
+                                    parser_graph_node*& _parser_graph_node);
 };
 
 class provider {

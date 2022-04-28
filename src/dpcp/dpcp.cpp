@@ -111,4 +111,211 @@ status provider::open_adapter(std::string adapter_id, adapter*& ad)
     }
     return DPCP_ERR_NO_DEVICES;
 }
+
+// TODO: GalN to remove the temp stub functions below, after adding proper Windows compilation support.
+#ifdef _WIN32
+#define NOT_IN_USE(a) ((void)(a))
+flow_table::flow_table(dcmd::ctx * ctx, const flow_table_attr & attr)
+    : obj(ctx)
+{
+    NOT_IN_USE(attr);
+}
+
+status flow_table::create()
+{
+    return status();
+}
+
+status flow_table::query(flow_table_attr & attr)
+{
+    NOT_IN_USE(attr);
+
+    return status();
+}
+
+status flow_table::get_table_id(uint32_t & table_id) const
+{
+    NOT_IN_USE(table_id);
+
+    return status();
+}
+
+status flow_table::get_table_level(uint8_t & table_level) const
+{
+    NOT_IN_USE(table_level);
+
+    return status();
+}
+
+status flow_table::get_table_type(flow_table_type & table_type) const
+{
+    NOT_IN_USE(table_type);
+
+    return status();
+}
+
+bool flow_table::is_kernel_table() const
+{
+    return false;
+}
+
+status flow_table::add_flow_group(const flow_group_attr & attr, flow_group *& group)
+{
+    NOT_IN_USE(attr);
+    NOT_IN_USE(group);
+
+    return status();
+}
+
+status flow_table::remove_flow_group(flow_group *& group)
+{
+    NOT_IN_USE(group);
+
+    return status();
+}
+
+flow_table::~flow_table()
+{
+}
+
+flow_table::flow_table(dcmd::ctx* ctx, flow_table_type type)
+    : obj(ctx)
+{
+    NOT_IN_USE(type);
+}
+
+status flow_table::set_miss_action(void * in)
+{
+    NOT_IN_USE(in);
+
+    return status();
+}
+
+status flow_group::create()
+{
+    return status();
+}
+
+status flow_group::add_flow_rule(const flow_rule_attr_ex & attr, flow_rule_ex *& rule)
+{
+    NOT_IN_USE(attr);
+    NOT_IN_USE(rule);
+
+    return status();
+}
+
+status flow_group::remove_flow_rule(flow_rule_ex *& rule)
+{
+    NOT_IN_USE(rule);
+
+    return status();
+}
+
+status flow_group::get_group_id(uint32_t & group_id) const
+{
+    NOT_IN_USE(group_id);
+
+    return status();
+}
+
+status flow_group::get_table_id(uint32_t & table_id) const
+{
+    NOT_IN_USE(table_id);
+
+    return status();
+}
+
+status flow_group::get_match_criteria(match_params_ex & match) const
+{
+    NOT_IN_USE(match);
+
+    return status();
+}
+
+flow_group::~flow_group()
+{
+}
+
+flow_action_generator::flow_action_generator(dcmd::ctx * ctx)
+{
+    NOT_IN_USE(ctx);
+}
+
+std::shared_ptr<flow_action> flow_action_generator::create_flow_action_tag(uint32_t id)
+{
+    NOT_IN_USE(id);
+
+    return std::shared_ptr<flow_action>();
+}
+
+std::shared_ptr<flow_action> flow_action_generator::create_flow_action_fwd(std::vector<obj*> dests)
+{
+    NOT_IN_USE(dests);
+
+    return std::shared_ptr<flow_action>();
+}
+
+std::shared_ptr<flow_action> flow_action_generator::create_flow_action_reformat(flow_action_reformat_attr & attr)
+{
+    NOT_IN_USE(attr);
+
+    return std::shared_ptr<flow_action>();
+}
+
+std::shared_ptr<flow_action> flow_action_generator::create_flow_action_modify(flow_action_modify_attr & attr)
+{
+    NOT_IN_USE(attr);
+
+    return std::shared_ptr<flow_action>();
+}
+
+status flow_rule_ex::get_match_value(match_params_ex & match_val)
+{
+    NOT_IN_USE(match_val);
+
+    return status();
+}
+
+status flow_rule_ex::get_priority(uint16_t & priority)
+{
+    NOT_IN_USE(priority);
+
+    return status();
+}
+
+status flow_rule_ex::create()
+{
+    return status();
+}
+
+flow_rule_ex::~flow_rule_ex()
+{
+}
+
+status flow_rule_ex::alloc_in_buff(size_t & in_len, void *& in)
+{
+    NOT_IN_USE(in_len);
+    NOT_IN_USE(in);
+
+    return status();
+}
+
+void flow_rule_ex::free_in_buff(void *& in)
+{
+    NOT_IN_USE(in);
+}
+
+status flow_rule_ex::config_flow_rule(void * in)
+{
+    NOT_IN_USE(in);
+
+    return status();
+}
+
+status flow_rule_ex::create_root_flow_rule()
+{
+    return status();
+}
+#endif // _WIN32
+
 } // namespace dpcp

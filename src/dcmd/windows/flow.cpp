@@ -34,12 +34,21 @@ flow::flow(ctx_handle handle, struct flow_desc* desc)
     // Only outer header for now!!!
     DEVX_SET(devx_fs_rule_add_in, in, match_criteria_enable,
              1 << MLX5_CREATE_FLOW_GROUP_IN_MATCH_CRITERIA_ENABLE_OUTER_HEADERS);
+
     // mask
-    memcpy(DEVX_ADDR_OF(devx_fs_rule_add_in, in, match_criteria), desc->match_criteria->match_buf,
-           desc->match_criteria->match_sz);
+    void* prm_mc = DEVX_ADDR_OF(devx_fs_rule_add_in, in, match_criteria);
+    memcpy(prm_mc, desc->match_criteria->match_buf, desc->match_criteria->match_sz);
+    // TODO: WinOF2 doesn't accept ip_version so far, delete when enabled
+    void* hdr = DEVX_ADDR_OF(fte_match_param, prm_mc, outer_headers);
+    DEVX_SET(fte_match_set_lyr_2_4, hdr, ip_version, 0x0);
+
     // value
-    memcpy(DEVX_ADDR_OF(devx_fs_rule_add_in, in, match_value), desc->match_value->match_buf,
-           desc->match_value->match_sz);
+    void* prm_val = DEVX_ADDR_OF(devx_fs_rule_add_in, in, match_value);
+    memcpy(prm_val, desc->match_value->match_buf, desc->match_value->match_sz);
+    // TODO: WinOF2 doesn't accept ip_version so far, delete when enabled
+    hdr = DEVX_ADDR_OF(fte_match_param, prm_val, outer_headers);
+    DEVX_SET(fte_match_set_lyr_2_4, hdr, ip_version, 0x0);
+
     // emdedded dest
     void* p_dst = DEVX_ADDR_OF(devx_fs_rule_add_in, in, dest);
     memcpy(p_dst, desc->dst_formats, MLX5_ST_SZ_BYTES(dest_format_struct));

@@ -35,6 +35,7 @@
     <ClCompile Include="src\dpcp\eq.cpp" />
     <ClCompile Include="src\dpcp\fr.cpp" />
     <ClCompile Include="src\dpcp\mkey.cpp" />
+    <ClCompile Include="src\dpcp\parser_graph_node.cpp" />
     <ClCompile Include="src\dpcp\rq.cpp" />
     <ClCompile Include="src\dpcp\sq.cpp" />
     <ClCompile Include="src\dpcp\tir.cpp" />

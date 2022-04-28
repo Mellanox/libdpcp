@@ -517,7 +517,8 @@ status dpp_rq::create()
 
     // Log of WQ stride size. The size of a WQ stride equals 2^log_wq_stride.
     int32_t log_buff_stride_num = ilog2((int)buff_stride_num);
-    DEVX_SET(rqc, p_rqc, dpp_buffer_size, log_buff_stride_num);
+    DEVX_SET(rqc, p_rqc, log_dpp_buffer_size, log_buff_stride_num);
+    DEVX_SET(rqc, p_rqc, dpp_scatter_offset, m_attr.dpp_scatter_offset);
     DEVX_SET(rqc, p_rqc, dpp_mkey, m_mkey);
 
     // WQ

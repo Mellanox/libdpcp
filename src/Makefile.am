@@ -26,6 +26,12 @@ libdpcp_la_SOURCES = \
 	dpcp/tis.cpp \
 	dpcp/dek.cpp \
 	dpcp/sq.cpp \
+	dpcp/parser_graph_node.cpp \
+	dpcp/flow_table.cpp \
+	dpcp/flow_group.cpp \
+	dpcp/flow_action.cpp \
+	dpcp/flow_rule_ex.cpp \
+	dpcp/flow_matcher.cpp \
 	\
 	dcmd/dcmd.h \
 	dcmd/prm.h \

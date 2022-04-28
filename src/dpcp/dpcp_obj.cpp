@@ -55,7 +55,7 @@ obj::~obj()
 
 status obj::get_id(uint32_t& id)
 {
-    if (m_id) {
+    if (m_obj_handle) {
         id = m_id;
         return DPCP_OK;
     }
@@ -114,7 +114,10 @@ status obj::modify(void* in, size_t inlen, void* out, size_t& outlen)
     int ret = m_obj_handle->modify(&obj_desc);
 
     if (DCMD_EOK != ret) {
+        m_last_status = DEVX_GET(status_out, out, status);
+        m_last_syndrome = DEVX_GET(status_out, out, syndrome);
         log_error("modify returns: %d\n", ret);
+        log_trace("modify status: %u syndrome: %x\n", m_last_status, m_last_syndrome);
         return DPCP_ERR_MODIFY;
     }
 
