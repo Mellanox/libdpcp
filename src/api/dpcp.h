@@ -1,15 +1,15 @@
 /*
-Copyright (C) Mellanox Technologies, Ltd. 2020-2021. ALL RIGHTS RESERVED.
+ * Copyright © 2020-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ *
+ * This software product is a proprietary product of Nvidia Corporation and its affiliates
+ * (the "Company") and all right, title, and interest in and to the software
+ * product, including all associated intellectual property rights, are and
+ * shall remain exclusively with the Company.
+ *
+ * This software product is governed by the End User License Agreement
+ * provided with the software product.
+ */
 
-This software product is a proprietary product of Mellanox Technologies, Ltd.
-(the "Company") and all right, title, and interest in and to the software
-product, including all associated intellectual property rights, are and shall
-remain exclusively with the Company. All rights in or to the software product
-are licensed, not sold. All rights not licensed are reserved.
-
-This software product is governed by the End User License Agreement provided
-with the software product.
-*/
 #ifndef DPCP_H_
 #define DPCP_H_
 
@@ -34,7 +34,7 @@ with the software product.
 using std::function;
 using std::unordered_map;
 
-static const char* dpcp_version = "1.1.25";
+static const char* dpcp_version = "1.1.29";
 
 #if defined(__linux__)
 typedef void* LPOVERLAPPED;
@@ -50,6 +50,7 @@ typedef HANDLE event_channel;
 #endif
 
 namespace dcmd {
+// DCMD forward declarations.
 class ctx;
 class device;
 class flow;
@@ -59,6 +60,7 @@ class uar;
 class umem;
 class compchannel;
 struct modify_action;
+struct fwd_dst_desc;
 } // namespace dcmd
 
 namespace dpcp {
@@ -78,6 +80,7 @@ struct flow_table_attr;
 struct flow_group_attr;
 struct flow_rule_attr_ex;
 struct uar_t;
+struct adapter_hca_capabilities;
 
 enum status {
     DPCP_OK = 0, /**< Operation finished successfully*/
@@ -179,6 +182,35 @@ public:
      */
     status query(void* in, size_t in_sz, void* out, size_t& out_sz);
     virtual status destroy();
+};
+
+/**
+ * @brief: Forward supported object.
+ *
+ * Represent an object that packets can be forwarded
+ * to by @ref create_fwd, this means that this object can receive
+ * forwarded packets as part of the steering e.g. @ref class flow_table, @ref class tir.
+ * Any object that can support flow action forward should inherit from this class.
+ */
+class forwardable_obj : public obj {
+public:
+    /**
+     * @brief Forwardable Object constructor.
+     *
+     * @param [in]  ctx           Pointer to adapter context.
+     */
+    forwardable_obj(dcmd::ctx* ctx);
+    /**
+     * @brief Get forward type.
+     */
+    virtual int get_fwd_type() const = 0;
+    /**
+     * @brief Get Forward object description.
+     *
+     * @param [out]  desc          Object description.
+     */
+    status get_fwd_desc(dcmd::fwd_dst_desc& desc);
+    virtual ~forwardable_obj() = default;
 };
 
 typedef dcmd::uar* uar;
@@ -294,7 +326,7 @@ protected:
      *
      * @retval Returns DPCP_OK on success.
      */
-    virtual status get_length(uint32_t& len)
+    virtual status get_length(size_t& len)
     {
         len = 0;
         return DPCP_OK;
@@ -985,7 +1017,7 @@ enum {
     TIR_ATTR_TLS = (1 << 4)
 };
 
-class tir : public obj {
+class tir : public forwardable_obj {
 public:
     struct attr {
         uint32_t flags;
@@ -1037,6 +1069,10 @@ public:
     {
         return m_tirn;
     }
+    /**
+     * @brief Get forward type
+     */
+    int get_fwd_type() const;
 
 private:
     struct attr m_attr;
@@ -1098,23 +1134,23 @@ public:
 };
 
 /**
- * @brief Represent flow table types
+ * @brief: Represent flow table types
  */
 enum flow_table_type {
-    FT_RX = 0x0, /**< Flow table from type NIC receive */
-    FT_TX = 0x1, /**< Flow table from type NIC transmit */
+    FT_RX = 0x0, /**< Flow table from type receive */
+    FT_TX = 0x1, /**< Flow table from type transmit */
     FT_END,
 };
 
 /**
- * @brief Represent flow table operation modes
+ * @brief: Represent flow table operation modes
  */
 enum flow_table_op_mod {
     FT_OP_MOD_NORMAL = 0x0, /**< Regular flow table */
 };
 
 /**
- * @brief Represent flow table action when packet missed all rules.
+ * @brief: Represent flow table action when packet missed all rules.
  */
 enum flow_table_miss_action {
     FT_MISS_ACTION_DEF = 0x0, /**< Default miss table action according to table type default:
@@ -1124,61 +1160,103 @@ enum flow_table_miss_action {
 };
 
 /**
- * @brief Represent flow table flags.
+ * @brief: Represent flow table flags.
  */
 enum flow_table_flags {
-    FT_EN_REFORMAT = 0x1, /**< If set, flow table supports Reformat action */
-    FT_EN_DECAP = 0x2,    /**< If set, flow table supports DECAP actions */
+    FT_EN_REFORMAT = (1UL << 0), /**< If set, flow table supports Reformat action */
+    FT_EN_DECAP = (1UL << 1), /**< If set, flow table supports DECAP actions */
 };
 
 /**
- * @brief Represent flow table action when packet missed all rules.
+ * @brief: Represent flow table attributes.
  */
 struct flow_table_attr {
-    uint32_t flags; /**< Flow table flags define in @ref flow_table_flags */
+    uint64_t flags; /**< Flow table flags define in @ref flow_table_flags */
     std::shared_ptr<flow_table> table_miss; /**< Valid when @ref FT_MISS_ACTION_FWD is set.
-                                            Identify the next table in case of miss in the current table lookup.
-                                            Table type of miss_table_id must be the same as table type of
-                                            current table. */
+                                            Identify the next table in case of miss in the current
+                                            table lookup. Table type of miss_table_id must be the
+                                            same as table type of current table. */
     uint8_t log_size; /**< Log 2 of the table size (given in number of flows) */
     uint8_t level; /**< Location in table chaining hierarchy, only root table can be 0.*/
     flow_table_type type;
     flow_table_op_mod op_mod;
     flow_table_miss_action def_miss_action;
+    uint16_t modify_field_select; /**< Not suppoerted */
 
-    flow_table_attr() :
-        flags(0),
-        log_size(0),
-        level(0)
+    flow_table_attr()
+        : flags(0)
+        , log_size(0)
+        , level(0)
+        , op_mod(flow_table_op_mod::FT_OP_MOD_NORMAL)
+        , def_miss_action(flow_table_miss_action::FT_MISS_ACTION_DEF)
+        , modify_field_select(0)
     {
     }
 };
 
 /**
- * @brief flow table class.
+ * @brief: flow table class, Abstract class.
+ *
+ * Packet processing by the device requires classifying them into Flows.
+ * Each Flow may have a different processing path and may lead to a different destination.
+ * Packet classification is done using the Flow Table mechanism.
+ *
+ * It may require an hierarchal approach. For that purpose, a Flow Rule with a
+ * Forward action may specify another Flow Table as the next processing entity for the
+ * packet. The destination Flow Table must be of the same type. A packet matching this flow
+ * will continue to search for another match in the destination Flow Table starting at the
+ * first Flow Rule. For every Flow Table type there is a single root table.
+ *
+ * The match criteria of a Flow Rule is defined before setting the actual Flow Rule. A set of
+ * consecutive Flow Rules in a certain Flow Table with the same match criteria is considered
+ * a Flow Groups. this will be done by creating new Flow group using
+ * @ref flow_table::add_flow_group. Each Flow Table may consist of more then one Flow Groups,
+ * the size of all Flow Groups should not exceed the size of the Flow Table.
+ *
+ * After creating a Flow Group that define the match criteria, Flow Rules can be add by using
+ * @ref flow_group::add_flow_rule to create Flow Rules that share the same match criteria
+ * that is define by the Flow Group. The Flow Rule will define the match values, this will
+ * identify the packets that related to this specific Flow Rule, and a Flow Action to perform
+ * on the packet. Flow actions can be added to the flow rule by creating @ref flow_action
+ * concrete classes by using @ref flow_action_generator, and passing them to the
+ * flow rule attributes.
+ *
+ * Example (pseudo code):
+ * flow_table = adapter->create_flow_table();
+ * flow_group = flow_table->add_flow_group();
+ * flow_rule = flow_group->add_flow_rule(match_params, flow_actions);
+ *
+ * All packet processing begin in the Root Flow Table, this flow table is created by the
+ * operation system. To create Rules on the Root Flow Table, get flow table from the
+ * adapter @ref adapter::get_root_flow_table. All other steps are the same as for the
+ * device Flow Tables.
+ *
+ * Example (pseudo code):
+ * flow_table = adapter->get_root_table();
+ * flow_group = flow_table->add_flow_group();
+ * flow_rule = flow_group->add_flow_rule(match_params, flow_actions);
+ *
+ * @note class flow_table is not thread-safe, instance of that class should not be accessed
+ * from different threads unless thread-safety measures were taken by the application.
  */
-class flow_table : public obj {
-// Allow adapter to create kernel flow table with the private constructor.
-friend class adapter;
-
-private:
-    flow_table_attr m_attr;
-    uint32_t m_table_id;
+class flow_table : public forwardable_obj, public std::enable_shared_from_this<flow_table> {
+protected:
+    flow_table_type m_type;
     bool m_is_initialized;
-    bool m_is_kernel_table;
-    std::unordered_set<flow_group*> m_groups;
+    std::unordered_set<std::shared_ptr<flow_group>> m_groups;
 
 public:
     /**
-     * @brief Flow table constructor.
+     * @brief Flow table constructor - This is abstract class, to create new table need to call
+     *        @ref adapter::create_flow_table.
      *
      * @param [in] ctx: dcmd context.
-     * @param [in] params: plaw table parameters.
+     * @param [in] type: flow table type.
      *
-     * @note: The constrructor will not create the flow table object
-     *        in the HW, need to call to @ref create to allocate it on the HW.
+     * @note: The constructor will not create the flow table object
+     *        in the HW, need to call to @ref flow_table::create to allocate it on the HW.
      */
-    flow_table(dcmd::ctx* ctx, const flow_table_attr& attr);
+    flow_table(dcmd::ctx* ctx, flow_table_type type);
     /**
      * @brief Copy constructor of flow group.
      *
@@ -1196,21 +1274,13 @@ public:
      *
      * @retval Returns @ref dpcp::status with the status code.
      */
-    status create();
+    virtual status create() = 0;
     /**
      * @brief Query flow table object.
      *
      * @retval Returns @ref dpcp::status with the status code.
      */
-    status query(flow_table_attr& attr);
-    /**
-     * @brief Get flow table id.
-     *
-     * @param [out] table_id: flow table id.
-     *
-     * @retval Returns @ref dpcp::status with the status code.
-     */
-    status get_table_id(uint32_t& table_id) const;
+    virtual status query(flow_table_attr& attr) = 0;
     /**
      * @brief Get flow table level.
      *
@@ -1218,28 +1288,25 @@ public:
      *
      * @retval Returns @ref dpcp::status with the status code.
      */
-    status get_table_level(uint8_t& table_level) const;
+    virtual status get_table_level(uint8_t& table_level) const = 0;
     /**
      * @brief Get flow table type.
+     *
+     * @param [out] table_type: flow table type.
      *
      * @retval Returns @ref dpcp::status with the status code.
      */
     status get_table_type(flow_table_type& table_type) const;
     /**
-     * @brief Check if root table.
-     *
-     * @retval Returns true or false.
-     */
-    bool is_kernel_table() const;
-    /**
      * @brief Add flow group to flow table.
      *
      * @param [in] params: Flow group parameters.
-     * @param [out] group: Pointer to flow group.
+     * @param [out] group: Pointer to added flow group.
      *
      * @retval Returns @ref dpcp::status with the status code.
      */
-    status add_flow_group(const flow_group_attr& attr, flow_group*& group);
+    virtual status add_flow_group(const flow_group_attr& attr,
+                                  std::weak_ptr<flow_group>& group) = 0;
     /**
      * @brief Remove flow group from flow table.
      *
@@ -1247,53 +1314,53 @@ public:
      *
      * @retval Returns @ref dpcp::status with the status code.
      */
-    status remove_flow_group(flow_group*& group);
+    status remove_flow_group(std::weak_ptr<flow_group>& group);
     /**
-     * @brief Flow table distructor
+     * @brief Get forward type
      */
-    virtual ~flow_table();
+    int get_fwd_type() const;
+    /**
+     * @brief Flow table destructor
+     */
+    virtual ~flow_table() = default;
 
-private:
-    /**
-     * @brief Flow table constructor.
-     *
-     * @param [in] ctx: dcmd context.
-     * @param [in] type: flow table type.
-     *
-     * @note: This constractor should be used only for kernel root table.
-     */
-    flow_table(dcmd::ctx* ctx, flow_table_type type);
-    status set_miss_action(void* in);
+protected:
+    template <class FG>
+    status create_flow_group(const flow_group_attr& attr, std::weak_ptr<flow_group>& group);
+    status get_flow_table_status() const;
 };
 
 /**
- * @brief Represent flex parser sample field.
+ * @brief: Represent flex parser sample field.
  */
 struct parser_sample_field {
     uint32_t val; /**< Sample value to match/mask */
-    uint32_t id; /**< Sample id received by @ref get_sample_ids from class @ref parser_graph_node  */
+    uint32_t id; /**< Sample id received by @ref get_sample_ids at class @ref parser_graph_node */
 };
 
 /**
- * @brief Represent layer 2 match params.
+ * @brief: Represent layer 2 match params.
  */
 struct match_params_lyr_2 {
-    uint8_t src_mac[8];
-    uint8_t dst_mac[8];
+    uint8_t src_mac[8]; /**< 6 bytes(48 bits) mac address + 2 bytes(16 bits) alignment to 64 bits */
+    uint8_t dst_mac[8]; /**< 6 bytes(48 bits) mac address + 2 bytes(16 bits) alignment to 64 bits */
     uint16_t ethertype;
     uint16_t first_vlan_id;
 };
 
 /**
- * @brief Represent layer 3 match params.
+ * @brief: Represent layer 3 match params.
  */
 struct match_params_lyr_3 {
     uint32_t src_ip;
     uint32_t dst_ip;
     uint8_t ip_protocol;
-    // TODO: should handle ipv6?
+    // TODO: Add ipv6 support
 };
 
+/**
+ * @brief: Represent layer 4 types.
+ */
 enum match_params_lyr_4_type {
     NONE = 0x0,
     TCP,
@@ -1301,24 +1368,23 @@ enum match_params_lyr_4_type {
 };
 
 /**
- * @brief Represent layer 4 match params abstruct.
+ * @brief: Represent layer 4 match params abstract.
  */
 struct match_params_lyr_4 {
     match_params_lyr_4_type type;
     uint16_t src_port;
     uint16_t dst_port;
-    // Add union for l4 type specific params.
 };
 
-// TODO: need to check if and where to do htobe.
 /**
- * @brief Represent match params.
+ * @brief: Represent match params.
  */
 struct match_params_ex {
     match_params_lyr_2 match_lyr2;
     match_params_lyr_3 match_lyr3;
     match_params_lyr_4 match_lyr4;
-    std::vector<parser_sample_field> match_parser_sample_field_vec; /**< Samples received by @ref parser_graph_node. */
+    std::vector<parser_sample_field> match_parser_sample_field_vec; /**< Samples received by
+                                                                         @ref parser_graph_node. */
 
     match_params_ex()
     {
@@ -1329,51 +1395,67 @@ struct match_params_ex {
 };
 
 /**
- * @brief Represent match criteria enable flags.
+ * @brief: Represent match criteria enable flags.
  */
 enum flow_group_match_criteria_enable {
     FG_MATCH_OUTER_HDR = 0x1, /**< Enable match on outer header fields */
-    FG_MATCH_PARSER_FIELDS = 0x20, /**< Enable match on samples received by @ref parser_graph_node.*/
+    FG_MATCH_PARSER_FIELDS = 0x20, /**< Enable match on samples received by
+                                        @ref parser_graph_node.*/
 };
 
 /**
- * @brief Represent match params.
+ * @brief: Represent match params.
  */
- // TODO: On root table we do not need all params.
+// TODO: On root table we do not need all params.
 struct flow_group_attr {
     uint32_t start_flow_index; /**< The first flow rule included in the group.*/
     uint32_t end_flow_index; /**< The last flow rule included in the group.*/
-    uint8_t match_criteria_enable; /**< Bitmask representing which of the headers and parameters in
+    uint8_t match_criteria_enable; /**< Bit-mask representing which of the headers and parameters in
                                         match_criteria are used in defining the Flow,
                                         @ref flow_group_match_criteria_enable. */
-    match_params_ex match_criteria; /**< The match parameters defining all the flows belonging to the group. */
+    match_params_ex match_criteria; /**< The match parameters defining all the flows belonging
+                                         to the group. */
 
-    flow_group_attr() :
-        start_flow_index(0),
-        end_flow_index(0),
-        match_criteria_enable(0)
+    flow_group_attr()
+        : start_flow_index(0)
+        , end_flow_index(0)
+        , match_criteria_enable(0)
     {
     }
 };
 
 /**
- * @brief Represent flow group assosiated with @ref calss flow_table.
- *        A group define a set of rules that has the same attributes to match on.
- *        The cratiria for the match is the same for all rules in the same group
- *        and only the value is changed between the rules.
+ * @brief: Flow Group
+ *
+ * Represent Flow Group associated with @ref class flow_table.
+ * A Flow Group define a set of Flow Rules that share the same match criteria
+ * which set on which fields and masks the packet should be matched on.
+ * see @ref flow_table for more information.
+ *
+ * @note class flow_group is not thread-safe, instance of that class should not be accessed
+ * from different threads unless thread-safety measures were taken by the application.
  */
-class flow_group : public obj {
-    // Allow creating flow group only from flow table.
-    friend class flow_table;
-
+class flow_group : public obj, public std::enable_shared_from_this<flow_group> {
+protected:
     flow_group_attr m_attr;
-    const flow_table* m_table;
-    uint32_t m_group_id;
+    std::weak_ptr<const flow_table> m_table;
     bool m_is_initialized;
-    std::unordered_set<flow_rule_ex*> m_rules;
-    flow_matcher* m_matcher;
+    std::unordered_set<std::shared_ptr<flow_rule_ex>> m_rules;
+    std::shared_ptr<flow_matcher> m_matcher;
 
 public:
+    /**
+     * @brief Flow group constructor
+     *
+     * @param [in] ctx: dcmd context
+     * @param [in] attr: flow group attributes
+     * @param [in] table: flow table
+     *
+     * @note: Groups can be constructed only by @ref flow_table::add_flow_group.
+     *        The constructor will not allocate the object in the HW, should call @ref
+     *        flow_group::create().
+     */
+    flow_group(dcmd::ctx* ctx, const flow_group_attr& attr, std::weak_ptr<const flow_table> table);
     /**
      * @brief Copy constructor of flow group.
      *
@@ -1389,12 +1471,12 @@ public:
     /**
      * @brief Creates flow group object in HW
      *
-     * @note the flow group configurations will not be applied in the HW untill
-     *       the creat() will be called.
+     * @note the flow group configurations will not be applied in the HW until
+     *       the create() will be called.
      *
      * @retval Returns @ref dpcp::status with the status code.
      */
-    status create();
+    virtual status create() = 0;
     /**
      * @brief Add flow rule to group.
      *
@@ -1403,31 +1485,16 @@ public:
      *
      * @retval Returns @ref dpcp::status with the status code.
      */
-    status add_flow_rule(const flow_rule_attr_ex& attr, flow_rule_ex*& rule);
-     /**
+    virtual status add_flow_rule(const flow_rule_attr_ex& attr,
+                                 std::weak_ptr<flow_rule_ex>& rule) = 0;
+    /**
      * @brief Remove flow rule from group.
      *
      * @param [in/out] rule: flow rule.
      *
      * @retval Returns @ref dpcp::status with the status code.
      */
-    status remove_flow_rule(flow_rule_ex*& rule);
-    /**
-     * @brief Get group id.
-     *
-     * @param [out] group_id: group id
-     *
-     * @retval Returns @ref dpcp::status with the status code
-     */
-    status get_group_id(uint32_t& group_id) const;
-    /**
-     * @brief Get table id that the group was added to.
-     *
-     * @param [out] table_id: table id
-     *
-     * @retval Returns @ref dpcp::status with the status code
-     */
-    status get_table_id(uint32_t& table_id) const;
+    status remove_flow_rule(std::weak_ptr<flow_rule_ex>& rule);
     /**
      * @brief Get group match criteria.
      *
@@ -1437,21 +1504,14 @@ public:
      */
     status get_match_criteria(match_params_ex& match) const;
     /**
-     * @brief Distructor of flow group.
+     * @brief Destructor of flow group.
      */
-    virtual ~flow_group();
+    virtual ~flow_group() = default;
 
-private:
-    /**
-     * @brief Flow group constructor
-     *
-     * @param [in] ctx: dcmd context
-     * @param [in] params: plow group parameters
-     *
-     * @note: The constrructor is private, groups can be constructed only by @ref flow_table::add_flow_group.
-     *        The constrructor will not allocate the object in the HW, should call @ref flow_group::create()
-     */
-    flow_group(dcmd::ctx* ctx, const flow_group_attr& attr, const flow_table* table);
+protected:
+    // Help functions
+    template <class FR>
+    status create_flow_rule_ex(const flow_rule_attr_ex& attr, std::weak_ptr<flow_rule_ex>& rule);
 };
 
 enum flow_action_reformat_anchor {
@@ -1460,6 +1520,9 @@ enum flow_action_reformat_anchor {
     TCP_UDP_START = 0x9,
 };
 
+/**
+ * @brief: Flow Action modify supported fields.
+ */
 enum flow_action_modify_field {
     OUT_SMAC_47_16 = 0x1,
     OUT_SMAC_15_0 = 0x2,
@@ -1475,162 +1538,181 @@ enum flow_action_modify_field {
     OUT_UDP_DPORT = 0xc,
 };
 
+/**
+ * @brief: Flow Action modify type.
+ */
 enum flow_action_modify_type {
     SET = 0x1,
 };
 
+/**
+ * @brief: Flow Action reformat type.
+ */
 enum flow_action_reformat_type {
     INSERT_HDR = 0xf,
 };
 
 /**
-  * @brief: Flow action reformat insert attributes
-  */
+ * @brief: Flow action reformat insert attributes
+ */
 struct flow_action_reformat_insert_attr {
     flow_action_reformat_type type; /**< Flow action reformat type, must be set to
                                          @ref flow_action_reformat_type::INSERT_HDR
                                          Note: this field should always be first.  */
-    flow_action_reformat_anchor start_hdr; /**< Indicates the header used to reference the location of the
-                                                inserted header */
-    uint8_t offset; /**< Indicates the offset of the inserted header from the reference point defined in
-                         @ref start_hdr, given in Bytes */
-    std::bitset<10> data_len; /**< Data length to insert */
+    flow_action_reformat_anchor start_hdr; /**< Indicates the header used to reference the location
+                                                of the inserted header */
+    uint8_t offset; /**< Indicates the offset of the inserted header from the reference
+                         point defined in @ref start_hdr, given in Bytes */
+    uint16_t data_len : 10; /**< Data length to insert */
     void* data; /**< Data should hold the header to insert */
 };
 
 /**
-  * @brief: Flow action reformat attributes.
-  */
+ * @brief: Flow action reformat attributes.
+ */
 union flow_action_reformat_attr {
     flow_action_reformat_type type; /**< Flow action reformat type (insert, remove ...). */
     flow_action_reformat_insert_attr insert; /**< list of modify actions to perform */
-
-    // TODO: GalN to decide how to handle this.
-    // I am not sure this is the way to go with, we might need to change the union to inheritance.
-    flow_action_reformat_attr() { };
 };
 
 /**
-  * @brief: Flow action modify from type set attributes.
-  */
+ * @brief: Flow action modify from type set attributes.
+ */
 struct flow_action_modify_set_attr {
-    flow_action_modify_type type; /**< Flow action modify type, must be set to @ref flow_action_modify_type::SET
+    flow_action_modify_type type; /**< Flow action modify type, must be set to
+                                       @ref flow_action_modify_type::SET
                                        Note: this field should always be first.*/
-    flow_action_modify_field field; /**< Field to be modifyed */
-    std::bitset<5> offset; /**< The offset inside the field */
-    std::bitset<5> length; /**< Number of bits to be written starting from offset. 0
+    flow_action_modify_field field; /**< Field to be modified */
+    uint8_t offset : 5; /**< The offset inside the field */
+    uint8_t length : 5; /**< Number of bits to be written starting from offset. 0
                                 means length of 32 bits. */
     uint32_t data; /**< The data to be written on the specific field.
                          Data must be allocated starting from bit 0. */
 };
 
 /**
-  * @brief: Union represent flow_action_modify attributes by type.
-  *         To support new modify types (copy, add) please add attributes
-  *         struct to the union.
-  *
-  * @note: All modify types attributes bust have @flow_action_modify_type field fisrt.
-  */
+ * @brief: Union represent flow_action_modify attributes by type.
+ *         To support new modify types (copy, add) please add attributes
+ *         structure to the union.
+ *
+ * @note: All modify types attributes bust have @flow_action_modify_type field first.
+ */
 union flow_action_modify_type_attr {
     flow_action_modify_type type; /**< Flow action modify type (set, add, copy) */
     flow_action_modify_set_attr set; /**< Flow action modify from type set attributes */
-    // Add new flow_action_modify type here.
-
-    // TODO: GalN to decide how to handle this.
-    // I am not sure this is the way to go with, we might need to change the union to inheritance.
-    flow_action_modify_type_attr() { };
 };
 
 /**
-  * @brief: Flow action modify attributes.
-  */
+ * @brief: Flow action modify attributes.
+ */
 struct flow_action_modify_attr {
     flow_table_type table_type; /**< Flow table type that the action will be applied on. */
     std::vector<flow_action_modify_type_attr> actions; /**< list of modify actions to perform */
 };
 
 /**
-  * @brief: Flow action generator.
-  */
+ * @brief: Flow Action generator - see @ref flow_table for more information.
+ *
+ * @note flow_action instances created by this class are not thread safe unless specified,
+ * Instance of that class should not be accessed from different threads unless thread-safety
+ * measures were taken by the application.
+ */
 class flow_action_generator {
+    friend class adapter;
+
+private:
     dcmd::ctx* m_ctx;
+    const adapter_hca_capabilities* m_caps;
 
 public:
-    flow_action_generator(dcmd::ctx* ctx);
     /**
-     * @brief Create flow action tag, each packet matched on the flow rule assosiated
+     * @brief Create flow action tag, each packet matched on the flow rule associated
      *        With this flow action will be marked with flow tag id that will be accessible
-     *        in the complition queue element.
+     *        in the completion queue element.
      *
      * @param [in] id: Flow tag id.
      *
-     * @retval flow_action action fointer or nullptr.
+     * @retval flow_action action pointer or nullptr.
+     *
+     * @note: Thread-safe
      */
-    std::shared_ptr<flow_action> create_flow_action_tag(uint32_t id);
+    std::shared_ptr<flow_action> create_tag(uint32_t id);
     /**
      * @brief Create flow action forward, will forward the packets upon match to destination list.
-     *        The destinations ca be from diferent type (tir, flow_table)
+     *        The destinations ca be from different type (tir, flow_table)
      *
-     * @param [in] dests: Destination ojects, currently support @ref tir, @ref flow_table.
+     * @param [in] dests: Destination objects, currently support @ref tir, @ref flow_table.
      *
-     * @retval flow_action action fointer or nullptr.
+     * @retval flow_action action pointer or nullptr.
      */
-    std::shared_ptr<flow_action> create_flow_action_fwd(std::vector<obj*> dests);
+    std::shared_ptr<flow_action> create_fwd(std::vector<forwardable_obj*> dests);
     /**
      * @brief Create flow action reformat, allow to change the packet header.
      *
      * @param [in] attr: Reformat action attributes.
      *
-     * @retval flow_action action fointer or nullptr.
+     * @retval flow_action action pointer or nullptr.
      */
-    std::shared_ptr<flow_action> create_flow_action_reformat(flow_action_reformat_attr& attr);
+    std::shared_ptr<flow_action> create_reformat(flow_action_reformat_attr& attr);
     /**
      * @brief Create flow action modify, allow to modify the packet header fields.
      *
      * @param [in] attr: Reformat action attributes.
      *
-     * @retval flow_action action fointer or nullptr.
+     * @retval flow_action action pointer or nullptr.
      */
-    std::shared_ptr<flow_action> create_flow_action_modify(flow_action_modify_attr& attr);
-};
-
-/**
- * @brief flow_rule_ex attributes.
- */
-struct flow_rule_attr_ex {
-   uint16_t priority; /*< flow rule priority */
-   match_params_ex match_value; /*< flow rule match value, should be same fields as the masks provided to flow_group. */
-   uint32_t flow_index; /*< The location of the rule on the flow table, index 0 will matched first. */
-   std::vector<std::shared_ptr<flow_action>> actions; /* Flow actions to perform on the packet when rule matched */
-
-   flow_rule_attr_ex() :
-       priority(0),
-       flow_index(0)
-   {
-   }
-};
-
-/**
- * @brief class flow_rule_ex.
- */
-class flow_rule_ex : public obj {
-    // Allow creating flow rule only from flow group.
-    friend class flow_group;
-    typedef unordered_map<std::type_index, std::shared_ptr<flow_action>> action_map_t;
+    std::shared_ptr<flow_action> create_modify(flow_action_modify_attr& attr);
 
 private:
+    // Should be created only by @ref class adapter
+    flow_action_generator(dcmd::ctx* ctx, const adapter_hca_capabilities* caps);
+};
+
+/**
+ * @brief: flow_rule_ex attributes.
+ */
+struct flow_rule_attr_ex {
+    uint16_t priority; /*< flow rule priority */
+    match_params_ex match_value; /*< flow rule match value, should be same fields as the masks
+                                     provided to flow_group. */
+    uint32_t flow_index; /*< The location of the rule on the flow table,
+                             index 0 will matched first. */
+    std::vector<std::shared_ptr<flow_action>> actions; /* Flow actions to perform on the packet
+                                                          when rule matched */
+
+    flow_rule_attr_ex()
+        : priority(0)
+        , flow_index(0)
+    {
+    }
+};
+
+/**
+ * @brief: Flow Rule extended see @ref flow_table for more information.
+ *
+ * @note class flow_rule_ex is not thread-safe, instance of that class should not be accessed
+ * from different threads unless thread-safety measures were taken by the application.
+ */
+class flow_rule_ex : public obj {
+    typedef unordered_map<std::type_index, std::shared_ptr<flow_action>> action_map_t;
+
+protected:
     match_params_ex m_match_value;
-    uint16_t m_priority;
     bool m_is_initialized;
-    const flow_table* m_table;
-    const flow_group* m_group;
-    uint32_t m_flow_index;
+    std::weak_ptr<const flow_table> m_table;
+    std::weak_ptr<const flow_group> m_group;
     bool m_is_valid_actions;
-    action_map_t m_actions; /*< unordered_map, key is the the object type, value is shared_ptr to obj */
-    const flow_matcher* m_matcher;
-    flow_rule* m_flow;
+    action_map_t m_actions; /*< unordered_map, key is the object type,
+                                value is shared_ptr to obj */
+    std::shared_ptr<const flow_matcher> m_matcher;
 
 public:
+    /**
+     * @brief flow rule extended constructor.
+     */
+    flow_rule_ex(dcmd::ctx* ctx, const flow_rule_attr_ex& attr,
+                 std::weak_ptr<const flow_table> table, std::weak_ptr<const flow_group> group,
+                 std::shared_ptr<const flow_matcher> matcher);
     /**
      * @brief Copy constructor of flow rule.
      *
@@ -1652,14 +1734,6 @@ public:
      */
     status get_match_value(match_params_ex& match_val);
     /**
-     * @brief Get flow rule priority.
-     *
-     * @param [out] priority: priority.
-     *
-     * @retval Returns DPCP_OK on success.
-     */
-    status get_priority(uint16_t& priority);
-    /**
      * @brief Create flow rule HW object.
      *
      * @note: only after create is called the flow rule settings will actually configured
@@ -1667,27 +1741,16 @@ public:
      *
      * @retval Returns DPCP_OK on success.
      */
-    status create();
-    virtual ~flow_rule_ex();
+    virtual status create() = 0;
+    virtual ~flow_rule_ex() = default;
 
 private:
-    /**
-     * @brief flow rule extended constructor.
-     *        Costructor is private, can create flow rule only from @ ref flow_group::add_flow_rule.
-     */
-     flow_rule_ex(dcmd::ctx* ctx, const flow_rule_attr_ex& attr,
-        const flow_table* table, const flow_group* group, const flow_matcher* matcher);
-
-     // Help functions.
-     status alloc_in_buff(size_t& in_len, void*& in);
-     void free_in_buff(void*& in);
-     status config_flow_rule(void* in);
-     status create_root_flow_rule();
+    // Help functions
+    bool verify_flow_actions(const std::vector<std::shared_ptr<flow_action>>& actions);
 };
 
 struct match_params {
     uint8_t dst_mac[8]; // 6 bytes + 2 (EOS+alignment)
-    uint8_t src_mac[8]; // 6 bytes + 2 (EOS+alignment)
     uint16_t ethertype;
     uint16_t vlan_id; // 12 bits
     uint32_t dst_ip; // deprecated
@@ -1706,7 +1769,7 @@ struct match_params {
     } src;
 };
 
-typedef std::vector<obj*> dst_tir_vec;
+typedef std::vector<tir*> dst_tir_vec;
 /**
  * @brief class flow_rule - Represent receive flow rule
  *
@@ -1723,8 +1786,6 @@ class flow_rule : public obj {
     uint32_t m_flow_id;
     uint16_t m_priority;
     bool m_changed;
-    dcmd::modify_action* m_modify_actions;
-    size_t m_num_of_actions;
 
 public:
     flow_rule(dcmd::ctx* dcmd_ctx, uint16_t priority, match_params& match_criteria);
@@ -1778,8 +1839,6 @@ public:
      * @retval Returns DPCP_OK on success.
      */
     status add_dest_tir(tir* dst_tir);
-
-    status add_dest_table(flow_table* dst_table);
     /**
      * @brief Remove DPCP tir from flow rule destination list
      *
@@ -1806,9 +1865,6 @@ public:
      * @retval Returns DPCP_OK on success.
      */
     status get_tir(uint32_t index, tir*& tr);
-    // TODO: This is teporary API, in GA flow_rule will not be part of DPCP and will be replaced by
-    // flow_rule_ex, if we decide to keep it for backward comp, rethink is needed for this API.
-    status set_modify_header(dcmd::modify_action * modify_actions, size_t num_of_actions);
     /**
      * @brief Apply flow settings that were configured for this flow rule.
      * Notice: only after apply is called flow settings will actually configured
@@ -1871,6 +1927,12 @@ private:
     uint32_t m_key_id;
 
 public:
+    struct attr {
+        void* key = nullptr;
+        uint32_t key_size_bytes = 0U;
+        uint32_t pd_id = 0U;
+    };
+
     /**
      * @brief DEK Object constructor, object is initialized but not created yet
      *
@@ -1891,7 +1953,25 @@ public:
      *
      * @retval Returns @ref dpcp::status with the status code
      */
-    status create(const uint32_t pd_id, void* key, const uint32_t key_size_bytes);
+    status create(const uint32_t pd_id, const void* key, const uint32_t key_size_bytes);
+
+    /**
+     * @brief Create DEK object using requested properties
+     *
+     * @param [in] dek_attr Object attributies
+     */
+    status create(const dek::attr& dek_attr);
+
+    /**
+     * @brief Modify DEK object in HW
+     */
+    status modify(const dek::attr& dek_attr);
+
+    /**
+     * @brief Query DEK object in HW
+     */
+    status query(dek::attr& dek_attr);
+
     /**
      * @brief Get key ID object in HW
      *
@@ -1904,6 +1984,74 @@ public:
     {
         return m_key_id;
     }
+
+    uint32_t m_pd_id = 0U;
+};
+
+/*
+ * @breif Represents suppoted header fields that can be used by specific operation
+ *        e.g @ref class flow_action_modify, which fields can be modified.
+ */
+struct flow_table_fields_capabilities {
+    bool outer_ethertype;
+};
+
+/*
+ * @breif Flow Action modify capabilities @ref class flow_action_modify
+ */
+struct modify_flow_action_capabilities {
+    uint8_t max_obj_log_num; /**< Total number of Flow Action modify user can create */
+    uint32_t max_obj_in_flow_rule; /** Total number of Flow Action modify can be applied to single
+                                       Flow Rule */
+
+    flow_table_fields_capabilities set_fields_support; /* Supported fields for Flow Action
+                                                          modify from type Set */
+    // flow_table_fields_support add_fields_support;
+    // flow_table_fields_support copy_fields_support;
+};
+
+/*
+ * @breif Flow Action reformat capabilities @ref class flow_action_reformat
+ */
+struct reformat_flow_action_capabilities {
+    uint8_t max_size_reformat_insert_buff; /**< Maximum buffer size in reformat insert action */
+    uint8_t max_reformat_insert_offset; /**< Maximum offset from anchor in reformat insert action */
+    uint8_t max_log_num_of_packet_reformat; /**< Maximum number of size in reformat insert action */
+};
+
+/*
+ * @breif Flow Table capabilities that can be different for each type (e.g receive, transmit)
+ */
+struct flow_table_type_capabilities {
+    bool is_flow_table_supported;
+    bool is_flow_action_tag_supported;
+    bool is_flow_action_modify_supported;
+    bool is_flow_action_reformat_supported;
+    bool is_flow_action_reformat_from_type_insert_supported; /**< flow action reformat from type
+                                                                  insert header can be supported
+                                                                  even if reformat is not
+                                                                  supported */
+    bool is_flow_action_reformat_and_modify_supported; /**< is reformat and modify supported
+                                                            together for the same Flow Rule */
+    bool is_flow_action_reformat_and_fwd_to_flow_table; /**< Is reformat and forward to flow table
+                                                             supported
+                                                             together for the same Flow Rule */
+    uint32_t max_steering_depth;
+    uint8_t max_log_size_flow_table; /**< Maximum log size of flow table in Flow Rules */
+    uint32_t max_flow_table_level;
+    uint8_t max_log_num_of_flow_table; /**< Maximum log number of Flow Table that can be created */
+    uint8_t max_log_num_of_flow_rule; /**< Maximum log number of Flow Rules that can be created */
+
+    modify_flow_action_capabilities modify_flow_action_caps;
+};
+
+/*
+ * @breif Flow Table capabilities that are common for all types
+ */
+struct flow_table_capabilities {
+    reformat_flow_action_capabilities reformat_flow_action_caps;
+
+    flow_table_type_capabilities receive;
 };
 
 /*
@@ -1917,11 +2065,16 @@ typedef struct adapter_hca_capabilities {
     bool tls_tx; /**< If set, TLS offload for transmitted traffic is supported */
     bool tls_rx; /**< If set, TLS offload for received traffic is supported */
     bool tls_1_2_aes_gcm_128; /**< If set, aes_gcm cipher with TLS 1.2 and 128 bit
-                               * key is supported
-                               */
+                                 key is supported */
+    bool tls_1_2_aes_gcm_256; /**< If set, aes_gcm cipher with TLS 1.2 and 256 bit
+                                 key is supported */
     bool general_object_types_encryption_key; /**< If set, creation of encryption
                                                * keys is supported
                                                */
+    bool synchronize_dek; /**< If set, SYNC_CRYPTO command is required before modifying
+                             and reusing a previously used DEK. */
+    uint8_t log_max_num_deks; /**< Log (base 2) of maximal number of DEKs supported
+                                 [Internal] This replaces the one in HCA_CAP. */
     uint8_t log_max_dek; /**< Log (base 2) of maximum DEK Objects that are
                             supported, 0 means not supported */
     bool crypto_enable; /**< no prm description. if set, crypto capabilites are supported */
@@ -1946,8 +2099,10 @@ typedef struct adapter_hca_capabilities {
     uint8_t lro_timer_supported_periods[4]; /**< Array of supported LRO timer periods in
                                                microseconds. */
     bool dpp; /** <is Direct Packet Placement supported */
-    uint64_t dpp_wire_protocol; /**< Direct Packet Placement protocol. List of supported protocols @ref dpcp_dpp_protocol */
-    uint16_t dpp_max_scatter_offset; /**< Direct Packet Placement protocol max scatter offset supported */
+    uint64_t dpp_wire_protocol; /**< Direct Packet Placement protocol. List of supported protocols
+                                     @ref dpcp_dpp_protocol */
+    uint16_t dpp_max_scatter_offset; /**< Direct Packet Placement protocol max scatter offset
+                                        supported */
     bool general_object_types_parse_graph_node; /**< If set, creation of programmable parse graph
                                                    node is supported. */
     uint32_t parse_graph_node_in; /**< Bitmask for the supported protocol headers that programmable
@@ -1986,30 +2141,9 @@ typedef struct adapter_hca_capabilities {
                                                        parser_graph_node_attr.header_length_field_mask,
                                                        For example, value 5 indicates bits[4:0]
                                                        are valid*/
-    uint8_t max_reformat_insert_size; /**< Maximum buffer size in reformat insert action */
-    uint8_t max_reformat_insert_offset; /**< Maximum offset from anchor in reformat insert action */
 
-    bool nic_flow_table_cap_enabled; /**< Capability to query flow table HCH.cap */
-    uint32_t nic_receive_max_steering_depth;  /**< Capability to query flow table HCH.cap */
-    uint8_t log_max_packet_reformat_context;
-
-    // TODO: reconfirm flags type, need to think how to seperate flow tales type cap.
-    // flow table from type RX capabilities.
-    bool ft_support;  /**< is RX flow table supported */
-    bool flow_tag;  /**< is flow tag supported */
-    bool flow_modify_en; /**< is modify header supported */
-    bool reformat; /**< is reformat header supported */
-    bool reformat_and_modify_action; /**< is reformat and modify supported together for the same rule supported */
-    bool reformat_and_fwd_to_table; /**< is reformat and forward to flow table supported
-                                         together for the same rule supported */
-    uint8_t log_max_ft_size; /**< flow table RX max log size */
-    uint8_t log_max_modify_header_context; /**< flow table RX max modify context */
-    uint32_t max_modify_header_actions; /**< fow table RX max log size */
-    uint32_t max_ft_level; /**< fow table RX max level */
-    bool reformat_insert; /**< fow table RX, is insert header supported */
-    uint8_t log_max_ft_num; /**< fow table RX, max flow tables */
-    uint8_t log_max_flow; /**< fow table RX, max flows total for this type */
-    bool set_action_field_support_outer_ether_type; /**< is modify set action supported on ethertype outer header */
+    bool is_flow_table_caps_supported; /**< Capability to query flow table HCH.cap */
+    flow_table_capabilities flow_table_caps; /**< Flow table from type receive capabilities */
 } adapter_hca_capabilities;
 
 typedef std::unordered_map<int, void*> caps_map_t;
@@ -2421,10 +2555,10 @@ private:
     adapter_hca_capabilities* m_external_hca_caps;
     std::vector<cap_cb_fn> m_caps_callbacks;
     bool m_opened;
-    std::shared_ptr<flow_table> m_root_table_arr[flow_table_type::FT_END]; /**< Represent root table,
-                                                                                              by defualt it is allocated
-                                                                                              by the kernel. */
+    flow_action_generator m_flow_action_generator;
+    std::shared_ptr<flow_table> m_root_table_arr[flow_table_type::FT_END];
     status prepare_basic_rq(basic_rq& srq);
+    status verify_flow_table_receive_attr(const flow_table_attr& attr);
 
 public:
     adapter(dcmd::device* dev, dcmd::ctx* ctx);
@@ -2719,17 +2853,20 @@ public:
      *
      * @retval Returns @ref dpcp::status with the status code
      */
-    status create_dek(const encryption_key_type_t type, void* const key, const uint32_t size_bytes,
-                      dek*& _dek);
+    status create_dek(const encryption_key_type_t type, const void* const key,
+                      const uint32_t size_bytes, dek*& _dek);
 
     /**
-     * @brief Creates ibv_pd for m_pd
+     * @brief Creates Protection Domain for the Adapter.
      *
+     * @param [in] ibv_pd      ibv_pd* as void*, default value is null, in this case,
+     *                         the adapter will allocate its own Protection Domain, otherwise
+     *                         it will use the one provided by the user.
      *
      * @retval      Returns DPCP_OK on success
      *              Returns DPCP_ERR_NO_MEMORY if ibv_pd* was not allocated successfully
      */
-    status create_ibv_pd();
+    status create_ibv_pd(void* ibv_pd = nullptr);
 
     /**
      * @brief Creates own_pd for m_pd
@@ -2753,6 +2890,22 @@ public:
      */
     status create_parser_graph_node(const parser_graph_node_attr& attributes,
                                     parser_graph_node*& _parser_graph_node);
+
+    /**
+     * @brief Flushed all DEK objects cache.
+     *
+     * @retval: Returns DPCP_ERR_MODIFY on error, otherwise DPCP_OK.
+     */
+    status sync_crypto_tls();
+    /**
+     * @brief Returns flow action generator.
+     *
+     * @retval: Returns @ref dpcp::flow_action_generator.
+     */
+    flow_action_generator& get_flow_action_generator()
+    {
+        return m_flow_action_generator;
+    }
 };
 
 class provider {

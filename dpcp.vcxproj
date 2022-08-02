@@ -19,6 +19,7 @@
     <ProjectGuid>{DD2B6F70-1EEB-4265-9FAD-D4179E985AB3}</ProjectGuid>
   </PropertyGroup>
   <ItemGroup>
+    <ClCompile Include="src\dcmd\windows\action.cpp" />
     <ClCompile Include="src\dcmd\windows\compchannel.cpp" />
     <ClCompile Include="src\dcmd\windows\ctx.cpp" />
     <ClCompile Include="src\dcmd\windows\device.cpp" />
@@ -33,6 +34,12 @@
     <ClCompile Include="src\dpcp\dpcp.cpp" />
     <ClCompile Include="src\dpcp\dpcp_obj.cpp" />
     <ClCompile Include="src\dpcp\eq.cpp" />
+    <ClCompile Include="src\dpcp\flow_action.cpp" />
+    <ClCompile Include="src\dpcp\flow_group.cpp" />
+    <ClCompile Include="src\dpcp\flow_matcher.cpp" />
+    <ClCompile Include="src\dpcp\flow_rule_ex.cpp" />
+    <ClCompile Include="src\dpcp\flow_table.cpp" />
+    <ClCompile Include="src\dpcp\forwardable_obj.cpp" />
     <ClCompile Include="src\dpcp\fr.cpp" />
     <ClCompile Include="src\dpcp\mkey.cpp" />
     <ClCompile Include="src\dpcp\parser_graph_node.cpp" />
@@ -46,6 +53,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\api\dpcp.h" />
+    <ClInclude Include="src\dcmd\base\base_action.h" />
     <ClInclude Include="src\dcmd\base\base_ctx.h" />
     <ClInclude Include="src\dcmd\base\base_device.h" />
     <ClInclude Include="src\dcmd\base\base_flow.h" />
@@ -54,6 +62,7 @@
     <ClInclude Include="src\dcmd\base\base_uar.h" />
     <ClInclude Include="src\dcmd\base\base_umem.h" />
     <ClInclude Include="src\dcmd\dcmd.h" />
+    <ClInclude Include="src\dcmd\windows\action.h" />
     <ClInclude Include="src\dcmd\windows\compchannel.h" />
     <ClInclude Include="src\dcmd\windows\ctx.h" />
     <ClInclude Include="src\dcmd\windows\def.h" />

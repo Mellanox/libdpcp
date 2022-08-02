@@ -14,7 +14,6 @@
 	/D "UNICODE" /D "_UNICODE" /D "WIN32" /D "_WINDOWS" /D "_WIN32" /D "STRICT"
 	/D "WIN32_LEAN_AND_MEAN" /D "GTEST_HAS_PTHREAD=0" /D "_HAS_EXCEPTIONS=1"
         /D "_HAS_ITERATOR_DEBUGGING=0" /D "-SECURE_SCL=0" /D "_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING=1"
-        /D "HAVE_DEVX"
         /TP /GS /Gy /GR /Zi /Gm- /Zc:inline
         /errorReport:prompt /Zc:forScope /Oi /EHsc /nologo
     </USER_C_FLAGS>

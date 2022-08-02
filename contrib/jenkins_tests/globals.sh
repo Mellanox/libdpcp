@@ -38,8 +38,23 @@ style_dir=${WORKSPACE}/${prefix}/style
 tool_dir=${WORKSPACE}/${prefix}/tool
 
 
-nproc=$(grep processor /proc/cpuinfo|wc -l)
-make_opt="-j$(($nproc / 2 + 1))"
+if [ -f /.dockerenv ]; then
+    if [ -f /sys/fs/cgroup/memory/memory.limit_in_bytes ]; then
+        limit=$(cat /sys/fs/cgroup/memory/memory.limit_in_bytes)
+    elif [ -f /sys/fs/cgroup/memory.max/memory.limit_in_bytes ]; then
+        limit=$(cat /sys/fs/cgroup/memory.max/memory.limit_in_bytes)
+    else
+        limit=$((4 * 1024 * 1024 * 1024))
+    fi
+    # use 1 process for 1GB of memory
+    nproc=$((${limit} / (1024 * 1024 * 1024)))
+    # max 16 processes per container
+    nproc=$(( $nproc > 16 ? 16 : $nproc ))
+else
+    nproc=$(grep processor /proc/cpuinfo | wc -l)
+fi
+make_opt="-j$nproc"
+
 if [ $(command -v timeout >/dev/null 2>&1 && echo $?) ]; then
     timeout_exe="timeout -s SIGKILL 20m"
 fi
@@ -111,9 +126,9 @@ function do_module()
 {
     echo "Checking module $1"
     if [[ $(module avail 2>&1 | grep "$1" -q > /dev/null || echo $?) ]]; then
-	    echo "[SKIP] module tool does not exist"
-	    exit 0
-	else
+        echo "[SKIP] module tool does not exist"
+        exit 0
+    else
         module load "$1"
     fi
 }

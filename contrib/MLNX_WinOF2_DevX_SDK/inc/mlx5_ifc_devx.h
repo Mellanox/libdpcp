@@ -88,6 +88,7 @@ devx_l2w_ptr_error(void const* p)
 // mlx5_ifc_devx_fs_rule_add_in_bits
 // extra_dests_count - allow more dest
 // mlx5_ifc_dest_format_struct_bits after the end of the struct
+// non_shared_match - reject devx_fs_rule_add on dup match (EADDRINUSE)
 //
 struct mlx5_ifc_devx_fs_rule_add_in_bits
 {
@@ -98,7 +99,8 @@ struct mlx5_ifc_devx_fs_rule_add_in_bits
     u8  prio[0x8];
     u8  is_flow_counter[0x1];
     u8  has_modify_header_id[0x1];
-    u8  reserved_1[0x6];
+    u8  non_shared_match[0x1];
+    u8  reserved_1[0x5];
     u8  extra_dests_count[0x8];
     u8  match_criteria_enable[0x8];
     u8  reserved_2[0x8];

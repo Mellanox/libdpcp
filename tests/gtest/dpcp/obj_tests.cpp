@@ -1,15 +1,14 @@
 /*
-Copyright (C) Mellanox Technologies, Ltd. 2020. ALL RIGHTS RESERVED.
-
-This software product is a proprietary product of Mellanox Technologies, Ltd.
-(the "Company") and all right, title, and interest in and to the software
-product, including all associated intellectual property rights, are and shall
-remain exclusively with the Company. All rights in or to the software product
-are licensed, not sold. All rights not licensed are reserved.
-
-This software product is governed by the End User License Agreement provided
-with the software product.
-*/
+ * Copyright © 2020-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ *
+ * This software product is a proprietary product of Nvidia Corporation and its affiliates
+ * (the "Company") and all right, title, and interest in and to the software
+ * product, including all associated intellectual property rights, are and
+ * shall remain exclusively with the Company.
+ *
+ * This software product is governed by the End User License Agreement
+ * provided with the software product.
+ */
 
 #include "common/def.h"
 #include "common/log.h"
@@ -17,8 +16,6 @@ with the software product.
 #include "common/base.h"
 
 #include "dpcp_base.h"
-
-#if defined(HAVE_DEVX)
 
 using namespace dpcp;
 
@@ -191,4 +188,3 @@ TEST_F(dpcp_obj, ti6_query_bad_par)
 
     delete ad;
 }
-#endif /* HAVE_DEVX */

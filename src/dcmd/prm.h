@@ -1,15 +1,15 @@
 /*
-Copyright (C) Mellanox Technologies, Ltd. 2020. ALL RIGHTS RESERVED.
+ * Copyright © 2020-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ *
+ * This software product is a proprietary product of Nvidia Corporation and its affiliates
+ * (the "Company") and all right, title, and interest in and to the software
+ * product, including all associated intellectual property rights, are and
+ * shall remain exclusively with the Company.
+ *
+ * This software product is governed by the End User License Agreement
+ * provided with the software product.
+ */
 
-This software product is a proprietary product of Mellanox Technologies, Ltd.
-(the "Company") and all right, title, and interest in and to the software
-product, including all associated intellectual property rights, are and shall
-remain exclusively with the Company. All rights in or to the software product
-are licensed, not sold. All rights not licensed are reserved.
-
-This software product is governed by the End User License Agreement provided
-with the software product.
-*/
 #ifndef SRC_DCMD_PRM_H_
 #define SRC_DCMD_PRM_H_
 
@@ -88,6 +88,7 @@ enum mlx5_cap_type {
     MLX5_CAP_DEV_EVENT = 0x14,
     MLX5_CAP_IPSEC = 0x15,
     MLX5_CAP_PARSE_GRAPH_NODE = 0x1C,
+    MLX5_CAP_CRYPTO = 0x1A,
     MLX5_CAP_GENERAL_2 = 0x20,
     /* NUM OF CAP Types */
     MLX5_CAP_NUM
@@ -283,6 +284,7 @@ enum {
     MLX5_CMD_OP_MODIFY_GENERAL_OBJECT = 0xa01,
     MLX5_CMD_OP_QUERY_GENERAL_OBJECT = 0xa02,
     MLX5_CMD_OP_DESTROY_GENERAL_OBJECT = 0xa03,
+    MLX5_CMD_OP_SYNC_CRYPTO = 0xB12,
     MLX5_CMD_OP_MAX
 };
 
@@ -658,13 +660,15 @@ struct mlx5_ifc_flow_table_nic_cap_bits {
     struct mlx5_ifc_flow_table_fields_supported_2_bits ft_field_support_2_nic_receive_rdma;
     struct mlx5_ifc_flow_table_fields_supported_2_bits ft_field_bitmask_support_2_nic_receive_rdma;
     struct mlx5_ifc_flow_table_fields_supported_2_bits ft_field_support_2_nic_receive_sniffer;
-    struct mlx5_ifc_flow_table_fields_supported_2_bits ft_field_bitmask_support_2_nic_receive_sniffer;
+    struct mlx5_ifc_flow_table_fields_supported_2_bits
+        ft_field_bitmask_support_2_nic_receive_sniffer;
     struct mlx5_ifc_flow_table_fields_supported_2_bits ft_field_support_2_nic_transmit;
     struct mlx5_ifc_flow_table_fields_supported_2_bits ft_field_bitmask_support_2_nic_transmit;
     struct mlx5_ifc_flow_table_fields_supported_2_bits ft_field_support_2_nic_transmit_rdma;
     struct mlx5_ifc_flow_table_fields_supported_2_bits ft_field_bitmask_support_2_nic_transmit_rdma;
     struct mlx5_ifc_flow_table_fields_supported_2_bits ft_field_support_2_nic_transmit_sniffer;
-    struct mlx5_ifc_flow_table_fields_supported_2_bits ft_field_bitmask_support_2_nic_transmit_sniffer;
+    struct mlx5_ifc_flow_table_fields_supported_2_bits
+        ft_field_bitmask_support_2_nic_transmit_sniffer;
 
     u8 reserved_at_1400[0x200];
 
@@ -1345,9 +1349,9 @@ struct mlx5_ifc_fte_match_set_misc2_bits {
 
     struct mlx5_ifc_fte_match_mpls_bits outer_first_mpls_over_udp;
 
-    u8  metadata_reg_c_7[0x20];
+    u8 metadata_reg_c_7[0x20];
 
-    u8  metadata_reg_c_6[0x20];
+    u8 metadata_reg_c_6[0x20];
 
     u8 metadata_reg_c_5[0x20];
 
@@ -2670,6 +2674,31 @@ struct mlx5_ifc_tls_cap_bits {
     u8 reserved_at_20[0x7e0];
 };
 
+struct mlx5_ifc_crypto_cap_bits {
+    u8 reserved_at_0[0x2];
+    u8 sw_wrapped_dek[0x1];
+    u8 synchronize_dek[0x1];
+    u8 int_kek_manual[0x1];
+    u8 int_kek_auto[0x1];
+    u8 reserved_at_6[0x1a];
+
+    u8 reserved_at_20[0x3];
+    u8 log_dek_max_alloc[0x5];
+    u8 reserved_at_28[0x3];
+    u8 log_max_num_deks[0x5];
+    u8 reserved_at_30[0x3];
+    u8 log_max_num_import_keks[0x5];
+    u8 reserved_at_38[0x8];
+
+    u8 reserved_at_40[0x20];
+
+    u8 reserved_at_60[0xB];
+    u8 log_max_num_int_kek[0x5];
+    u8 reserved_at_70[0x10];
+
+    u8 reserved_at_80[0x780];
+};
+
 struct mlx5_ifc_dpp_cap_bits {
     u8 dpp_wire_protocol[0x40];
 
@@ -2725,6 +2754,7 @@ union mlx5_ifc_hca_cap_union_bits {
     struct mlx5_ifc_emulation_cap_bits emulation_cap;
     struct mlx5_ifc_dpp_cap_bits dpp_cap;
     struct mlx5_ifc_parse_graph_node_cap_bits parse_graph_node_cap;
+    struct mlx5_ifc_crypto_cap_bits crypto_cap;
     u8 reserved_at_0[0x8000];
 };
 
@@ -5385,8 +5415,8 @@ struct mlx5_ifc_copy_action_in_bits {
 };
 
 union mlx5_ifc_set_add_copy_action_in_auto_bits {
-    struct mlx5_ifc_set_action_in_bits  set_action_in;
-    struct mlx5_ifc_add_action_in_bits  add_action_in;
+    struct mlx5_ifc_set_action_in_bits set_action_in;
+    struct mlx5_ifc_add_action_in_bits add_action_in;
     struct mlx5_ifc_copy_action_in_bits copy_action_in;
     u8 reserved_at_0[0x40];
 };
@@ -9752,7 +9782,9 @@ struct mlx5_ifc_device_emulation_qp_to_nvme_map_bits {
 struct mlx5_ifc_encryption_key_obj_bits {
     u8 modify_field_select[0x40];
 
-    u8 reserved_at_40[0x14];
+    u8 reserved_at_40[0x8];
+    u8 sw_wrapped[0x1];
+    u8 reserved_at_49[0xB];
     u8 key_size[0x4];
     u8 reserved_at_58[0x4];
     u8 key_type[0x4];
@@ -9762,12 +9794,18 @@ struct mlx5_ifc_encryption_key_obj_bits {
 
     u8 reserved_at_80[0x180];
     u8 key[8][0x20];
-
-    u8 reserved_at_300[0x500];
+    u8 reserved_at_300[0x300];
+    u8 sw_wrapped_dek[0x400];
+    u8 reserved_at_A00[0x600];
 };
 
 struct mlx5_ifc_create_encryption_key_in_bits {
     struct mlx5_ifc_general_obj_in_cmd_hdr_bits general_obj_in_cmd_hdr;
+    struct mlx5_ifc_encryption_key_obj_bits encryption_key_object;
+};
+
+struct mlx5_ifc_query_encryption_key_out_bits {
+    struct mlx5_ifc_general_obj_out_cmd_hdr_bits general_obj_out_cmd_hdr;
     struct mlx5_ifc_encryption_key_obj_bits encryption_key_object;
 };
 
@@ -9903,6 +9941,23 @@ struct mlx5_ifc_create_parse_graph_node_in_bits {
 struct mlx5_ifc_create_parse_graph_node_out_bits {
     struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
     struct mlx5_ifc_parse_graph_node_bits node;
+};
+
+struct mlx5_ifc_sync_crypto_in_bits {
+    u8 opcode[0x10];
+    u8 uid[0x10];
+    u8 reserved_at_20[0x10];
+    u8 op_mod[0x10];
+    u8 reserved_at_40[0x30];
+    u8 crypto_type[0x10];
+    u8 reserved_at_80[0x80];
+};
+
+struct mlx5_ifc_sync_crypto_out_bits {
+    u8 status[0x8];
+    u8 reserved_at_8[0x18];
+    u8 syndrome[0x20];
+    u8 reserved_at_40[0x40];
 };
 
 #endif /* MLX5_IFC_H */

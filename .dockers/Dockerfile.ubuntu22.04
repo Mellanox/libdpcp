@@ -1,0 +1,49 @@
+ARG ARCH=x86_64
+FROM harbor.mellanox.com/swx-storage/$ARCH/ubuntu2204-ofed:5.6.1.0.3.3
+ARG _UID=6213
+ARG _GID=11429
+ARG _LOGIN=swx-jenkins
+ARG _HOME=/var/home/
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get install -y \
+        sudo \
+        automake \
+        default-jdk \
+        dh-make \
+        g++ \
+        git \
+        libcap2 \
+        libnuma-dev \
+        libtool \
+        make \
+        maven \
+        udev \
+        wget \
+        vim \
+        net-tools \
+        iputils-ping \
+        environment-modules \
+        libibverbs-dev \
+        libfile-fcntllock-perl \
+        chrpath flex gfortran graphviz dpatch libgfortran5 tcl bison tk swig \
+        libnl-route-3-dev libnl-3-dev kmod python3 lsof pciutils ethtool libmnl0 pkg-config \
+        lsb-release \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN echo "$_LOGIN ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
+    mkdir -p $_HOME && \
+    groupadd -f -g "$_GID" "$_LOGIN" && \
+    useradd -u "$_UID" -g "$_GID" -s /bin/bash -m -d ${_HOME} "$_LOGIN" && \
+    usermod -aG sudo $_LOGIN
+
+# W/A for libvma installation issue under docker environment
+RUN touch /etc/init.d/vma && chmod +x /etc/init.d/vma
+
+ENV MODULEPATH /hpc/local/etc/modulefiles
+SHELL ["/bin/bash"]
+
+USER "$_LOGIN"
+ENTRYPOINT [ "/bin/bash", "--login", "--rcfile", "/etc/bashrc", "-c" ]

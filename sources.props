@@ -17,7 +17,6 @@
         -U_NO_CRT_STDIO_INLINE
         /GS /Gy /Zi /Gm- /sdl /Zc:inline /W4
         /D "_LIB" /D "_CRT_SECURE_NO_WARNINGS" /D "_UNICODE" /D "UNICODE"
-        /D "HAVE_DEVX"
         /D "_HAS_ITERATOR_DEBUGGING=0" /D "_SECURE_SCL=0"
         /errorReport:prompt /Zc:forScope /Oi /EHsc /nologo
     </USER_C_FLAGS>

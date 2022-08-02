@@ -1,15 +1,14 @@
 /*
-Copyright (C) Mellanox Technologies, Ltd. 2020. ALL RIGHTS RESERVED.
-
-This software product is a proprietary product of Mellanox Technologies, Ltd.
-(the "Company") and all right, title, and interest in and to the software
-product, including all associated intellectual property rights, are and shall
-remain exclusively with the Company. All rights in or to the software product
-are licensed, not sold. All rights not licensed are reserved.
-
-This software product is governed by the End User License Agreement provided
-with the software product.
-*/
+ * Copyright © 2020-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ *
+ * This software product is a proprietary product of Nvidia Corporation and its affiliates
+ * (the "Company") and all right, title, and interest in and to the software
+ * product, including all associated intellectual property rights, are and
+ * shall remain exclusively with the Company.
+ *
+ * This software product is governed by the End User License Agreement
+ * provided with the software product.
+ */
 
 #include <memory>
 
@@ -48,14 +47,16 @@ TEST_F(dpcp_flow_table, ti_01_Constructor)
     attr.type = flow_table_type::FT_RX;
 
     // Create flow table SW object;
-    flow_table ft_obj(adapter_obj->get_ctx(), attr);
+    // Create flow table SW object;
+    std::shared_ptr<flow_table> ft_obj;
+    adapter_obj->create_flow_table(attr, ft_obj);
     uintptr_t handle = 0;
-    ret = ft_obj.get_handle(handle);
+    ret = ft_obj->get_handle(handle);
     ASSERT_EQ(DPCP_ERR_CREATE, ret);
     ASSERT_EQ(0, handle);
 
     uint32_t id = 0;
-    ret = ft_obj.get_id(id);
+    ret = std::dynamic_pointer_cast<flow_table_prm>(ft_obj)->get_id(id);
     ASSERT_EQ(DPCP_ERR_INVALID_ID, ret);
     ASSERT_EQ(0, id);
 
@@ -65,7 +66,7 @@ TEST_F(dpcp_flow_table, ti_01_Constructor)
 /**
  * @test dpcp_flow_table.ti_02_create
  * @brief
- *    Check flow_table::create method
+ *    Check flow_table_prm::create method
  * @details
  */
 TEST_F(dpcp_flow_table, ti_02_create)
@@ -84,11 +85,12 @@ TEST_F(dpcp_flow_table, ti_02_create)
     attr.op_mod = flow_table_op_mod::FT_OP_MOD_NORMAL;
     attr.type = flow_table_type::FT_RX;
 
-    // Create flow table SW object.
-    flow_table ft_obj(adapter_obj->get_ctx(), attr);
+    // Create flow table SW object;
+    std::shared_ptr<flow_table> ft_obj;
+    adapter_obj->create_flow_table(attr, ft_obj);
 
-    // Create flow_table HW object.
-    ret = ft_obj.create();
+    // Create flow_table_prm HW object.
+    ret = ft_obj->create();
     ASSERT_EQ(DPCP_OK, ret);
 
     delete adapter_obj;
@@ -116,16 +118,17 @@ TEST_F(dpcp_flow_table, ti_04_create_twice)
     attr.op_mod = flow_table_op_mod::FT_OP_MOD_NORMAL;
     attr.type = flow_table_type::FT_RX;
 
-    // Create flow table SW object.
-    flow_table ft_obj(adapter_obj->get_ctx(), attr);
+    // Create flow table SW object;
+    std::shared_ptr<flow_table> ft_obj;
+    adapter_obj->create_flow_table(attr, ft_obj);
 
-    // Create flow_table HW object.
-    ret = ft_obj.create();
+    // Create flow_table_prm HW object.
+    ret = ft_obj->create();
     ASSERT_EQ(DPCP_OK, ret);
 
-    // Create flow_table HW object second time.
-    ret = ft_obj.create();
-    ASSERT_EQ(DPCP_ERR_CREATE, ret);
+    // Create flow_table_prm HW object second time.
+    ret = ft_obj->create();
+    ASSERT_EQ(DPCP_OK, ret);
 
     delete adapter_obj;
 }
@@ -148,16 +151,14 @@ TEST_F(dpcp_flow_table, ti_05_create_invalid_01)
     flow_table_attr attr;
     attr.def_miss_action = flow_table_miss_action::FT_MISS_ACTION_DEF;
     attr.level = 0;
-    attr.log_size = 10;
+    attr.log_size = 255;
     attr.op_mod = flow_table_op_mod::FT_OP_MOD_NORMAL;
     attr.type = flow_table_type::FT_RX;
 
-    // Create flow table SW object.
-    flow_table ft_obj(adapter_obj->get_ctx(), attr);
-
-    // Create flow_table HW object.
-    ret = ft_obj.create();
-    ASSERT_EQ(DPCP_ERR_INVALID_PARAM, ret);
+    // Create flow table SW object;
+    std::shared_ptr<flow_table> ft_obj;
+    ret = adapter_obj->create_flow_table(attr, ft_obj);
+    ASSERT_NE(DPCP_OK, ret);
 
     delete adapter_obj;
 }
@@ -184,11 +185,12 @@ TEST_F(dpcp_flow_table, ti_06_create_invalid_02)
     attr.op_mod = flow_table_op_mod::FT_OP_MOD_NORMAL;
     attr.type = flow_table_type::FT_RX;
 
-    // Create flow table SW object.
-    flow_table ft_obj(adapter_obj->get_ctx(), attr);
+    // Create flow table SW object;
+    std::shared_ptr<flow_table> ft_obj;
+    adapter_obj->create_flow_table(attr, ft_obj);
 
-    // Create flow_table HW object.
-    ret = ft_obj.create();
+    // Create flow_table_prm HW object.
+    ret = ft_obj->create();
     ASSERT_EQ(DPCP_ERR_INVALID_PARAM, ret);
 
     delete adapter_obj;
@@ -217,15 +219,16 @@ TEST_F(dpcp_flow_table, ti_07_query)
     attr_in.op_mod = flow_table_op_mod::FT_OP_MOD_NORMAL;
     attr_in.type = flow_table_type::FT_RX;
 
-    // Create flow table SW object.
-    flow_table ft_obj(adapter_obj->get_ctx(), attr_in);
+    // Create flow table SW object;
+    std::shared_ptr<flow_table> ft_obj;
+    adapter_obj->create_flow_table(attr_in, ft_obj);
 
-    // Create flow_table HW object.
-    ret = ft_obj.create();
+    // Create flow_table_prm HW object.
+    ret = ft_obj->create();
     ASSERT_EQ(DPCP_OK, ret);
 
     flow_table_attr attr_out;
-    ret = ft_obj.query(attr_out);
+    ret = ft_obj->query(attr_out);
     ASSERT_EQ(DPCP_OK, ret);
 
     ASSERT_EQ(attr_in.def_miss_action, attr_out.def_miss_action);
@@ -261,10 +264,11 @@ TEST_F(dpcp_flow_table, ti_08_miss_action_fwd01)
     attr_miss.type = flow_table_type::FT_RX;
 
     // Create flow table SW object of miss table.
-    std::shared_ptr<flow_table> ft_miss_obj(new (std::nothrow) flow_table(adapter_obj->get_ctx(), attr_miss));
-    ASSERT_NE(nullptr, ft_miss_obj);
+    std::shared_ptr<flow_table> ft_miss_obj;
+    ret = adapter_obj->create_flow_table(attr_miss, ft_miss_obj);
+    ASSERT_EQ(DPCP_OK, ret);
 
-    // Create flow_table HW object of miss table.
+    // Create flow_table_prm HW object of miss table.
     ret = ft_miss_obj->create();
     ASSERT_EQ(DPCP_OK, ret);
 
@@ -278,8 +282,10 @@ TEST_F(dpcp_flow_table, ti_08_miss_action_fwd01)
     attr.table_miss = ft_miss_obj;
 
     // Create flow table SW object.
-    flow_table ft_obj(adapter_obj->get_ctx(), attr);
-    ret = ft_obj.create();
+    std::shared_ptr<flow_table> ft_obj;
+    ret = adapter_obj->create_flow_table(attr, ft_obj);
+    ASSERT_EQ(DPCP_OK, ret);
+    ret = ft_obj->create();
     ASSERT_EQ(DPCP_OK, ret);
 
     delete adapter_obj;
@@ -308,10 +314,11 @@ TEST_F(dpcp_flow_table, ti_08_miss_action_fwd02)
     attr_miss.type = flow_table_type::FT_RX;
 
     // Create flow table SW object of miss table.
-    std::shared_ptr<flow_table> ft_miss_obj(new (std::nothrow) flow_table(adapter_obj->get_ctx(), attr_miss));
-    ASSERT_NE(nullptr, ft_miss_obj);
+    std::shared_ptr<flow_table> ft_miss_obj;
+    ret = adapter_obj->create_flow_table(attr_miss, ft_miss_obj);
+    ASSERT_EQ(DPCP_OK, ret);
 
-    // Create flow_table HW object of miss table.
+    // Create flow_table_prm HW object of miss table.
     ret = ft_miss_obj->create();
     ASSERT_EQ(DPCP_OK, ret);
 
@@ -325,8 +332,10 @@ TEST_F(dpcp_flow_table, ti_08_miss_action_fwd02)
     attr.table_miss = ft_miss_obj;
 
     // Create flow table SW object, should fail because miss table level is less then this table level.
-    flow_table ft_obj(adapter_obj->get_ctx(), attr);
-    ret = ft_obj.create();
+    std::shared_ptr<flow_table> ft_obj;
+    ret = adapter_obj->create_flow_table(attr, ft_obj);
+    ASSERT_EQ(DPCP_OK, ret);
+    ret = ft_obj->create();
     ASSERT_NE(DPCP_OK, ret);
 
     delete adapter_obj;

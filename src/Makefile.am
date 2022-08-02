@@ -5,7 +5,7 @@ libdpcp_la_CFLAGS =
 libdpcp_la_LIBADD = \
 	 $(VERBS_LIBS)
 
-libdpcp_la_LDFLAGS = -no-undefined -version-number @PRJ_MAJOR@:@PRJ_MINOR@:@PRJ_REVISION@ 
+libdpcp_la_LDFLAGS = -no-undefined -version-number @PRJ_MAJOR@:@PRJ_MINOR@:@PRJ_REVISION@
 
 
 libdpcp_la_CPPFLAGS = \
@@ -32,6 +32,7 @@ libdpcp_la_SOURCES = \
 	dpcp/flow_action.cpp \
 	dpcp/flow_rule_ex.cpp \
 	dpcp/flow_matcher.cpp \
+	dpcp/forwardable_obj.cpp \
 	\
 	dcmd/dcmd.h \
 	dcmd/prm.h \
@@ -43,6 +44,7 @@ libdpcp_la_SOURCES = \
 	dcmd/base/base_uar.h \
 	dcmd/base/base_umem.h \
 	dcmd/base/base_flow.h \
+	dcmd/base/base_action.h \
 	\
 	dcmd/linux/def.h \
 	dcmd/linux/provider.cpp \
@@ -61,6 +63,8 @@ libdpcp_la_SOURCES = \
 	dcmd/linux/umem.h \
 	dcmd/linux/flow.cpp \
 	dcmd/linux/flow.h \
+	dcmd/linux/action.cpp \
+	dcmd/linux/action.h \
 	\
 	utils/os.h \
 	\

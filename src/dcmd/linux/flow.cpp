@@ -1,3 +1,15 @@
+/*
+ * Copyright © 2019-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ *
+ * This software product is a proprietary product of Nvidia Corporation and its affiliates
+ * (the "Company") and all right, title, and interest in and to the software
+ * product, including all associated intellectual property rights, are and
+ * shall remain exclusively with the Company.
+ *
+ * This software product is governed by the End User License Agreement
+ * provided with the software product.
+ */
+
 #include <string>
 
 #include <utils/os.h>
@@ -7,8 +19,6 @@ using namespace dcmd;
 
 flow::flow(ctx_handle handle, struct flow_desc* desc)
 {
-#if defined(HAVE_DEVX)
-
     struct ibv_flow* ib_flow;
     struct mlx5dv_flow_matcher* matcher = NULL;
     struct mlx5dv_flow_matcher_attr matcher_attr;
@@ -29,7 +39,7 @@ flow::flow(ctx_handle handle, struct flow_desc* desc)
         throw DCMD_ENOTSUP;
     }
 
-    size_t num_actions = (desc->flow_id ? (desc->num_dst_tir + 1) : desc->num_dst_tir);
+    size_t num_actions = (desc->flow_id ? (desc->num_dst_obj + 1) : desc->num_dst_obj);
     num_actions += desc->modify_actions ? 1 : 0;
     struct mlx5dv_flow_action_attr actions_attr[num_actions];
     int i = 0;
@@ -43,18 +53,16 @@ flow::flow(ctx_handle handle, struct flow_desc* desc)
     if (desc->modify_actions) {
         actions_attr[i].type = MLX5DV_FLOW_ACTION_IBV_FLOW_ACTION;
         actions_attr[i].action = mlx5dv_create_flow_action_modify_header(
-            handle,
-            sizeof(modify_action) * desc->num_of_actions,
-            (uint64_t *)desc->modify_actions,
+            handle, sizeof(modify_action) * desc->num_of_actions, (uint64_t*)desc->modify_actions,
             MLX5_IB_UAPI_FLOW_TABLE_TYPE_NIC_RX);
         if (!actions_attr[i].action) {
             throw DCMD_ENOTSUP;
         }
         i++;
     }
-    for (j = 0; j < (int)desc->num_dst_tir; j++, i++) {
+    for (j = 0; j < (int)desc->num_dst_obj; j++, i++) {
         actions_attr[i].type = MLX5DV_FLOW_ACTION_DEST_DEVX;
-        actions_attr[i].obj = desc->dst_tir_obj[j];
+        actions_attr[i].obj = desc->dst_obj[j];
     }
 
     ib_flow = mlx5dv_create_flow(matcher, (struct mlx5dv_flow_match_parameters*)desc->match_value,
@@ -65,23 +73,14 @@ flow::flow(ctx_handle handle, struct flow_desc* desc)
     }
     m_matcher = matcher;
     m_handle = ib_flow;
-
-#else
-    UNUSED(handle);
-    UNUSED(desc);
-    throw DCMD_ENOTSUP;
-#endif /* HAVE_DEVX */
 }
 
 flow::~flow()
 {
-#if defined(HAVE_DEVX)
-
     if (m_handle) {
         ibv_destroy_flow(m_handle);
         m_handle = nullptr;
         mlx5dv_destroy_flow_matcher(m_matcher);
         m_matcher = nullptr;
     }
-#endif /* HAVE_DEVX */
 }

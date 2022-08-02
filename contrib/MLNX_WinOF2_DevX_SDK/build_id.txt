@@ -1,9 +1,10 @@
-Version: 			2.80.25134
+Version: 			2.90.25506
 Type: 				fre
 Repository: 			m:\git\winof2.git
-Branch: 			MLNX_WinOF2-2_80
-Revision hash code: 		d8cca6003cc87017c90a460a12b7fe5f4f7bebb5
-Build directory: 		Y:\BUILDS\winof2\2_80\25134\MLNX_WinOF2-2_80
+Branch: 			MLNX_WinOF2-2_90
+Revision hash code: 		5218db6d117f58b35f1ef2f51a6d83cd90307165
+Build directory: 		Y:\BUILDS\winof2\2_90\25506\MLNX_WinOF2-2_90
 Build machine: 			winbuild02-vm
-MlxRshim Version: 	2.80.25134
-Mux Version: 		2.80.25134
+MlxRshim Version: 		2.90.25506
+Mux Version: 			2.90.25506
+DevX Version: 			2.90.25506

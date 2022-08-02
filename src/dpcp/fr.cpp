@@ -1,15 +1,14 @@
 /*
- Copyright (C) Mellanox Technologies, Ltd. 2020. ALL RIGHTS RESERVED.
-
- This software product is a proprietary product of Mellanox Technologies, Ltd.
- (the "Company") and all right, title, and interest in and to the software
- product, including all associated intellectual property rights, are and shall
- remain exclusively with the Company. All rights in or to the software product
- are licensed, not sold. All rights not licensed are reserved.
-
- This software product is governed by the End User License Agreement provided
- with the software product.
-*/
+ * Copyright © 2020-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ *
+ * This software product is a proprietary product of Nvidia Corporation and its affiliates
+ * (the "Company") and all right, title, and interest in and to the software
+ * product, including all associated intellectual property rights, are and
+ * shall remain exclusively with the Company.
+ *
+ * This software product is governed by the End User License Agreement
+ * provided with the software product.
+ */
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -19,7 +18,6 @@
 
 #include "utils/os.h"
 #include "dpcp/internal.h"
-#include "dcmd/dcmd.h"
 
 namespace dpcp {
 
@@ -34,8 +32,6 @@ flow_rule::flow_rule(dcmd::ctx* ctx, uint16_t priority, match_params& match_crit
     , m_flow_id(0)
     , m_priority(priority)
     , m_changed(false)
-    , m_modify_actions(nullptr)
-    , m_num_of_actions()
 {
 }
 
@@ -43,9 +39,6 @@ flow_rule::~flow_rule()
 {
     revoke_settings();
     m_dst_tir.clear();
-    if (m_modify_actions) {
-        delete[] m_modify_actions;
-    }
 }
 
 status flow_rule::set_match_value(match_params& val)
@@ -104,33 +97,12 @@ status flow_rule::get_tir(uint32_t index, tir*& tr)
     return DPCP_OK;
 }
 
-status flow_rule::set_modify_header(dcmd::modify_action* modify_actions, size_t num_of_actions)
-{
-    m_modify_actions = new struct dcmd::modify_action[num_of_actions]; /* XXX should test for allocation success */
-    for (size_t i = 0; i < num_of_actions; ++i) {
-        m_modify_actions[i] = modify_actions[i];
-    }
-    m_num_of_actions = num_of_actions;
-
-    return DPCP_OK;
-}
-
 status flow_rule::add_dest_tir(tir* tr)
 {
     if (nullptr == tr) {
         return DPCP_ERR_INVALID_PARAM;
     }
     m_dst_tir.push_back(tr);
-    m_changed = true;
-    return DPCP_OK;
-}
-
-status flow_rule::add_dest_table(flow_table* dst_table)
-{
-    if (nullptr == dst_table) {
-        return DPCP_ERR_INVALID_PARAM;
-    }
-    m_dst_tir.push_back(dst_table);
     m_changed = true;
     return DPCP_OK;
 }
@@ -152,11 +124,6 @@ static inline void copy_ether_mac(uint8_t* dst, const uint8_t* src)
     *(uint32_t*)dst = *(const uint32_t*)src;
     *(uint16_t*)(dst + 4) = *(const uint16_t*)(src + 4);
 }
-
-struct prm_match_params {
-    size_t buf_sz;
-    uint32_t buf[DEVX_ST_SZ_DW(fte_match_param)];
-};
 
 status flow_rule::apply_settings()
 {
@@ -201,15 +168,6 @@ status flow_rule::apply_settings()
     if (dmac_set) {
         copy_ether_mac((uint8_t*)DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mc, dmac_47_16),
                        m_mask.dst_mac);
-    }
-
-    uint64_t smac = 0;
-    memcpy(&smac, m_mask.src_mac, sizeof(smac));
-    // will send SRC_MAC only if was set in mask
-    bool smac_set = smac ? true : false;
-    if (smac_set) {
-        copy_ether_mac((uint8_t*)DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mc, smac_47_16),
-                       m_mask.src_mac);
     }
 
     if ((m_mask.ethertype == 0xffff && m_value.ethertype == 0x0800) &&
@@ -279,13 +237,6 @@ status flow_rule::apply_settings()
         log_trace("dmac [%x:%x:%x:%x:%x:%x]\n", d[0], d[1], d[2], d[3], d[4], d[5]);
     }
 
-    if (smac_set) {
-        copy_ether_mac((uint8_t*)DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mv, smac_47_16),
-                       m_value.src_mac);
-        uint8_t* d = m_value.src_mac;
-        log_trace("smac [%x:%x:%x:%x:%x:%x]\n", d[0], d[1], d[2], d[3], d[4], d[5]);
-    }
-
     if ((m_mask.ethertype == 0xffff && m_value.ethertype == 0x0800) &&
         (m_mask.ip_version == 0xf && m_value.ip_version == 4)) {
         void* p_src_ip = DEVX_ADDR_OF(fte_match_set_lyr_2_4, prm_mv, src_ipv4_src_ipv6);
@@ -319,33 +270,31 @@ status flow_rule::apply_settings()
     dcmd_flow.match_value = (dcmd::flow_match_parameters*)&values;
     dcmd_flow.priority = m_priority;
     dcmd_flow.flow_id = m_flow_id;
-    dcmd_flow.num_dst_tir = m_dst_tir.size();
+    dcmd_flow.num_dst_obj = m_dst_tir.size();
     // we would need tir objects for Linux and tir ids for Windows which fill in
     // mlx5_ifc_dest_format_struct_bits
-    uintptr_t* dst_tir_obj = new (std::nothrow) uintptr_t[dcmd_flow.num_dst_tir];
-    auto dst_formats = new (std::nothrow) mlx5_ifc_dest_format_struct_bits[dcmd_flow.num_dst_tir];
+    uintptr_t* dst_tir_obj = new (std::nothrow) uintptr_t[dcmd_flow.num_dst_obj];
+    auto dst_formats = new (std::nothrow) mlx5_ifc_dest_format_struct_bits[dcmd_flow.num_dst_obj];
     if (!dst_tir_obj || !dst_formats) {
         delete[] dst_formats;
         delete[] dst_tir_obj;
         return DPCP_ERR_NO_MEMORY;
     }
-    memset(dst_formats, 0, DEVX_ST_SZ_BYTES(dest_format_struct) * dcmd_flow.num_dst_tir);
+    memset(dst_formats, 0, DEVX_ST_SZ_BYTES(dest_format_struct) * dcmd_flow.num_dst_obj);
 
-    for (uint32_t i = 0; i < dcmd_flow.num_dst_tir; i++) {
+    for (uint32_t i = 0; i < dcmd_flow.num_dst_obj; i++) {
         if (DPCP_OK == m_dst_tir[i]->get_handle(dst_tir_obj[i])) {
             uint32_t tir_id = 0;
             m_dst_tir[i]->get_id(tir_id);
             DEVX_SET(dest_format_struct, dst_formats + i, destination_type,
-                     (dynamic_cast<tir*>(m_dst_tir[i]) ? MLX5_FLOW_DESTINATION_TYPE_TIR : MLX5_FLOW_DESTINATION_TYPE_FLOW_TABLE));
+                     MLX5_FLOW_DESTINATION_TYPE_TIR);
             DEVX_SET(dest_format_struct, dst_formats + i, destination_id, tir_id);
             uint32_t ud_id = DEVX_GET(dest_format_struct, dst_formats + i, destination_id);
             log_trace("tir_id[%i] 0x%x (0x%x)\n", i, tir_id, ud_id);
         }
     }
-    dcmd_flow.dst_tir_obj = (obj_handle*)dst_tir_obj;
+    dcmd_flow.dst_obj = (obj_handle*)dst_tir_obj;
     dcmd_flow.dst_formats = dst_formats;
-    dcmd_flow.modify_actions = m_modify_actions;
-    dcmd_flow.num_of_actions = m_num_of_actions;
 
     m_flow = ctx->create_flow(&dcmd_flow);
 

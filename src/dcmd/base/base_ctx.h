@@ -1,17 +1,22 @@
 /*
-Copyright (C) Mellanox Technologies, Ltd. 2020. ALL RIGHTS RESERVED.
+ * Copyright © 2020-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ *
+ * This software product is a proprietary product of Nvidia Corporation and its affiliates
+ * (the "Company") and all right, title, and interest in and to the software
+ * product, including all associated intellectual property rights, are and
+ * shall remain exclusively with the Company.
+ *
+ * This software product is governed by the End User License Agreement
+ * provided with the software product.
+ */
 
-This software product is a proprietary product of Mellanox Technologies, Ltd.
-(the "Company") and all right, title, and interest in and to the software
-product, including all associated intellectual property rights, are and shall
-remain exclusively with the Company. All rights in or to the software product
-are licensed, not sold. All rights not licensed are reserved.
-
-This software product is governed by the End User License Agreement provided
-with the software product.
-*/
 #ifndef SRC_DCMD_BASE_CTX_H_
 #define SRC_DCMD_BASE_CTX_H_
+
+#include <vector>
+
+#include "action.h"
+#include "dcmd/dcmd.h"
 
 namespace dcmd {
 
@@ -19,6 +24,7 @@ class obj;
 class uar;
 class umem;
 class flow;
+class action_fwd;
 
 class base_ctx {
 public:
@@ -34,7 +40,22 @@ public:
     virtual uar* create_uar(struct uar_desc* desc) = 0;
     virtual umem* create_umem(struct umem_desc* desc) = 0;
     virtual flow* create_flow(struct flow_desc* desc) = 0;
+    std::unique_ptr<action_fwd> create_action_fwd(const std::vector<fwd_dst_desc>& dests);
 };
+
+inline std::unique_ptr<action_fwd> base_ctx::create_action_fwd(
+    const std::vector<fwd_dst_desc>& dests)
+{
+    std::unique_ptr<action_fwd> action_ptr;
+
+    try {
+        action_ptr.reset(new action_fwd(dests));
+    } catch (...) {
+        return std::unique_ptr<action_fwd>(nullptr);
+    }
+
+    return action_ptr;
+}
 
 } /* namespace dcmd */
 

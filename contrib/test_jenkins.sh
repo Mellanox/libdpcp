@@ -51,6 +51,7 @@ jenkins_test_build=${jenkins_test_build:="yes"}
 
 jenkins_test_compiler=${jenkins_test_compiler:="yes"}
 jenkins_test_rpm=${jenkins_test_rpm:="yes"}
+jenkins_test_copyrights=${jenkins_test_copyrights:="no"}
 jenkins_test_cov=${jenkins_test_cov:="yes"}
 jenkins_test_cppcheck=${jenkins_test_cppcheck:="yes"}
 jenkins_test_csbuild=${jenkins_test_csbuild:="yes"}
@@ -170,6 +171,16 @@ for target_v in "${target_list[@]}"; do
 	        ret=$?
 	        if [ $ret -gt 0 ]; then
 	           do_err "case: [style: ret=$ret]"
+	        fi
+	        rc=$((rc + $ret))
+	    fi
+    fi
+    if [ 8 -lt "$jenkins_opt_exit" -o "$rc" -eq 0 ]; then
+	    if [ "$jenkins_test_copyrights" = "yes" ]; then
+	        $WORKSPACE/contrib/jenkins_tests/copyrights.sh
+	        ret=$?
+	        if [ $ret -gt 0 ]; then
+	           do_err "case: [copyrights: ret=$ret]"
 	        fi
 	        rc=$((rc + $ret))
 	    fi

@@ -110,6 +110,10 @@ struct devx_device
     // 1 connected, 2 disconnected and 0 unknown
     uint8_t         link_state;
 
+    // vendor/device ID also encoded in the above PnP ID
+    // e.g. ConnectX-4 - 1014
+    uint16_t        device_id;
+
     // link speed in bits/sec
     uint64_t        link_speed;
 
@@ -406,17 +410,45 @@ devx_fs_rule_del(
     __in struct devx_obj_handle* obj
 );
 
+enum MLX5_DEVX_SET_PROMISC_VPORT{
+    MLX5_DEVX_SET_PROMISC_VPORT_PROMISC_MODE,
+    MLX5_DEVX_SET_PROMISC_VPORT_ALL_MULTICAST
+};
 
 //
 // devx_set_promisc_vport
+// type - Type of the promiscuious mode
 // fEnable - enable or disable promiscous mode on vport
 //
 L2W_RETURN_ERRNO
 devx_set_promisc_vport(
     __in                  devx_device_ctx* ctx,
+    __in                  uint32_t         type,
     __in                  uint8_t          fEnable
 );
-#define HAVE_DEVXWIN_VF_PROMISC
+#define HAVE_DEVX_SET_PROMISC_SUPPORT
+
+//
+// devx_set_mtu
+// mtu - Unsigned int value for setting new MTU
+//
+L2W_RETURN_ERRNO
+devx_set_mtu(
+    __in                  devx_device_ctx* ctx,
+    __in                  uint32_t         mtu
+);
+
+//
+// devx_get_mtu
+// mtu - pointer for getting current MTU
+//
+L2W_RETURN_ERRNO
+devx_get_mtu(
+    __in                  devx_device_ctx* ctx,
+    __out                  uint32_t*       pMtu
+);
+#define HAVE_DEVX_SET_GET_MTU_SUPPORT
+
 
 struct rte_pci_addr;
 
@@ -857,26 +889,25 @@ devx_ioctl_resolve_from_ip(
 
     return devx_ioctl(DEVX_IOCTL_OPCODE_RESOLVE_FROM_IP, sizeof(aData), &aData);
 }
-
+#ifdef _MSC_VER
+ #pragma warning(push)
+ #pragma warning(disable: 4200) // Zero sized array
+#endif
 typedef struct
 {
     uint64_t c_pages;
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4200) // Zero sized array
-#endif
+
     struct
     {
         uint64_t index;  // 4kb index
         uint64_t length; // contiguous length
     }
     pages[];
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
 }
 devx_physical_memory_info;
-
+#ifdef _MSC_VER
+ #pragma warning(pop)
+#endif
 typedef struct
 {
     devx_device_ctx*           device;

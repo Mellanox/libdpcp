@@ -19,7 +19,7 @@ ${WORKSPACE}/configure --prefix=$install_dir
 make
 make -C tests/gtest
 
-eval "sudo $timeout_exe env GTEST_TAP=2 $gtest_app $gtest_opt"
+eval "sudo $timeout_exe env GTEST_TAP=2 $gtest_app $gtest_opt --gtest_output=xml:${install_dir}/gtest-all.xml"
 rc=$(($rc+$?))
 
 set -eE

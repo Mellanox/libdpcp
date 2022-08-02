@@ -1,3 +1,15 @@
+/*
+ * Copyright © 2019-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ *
+ * This software product is a proprietary product of Nvidia Corporation and its affiliates
+ * (the "Company") and all right, title, and interest in and to the software
+ * product, including all associated intellectual property rights, are and
+ * shall remain exclusively with the Company.
+ *
+ * This software product is governed by the End User License Agreement
+ * provided with the software product.
+ */
+
 #include <string>
 #include "utils/os.h"
 #include "dcmd/dcmd.h"
@@ -8,7 +20,6 @@ provider* provider::pinstance = 0;
 
 device** provider::get_device_list(size_t& size)
 {
-#if defined(HAVE_DEVX)
     if (nullptr == m_dev_array) {
         struct ibv_device** device_list;
         int i, num_devices;
@@ -35,7 +46,6 @@ device** provider::get_device_list(size_t& size)
     }
 
 exit:
-#endif /* HAVE_DEVX */
 
     size = m_dev_array_size;
 
@@ -52,9 +62,8 @@ device* provider::create_device(dev_handle handle)
         ctx* ctx_obj = obj_ptr->create_ctx();
         if (ctx_obj) {
             can_be_open = true;
-            int err = ibv_query_device((struct ibv_context*)ctx_obj->get_context(),
-                                       obj_ptr->get_device_attr_ptr());
-            if (err) {
+            auto ptr = obj_ptr->get_ibv_device_attr();
+            if (ptr == nullptr) {
                 log_warn("query device failed! errno=%d\n", errno);
             }
             delete ctx_obj;

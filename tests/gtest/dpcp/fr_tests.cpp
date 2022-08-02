@@ -1,15 +1,14 @@
 /*
-Copyright (C) Mellanox Technologies, Ltd. 2020. ALL RIGHTS RESERVED.
-
-This software product is a proprietary product of Mellanox Technologies, Ltd.
-(the "Company") and all right, title, and interest in and to the software
-product, including all associated intellectual property rights, are and shall
-remain exclusively with the Company. All rights in or to the software product
-are licensed, not sold. All rights not licensed are reserved.
-
-This software product is governed by the End User License Agreement provided
-with the software product.
-*/
+ * Copyright © 2020-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ *
+ * This software product is a proprietary product of Nvidia Corporation and its affiliates
+ * (the "Company") and all right, title, and interest in and to the software
+ * product, including all associated intellectual property rights, are and
+ * shall remain exclusively with the Company.
+ *
+ * This software product is governed by the End User License Agreement
+ * provided with the software product.
+ */
 
 #include "common/def.h"
 #include "common/log.h"
@@ -30,9 +29,9 @@ public:
     static std::unique_ptr<flow_rule> s_fr5t_ipv6;
 
 protected:
-    match_params m_mask3 = { {}, {}, 0xFFFF, 0, 0, 0, 0xFFFF, 0, 0xFF, 0xF }; // DMAC, SMAC, DST_IP, DST_PORT, Protocol, IP Version
-    match_params m_mask4 = { {}, {}, 0xFFFF, 0, 0, 0, 0xFFFF, 0, 0xFF, 0xF }; // DMAC, SMAC, DST_IP, SRC_IP, DST_PORT, Protocol, IP Version
-    match_params m_mask5 = { {}, {}, 0xFFFF, 0xFFFF, 0, 0, 0xFFFF, 0xFFFF, 0xFF, 0xF }; // DMAC, SMAC, ETHER_TYPE, VLAN_ID, DST_IP, SRC_IP, DST_PORT, SRC_PORT, Protocol, IP Version
+    match_params m_mask3 = { {}, 0xFFFF, 0, 0, 0, 0xFFFF, 0, 0xFF, 0xF }; // DMAC, SMAC, DST_IP, DST_PORT, Protocol, IP Version
+    match_params m_mask4 = { {}, 0xFFFF, 0, 0, 0, 0xFFFF, 0, 0xFF, 0xF }; // DMAC, SMAC, DST_IP, SRC_IP, DST_PORT, Protocol, IP Version
+    match_params m_mask5 = { {}, 0xFFFF, 0xFFFF, 0, 0, 0xFFFF, 0xFFFF, 0xFF, 0xF }; // DMAC, SMAC, ETHER_TYPE, VLAN_ID, DST_IP, SRC_IP, DST_PORT, SRC_PORT, Protocol, IP Version
 
     rq_params m_rqp;
 

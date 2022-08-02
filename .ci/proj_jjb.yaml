@@ -27,6 +27,22 @@
             name: "release_dir"
             default: "/auto/sw/release/sw_acceleration/dpcp"
             description: "(not enabled yet) Location to release rpm/deb packages"
+        - bool:
+            name: "do_copyrights"
+            default: true
+            description: "Check copyrights in source headers"
+        - bool:
+            name: "do_coverity"
+            default: true
+            description: "Run Coverity Static Analysis and generate local report"
+        - bool:
+            name: "do_coverity_diff"
+            default: false
+            description: "Compare Coverity Static Analysis with the latest snapshot (disable if Coverity Web Service is not available)"
+        - bool:
+            name: "do_coverity_snapshot"
+            default: false
+            description: "Submit Coverity Static Analysis as a snapshot (normally it should be checked only for master branch after proper defects review)"
         - string:
             name: "conf_file"
             default: ".ci/job_matrix.yaml"

@@ -1,15 +1,14 @@
 /*
-Copyright (C) Mellanox Technologies, Ltd. 2020. ALL RIGHTS RESERVED.
-
-This software product is a proprietary product of Mellanox Technologies, Ltd.
-(the "Company") and all right, title, and interest in and to the software
-product, including all associated intellectual property rights, are and shall
-remain exclusively with the Company. All rights in or to the software product
-are licensed, not sold. All rights not licensed are reserved.
-
-This software product is governed by the End User License Agreement provided
-with the software product.
-*/
+ * Copyright © 2020-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ *
+ * This software product is a proprietary product of Nvidia Corporation and its affiliates
+ * (the "Company") and all right, title, and interest in and to the software
+ * product, including all associated intellectual property rights, are and
+ * shall remain exclusively with the Company.
+ *
+ * This software product is governed by the End User License Agreement
+ * provided with the software product.
+ */
 
 #ifndef TESTS_GTEST_COMMON_SYS_H_
 #define TESTS_GTEST_COMMON_SYS_H_
@@ -100,6 +99,15 @@ static INLINE int sys_rootuser(void)
     return (geteuid() == 0);
 #else
     return IsUserAnAdmin();
+#endif
+}
+
+static INLINE int64_t sys_getpid(void)
+{
+#if defined(__linux__)
+    return getpid();
+#else
+    return static_cast<int64_t>(GetCurrentProcessId());
 #endif
 }
 

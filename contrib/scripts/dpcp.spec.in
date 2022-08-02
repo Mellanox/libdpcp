@@ -70,6 +70,14 @@ find $RPM_BUILD_ROOT%{_libdir} -name '*.a' -delete
 %endif
 
 %changelog
+* Wed Jun 22 2022 Ilan Smith <ilansm@nvidia.com> 1.1.29-1
+- Bump version to 1.1.29
+* Mon Jun 06 2022 Ilan Smith <ilansm@nvidia.com> 1.1.28-1
+- Bump version to 1.1.28
+* Thu May 26 2022 Ilan Smith <ilansm@nvidia.com> 1.1.27-1
+- Bump version to 1.1.27
+* Tue May 24 2022 Ilan Smith <ilansm@nvidia.com> 1.1.26-1
+- Bump version to 1.1.26
 * Wed Apr 06 2022 Ilan Smith <ilansm@nvidia.com> 1.1.25-1
 - Bump version to 1.1.25
 * Mon Mar 28 2022 Ilan Smith <ilansm@nvidia.com> 1.1.24-1

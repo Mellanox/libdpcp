@@ -17,7 +17,7 @@ build_list="\
 default: "
 
 
-build_tap=${WORKSPACE}/${prefix}/build.tap
+build_tap=${WORKSPACE}/${prefix}/build-$DISTRO.tap
 echo "1..$(echo $build_list | tr " " "\n" | wc -l)" > $build_tap
 
 test_id=0

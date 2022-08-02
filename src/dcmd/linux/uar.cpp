@@ -1,3 +1,15 @@
+/*
+ * Copyright © 2019-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ *
+ * This software product is a proprietary product of Nvidia Corporation and its affiliates
+ * (the "Company") and all right, title, and interest in and to the software
+ * product, including all associated intellectual property rights, are and
+ * shall remain exclusively with the Company.
+ *
+ * This software product is governed by the End User License Agreement
+ * provided with the software product.
+ */
+
 #include <string>
 
 #include "dcmd/dcmd.h"
@@ -7,8 +19,6 @@ using namespace dcmd;
 
 uar::uar(ctx_handle handle, struct uar_desc* desc)
 {
-#if defined(HAVE_DEVX)
-
     struct mlx5dv_devx_uar* devx_uar;
 
     if (!handle || !desc) {
@@ -30,51 +40,30 @@ uar::uar(ctx_handle handle, struct uar_desc* desc)
         }
     }
     m_handle = devx_uar;
-
-#else
-    UNUSED(handle);
-    UNUSED(desc);
-    throw DCMD_ENOTSUP;
-#endif /* HAVE_DEVX */
 }
 
 uar::~uar()
 {
-#if defined(HAVE_DEVX)
-
     if (m_handle) {
         mlx5dv_devx_free_uar(m_handle);
         log_trace("~uar, handle=%p\n", m_handle);
         m_handle = nullptr;
     }
-#endif /* HAVE_DEVX */
 }
 
 /* The device page id to be used */
 uint32_t uar::get_id()
 {
-#if defined(HAVE_DEVX)
     return m_handle->page_id;
-#else
-    return 0;
-#endif /* HAVE_DEVX */
 }
 
 void* uar::get_page()
 {
-#if defined(HAVE_DEVX)
     return m_handle->base_addr;
-#else
-    return 0;
-#endif /* HAVE_DEVX */
 }
 
 /* Used to do doorbell write (The write address of DB/BF) */
 void* uar::get_reg()
 {
-#if defined(HAVE_DEVX)
     return m_handle->reg_addr;
-#else
-    return 0;
-#endif /* HAVE_DEVX */
 }

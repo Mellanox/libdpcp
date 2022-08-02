@@ -1,15 +1,14 @@
 /*
- Copyright (C) Mellanox Technologies, Ltd. 2019-2020. ALL RIGHTS RESERVED.
-
- This software product is a proprietary product of Mellanox Technologies, Ltd.
- (the "Company") and all right, title, and interest in and to the software
- product, including all associated intellectual property rights, are and shall
- remain exclusively with the Company. All rights in or to the software product
- are licensed, not sold. All rights not licensed are reserved.
-
- This software product is governed by the End User License Agreement provided
- with the software product.
-*/
+ * Copyright © 2019-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ *
+ * This software product is a proprietary product of Nvidia Corporation and its affiliates
+ * (the "Company") and all right, title, and interest in and to the software
+ * product, including all associated intellectual property rights, are and
+ * shall remain exclusively with the Company.
+ *
+ * This software product is governed by the End User License Agreement
+ * provided with the software product.
+ */
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -70,8 +69,7 @@ status comp_channel::get_comp_channel(event_channel*& ch)
 status comp_channel::request(cq& for_cq, eq_context& eq_ctx)
 {
     UNUSED(for_cq); // TODO: add processing
-    dcmd::compchannel_ctx cc_ctx;
-    cc_ctx.overlapped = eq_ctx.p_overlapped;
+    dcmd::compchannel_ctx cc_ctx {eq_ctx.p_overlapped, 0};
     int ret = m_cc->request(cc_ctx);
     if (ret) {
         return DPCP_ERR_NO_CONTEXT;

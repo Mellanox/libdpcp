@@ -1,3 +1,15 @@
+/*
+ * Copyright © 2019-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ *
+ * This software product is a proprietary product of Nvidia Corporation and its affiliates
+ * (the "Company") and all right, title, and interest in and to the software
+ * product, including all associated intellectual property rights, are and
+ * shall remain exclusively with the Company.
+ *
+ * This software product is governed by the End User License Agreement
+ * provided with the software product.
+ */
+
 #include <string>
 
 #include "dcmd/dcmd.h"
@@ -7,8 +19,6 @@ using namespace dcmd;
 
 umem::umem(ctx_handle handle, struct umem_desc* desc)
 {
-#if defined(HAVE_DEVX)
-
     struct mlx5dv_devx_umem* devx_umem;
 
     if (!handle || !desc) {
@@ -20,18 +30,10 @@ umem::umem(ctx_handle handle, struct umem_desc* desc)
         throw DCMD_ENOTSUP;
     }
     m_handle = devx_umem;
-
-#else
-    UNUSED(handle);
-    UNUSED(desc);
-    throw DCMD_ENOTSUP;
-#endif /* HAVE_DEVX */
 }
 
 umem::~umem()
 {
-#if defined(HAVE_DEVX)
-
     if (m_handle) {
         int ret = mlx5dv_devx_umem_dereg(m_handle);
         if (ret) {
@@ -39,14 +41,9 @@ umem::~umem()
         }
         m_handle = nullptr;
     }
-#endif /* HAVE_DEVX */
 }
 
 uint32_t umem::get_id()
 {
-#if defined(HAVE_DEVX)
     return m_handle->umem_id;
-#else
-    return 0;
-#endif /* HAVE_DEVX */
 }

@@ -73,6 +73,27 @@
     <ClCompile Include="src\dpcp\parser_graph_node.cpp">
       <Filter>dpcp</Filter>
     </ClCompile>
+    <ClCompile Include="src\dpcp\flow_action.cpp">
+      <Filter>dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\flow_group.cpp">
+      <Filter>dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\flow_matcher.cpp">
+      <Filter>dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\flow_rule_ex.cpp">
+      <Filter>dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\flow_table.cpp">
+      <Filter>dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dcmd\windows\action.cpp">
+      <Filter>dcmd</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\forwardable_obj.cpp">
+      <Filter>dpcp</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\dcmd\windows\ctx.h">
@@ -146,6 +167,12 @@
     </ClInclude>
     <ClInclude Include="src\dcmd\base\base_umem.h">
       <Filter>dcmd_base</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\base\base_action.h">
+      <Filter>dcmd_base</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\windows\action.h">
+      <Filter>dcmd</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

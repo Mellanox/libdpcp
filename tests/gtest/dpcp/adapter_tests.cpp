@@ -1,20 +1,20 @@
 /*
-Copyright (C) Mellanox Technologies, Ltd. 2019-2021. ALL RIGHTS RESERVED.
-
-This software product is a proprietary product of Mellanox Technologies, Ltd.
-(the "Company") and all right, title, and interest in and to the software
-product, including all associated intellectual property rights, are and shall
-remain exclusively with the Company. All rights in or to the software product
-are licensed, not sold. All rights not licensed are reserved.
-
-This software product is governed by the End User License Agreement provided
-with the software product.
-*/
+ * Copyright © 2019-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ *
+ * This software product is a proprietary product of Nvidia Corporation and its affiliates
+ * (the "Company") and all right, title, and interest in and to the software
+ * product, including all associated intellectual property rights, are and
+ * shall remain exclusively with the Company.
+ *
+ * This software product is governed by the End User License Agreement
+ * provided with the software product.
+ */
 
 #include "common/def.h"
 #include "common/log.h"
 #include "common/sys.h"
 #include "common/base.h"
+#include <chrono>
 
 #include "dpcp_base.h"
 
@@ -106,12 +106,78 @@ TEST_F(dpcp_adapter, ti_03_set_get_pd)
 }
 
 /**
- * @test dpcp_adapter.ti_04_set_get_td
+ * @test dpcp_adapter.ti_04_set_get_pd_external
+ * @brief
+ *    Check set_pd()
+ * @details
+ */
+TEST_F(dpcp_adapter, ti_04_set_get_pd_external)
+{
+    uint32_t pdn = 0;
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+
+    // allocate protected domain obj
+    ibv_context* ibv_ctx = (ibv_context*)ad->get_ibv_context();
+    ASSERT_NE(nullptr, ibv_ctx);
+    struct ibv_pd* pd_1 = ibv_alloc_pd(ibv_ctx);
+    ASSERT_NE(nullptr, pd_1);
+
+    // Get PD id from ibv_pd
+#if defined(__linux__)
+    mlx5dv_obj mlx5_obj = {};
+    mlx5_obj.pd.in = pd_1;
+    mlx5dv_pd out_pd;
+    mlx5_obj.pd.out = &out_pd;
+    int mlx5dv_ret = mlx5dv_init_obj(&mlx5_obj, MLX5DV_OBJ_PD);
+    ASSERT_EQ(0, mlx5dv_ret);
+    pdn = out_pd.pdn;
+#else
+    pdn = pd_1->handle;
+#endif
+
+    // Create PD on adapter using external PD
+    status ret = ad->create_ibv_pd(pd_1);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    // check that ibv_pd was set correctly.
+    void* pd_ret = nullptr;
+    ret = ad->get_ibv_pd(pd_ret);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(pd_1, pd_ret);
+
+    // check that pd id was created correctly by comparing to mlx5dv_pd output
+    uint32_t id = ad->get_pd();
+    ASSERT_EQ(pdn, id);
+
+    // check that open adapter will not change PD
+    ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+    id = ad->get_pd();
+    ASSERT_EQ(pdn, id);
+
+    // creating another PD with the same ibv_pd should not fail.
+    ret = ad->create_ibv_pd(pd_1);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    // createing another PD with different ibv_pd should faile.
+    struct ibv_pd* pd_2 = ibv_alloc_pd(ibv_ctx);
+    ASSERT_NE(nullptr, pd_2);
+    ret = ad->create_ibv_pd(pd_2);
+    ASSERT_NE(DPCP_OK, ret);
+
+    ibv_dealloc_pd(pd_1);
+    ibv_dealloc_pd(pd_2);
+    delete ad;
+}
+
+/**
+ * @test dpcp_adapter.ti_05_set_get_td
  * @brief
  *    Check set_td method
  * @details
  */
-TEST_F(dpcp_adapter, ti_04_set_get_td)
+TEST_F(dpcp_adapter, ti_05_set_get_td)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -138,13 +204,13 @@ TEST_F(dpcp_adapter, ti_04_set_get_td)
 }
 
 /**
- * @test dpcp_adapter.ti_05_create_direct_mkey
+ * @test dpcp_adapter.ti_06_create_direct_mkey
  * @brief
  *    Check adapter::create_direct_mkey method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_05_create_direct_mkey)
+TEST_F(dpcp_adapter, ti_06_create_direct_mkey)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -180,13 +246,13 @@ TEST_F(dpcp_adapter, ti_05_create_direct_mkey)
 }
 
 /**
- * @test dpcp_adapter.ti_06_mkey_zero_based
+ * @test dpcp_adapter.ti_07_mkey_zero_based
  * @brief
  *    Check adapter::create_direct_mkey method with Zero based address
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_06_mkey_zero_based)
+TEST_F(dpcp_adapter, ti_07_mkey_zero_based)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -221,13 +287,13 @@ TEST_F(dpcp_adapter, ti_06_mkey_zero_based)
 }
 
 /**
- * @test dpcp_adapter.ti_07_create_cq
+ * @test dpcp_adapter.ti_08_create_cq
  * @brief
  *    Check adapter::create_create_cq method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_07_create_cq)
+TEST_F(dpcp_adapter, ti_08_create_cq)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -258,13 +324,13 @@ TEST_F(dpcp_adapter, ti_07_create_cq)
 }
 
 /**
- * @test dpcp_adapter.ti_08_create_striding_rq
+ * @test dpcp_adapter.ti_09_create_striding_rq
  * @brief
  *    Check adapter::create_striding_rq method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_08_create_striding_rq)
+TEST_F(dpcp_adapter, ti_09_create_striding_rq)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -300,13 +366,13 @@ TEST_F(dpcp_adapter, ti_08_create_striding_rq)
 }
 
 /**
- * @test dpcp_adapter.ti_09_create_tir
+ * @test dpcp_adapter.ti_10_create_tir
  * @brief
  *    Check adapter::create_tir method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_09_create_tir)
+TEST_F(dpcp_adapter, ti_10_create_tir)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -352,13 +418,13 @@ TEST_F(dpcp_adapter, ti_09_create_tir)
 }
 
 /**
- * @test dpcp_adapter.ti_10_create_pattern_mkey
+ * @test dpcp_adapter.ti_11_create_pattern_mkey
  * @brief
  *    Check adapter::create_pattern_mkey method
  * @detail
  *
  */
-TEST_F(dpcp_adapter, ti_10_create_pattern_mkey)
+TEST_F(dpcp_adapter, ti_11_create_pattern_mkey)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -419,13 +485,13 @@ TEST_F(dpcp_adapter, ti_10_create_pattern_mkey)
     delete ad;
 }
 /**
- * @test dpcp_adapter.ti_11_create_dpp_rq
+ * @test dpcp_adapter.ti_12_create_dpp_rq
  * @brief
  *    Check adapter::create_dpp_rq method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_11_create_dpp_rq)
+TEST_F(dpcp_adapter, ti_12_create_dpp_rq)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(ad, nullptr);
@@ -486,12 +552,12 @@ TEST_F(dpcp_adapter, ti_11_create_dpp_rq)
 }
 
 /**
- * @test dpcp_adapter.ti_12_get_hca_freq
+ * @test dpcp_adapter.ti_13_get_hca_freq
  * @brief
  *    Check query_hca_freq method
  * @details
  */
-TEST_F(dpcp_adapter, ti_12_get_hca_freq)
+TEST_F(dpcp_adapter, ti_13_get_hca_freq)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(ad, nullptr);
@@ -512,10 +578,10 @@ TEST_F(dpcp_adapter, ti_12_get_hca_freq)
 }
 
 /**
- * @test dpcp_adapter.ti_13_get_real_time
+ * @test dpcp_adapter.ti_14_get_real_time
  *
  */
-TEST_F(dpcp_adapter, ti_13_get_real_time)
+TEST_F(dpcp_adapter, ti_14_get_real_time)
 {
     adapter* ad = OpenAdapter(DevPartIdBlueField);
     if (!ad) {
@@ -563,13 +629,13 @@ TEST_F(dpcp_adapter, ti_13_get_real_time)
     ASSERT_LE(delta, 50000);
 }
 /*
- * @test dpcp_adapter.ti_14_create_pp_sq
+ * @test dpcp_adapter.ti_15_create_pp_sq
  * @brief
  *    Check adapter::create_pp_sq method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_14_create_pp_sq)
+TEST_F(dpcp_adapter, ti_15_create_pp_sq)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -619,12 +685,12 @@ TEST_F(dpcp_adapter, ti_14_create_pp_sq)
 
 #if defined(__linux__)
 /**
- * @test dpcp_adapter.ti_15_set_get_ibv_pd
+ * @test dpcp_adapter.ti_16_set_get_ibv_pd
  * @brief
  *    Check set_pd() with ibv_pd* and get_ibv_pd
  * @details
  */
-TEST_F(dpcp_adapter, ti_15_set_get_ibv_pd)
+TEST_F(dpcp_adapter, ti_16_set_get_ibv_pd)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -667,12 +733,12 @@ TEST_F(dpcp_adapter, ti_15_set_get_ibv_pd)
 }
 
 /**
- * @test dpcp_adapter.ti_16_get_hca_capabilities
+ * @test dpcp_adapter.ti_17_get_hca_capabilities
  * @brief
  *    Check query_hca_freq method
  * @details
  */
-TEST_F(dpcp_adapter, ti_16_get_hca_capabilities)
+TEST_F(dpcp_adapter, ti_17_get_hca_capabilities)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(ad, nullptr);
@@ -693,6 +759,9 @@ TEST_F(dpcp_adapter, ti_16_get_hca_capabilities)
     log_trace("Capability - general_object_types_encryption_key: %d\n", caps.general_object_types_encryption_key);
     log_trace("Capability - log_max_dek: %d\n", caps.log_max_dek);
     log_trace("Capability - tls_1_2_aes_gcm_128: %d\n", caps.tls_1_2_aes_gcm_128);
+    log_trace("Capability - tls_1_2_aes_gcm_256: %d\n", caps.tls_1_2_aes_gcm_256);
+    log_trace("Capability - synchronize_dek: %d\n", caps.synchronize_dek);
+    log_trace("Capability - log_max_num_deks: %d\n", caps.log_max_num_deks);
     log_trace("Capability - sq_ts_format: %d\n", caps.sq_ts_format);
     log_trace("Capability - rq_ts_format: %d\n", caps.rq_ts_format);
     log_trace("Capability - lro_cap: %d\n", caps.lro_cap);
@@ -701,13 +770,13 @@ TEST_F(dpcp_adapter, ti_16_get_hca_capabilities)
 }
 
 /**
- * @test dpcp_adapter.ti_17_create_tis
+ * @test dpcp_adapter.ti_18_create_tis
  * @brief
  *    Check adapter::create_tis method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_17_create_tis)
+TEST_F(dpcp_adapter, ti_18_create_tis)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -731,13 +800,13 @@ TEST_F(dpcp_adapter, ti_17_create_tis)
 }
 
 /**
- * @test dpcp_adapter.ti_18_create_tls_tis
+ * @test dpcp_adapter.ti_19_create_tls_tis
  * @brief
  *    Check adapter::create_tls with @ref tis_flags::TIS_TLS_EN method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_18_create_tls_tis)
+TEST_F(dpcp_adapter, ti_19_create_tls_tis)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -774,13 +843,13 @@ TEST_F(dpcp_adapter, ti_18_create_tls_tis)
 }
 
 /**
- * @test dpcp_adapter.ti_19_create_dek
+ * @test dpcp_adapter.ti_20_create_dek
  * @brief
  *    Check adapter::create_dek method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_19_create_dek)
+TEST_F(dpcp_adapter, ti_20_create_dek)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -821,13 +890,13 @@ TEST_F(dpcp_adapter, ti_19_create_dek)
 #endif
 
 /**
- * @test dpcp_adapter.ti_20_create_tir_by_attr
+ * @test dpcp_adapter.ti_21_create_tir_by_attr
  * @brief
  *    Check adapter::create_tir method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_20_create_tir_by_attr)
+TEST_F(dpcp_adapter, ti_21_create_tir_by_attr)
 {
     adapter* adapter_obj = OpenAdapter();
     ASSERT_NE(nullptr, adapter_obj);
@@ -863,13 +932,13 @@ TEST_F(dpcp_adapter, ti_20_create_tir_by_attr)
 }
 
 /**
- * @test dpcp_adapter.ti_21_create_ref_mkey
+ * @test dpcp_adapter.ti_22_create_ref_mkey
  * @brief
  *    Check adapter::create_ref_mkey method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_21_create_ref_mkey)
+TEST_F(dpcp_adapter, ti_22_create_ref_mkey)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(nullptr, ad);
@@ -914,13 +983,13 @@ TEST_F(dpcp_adapter, ti_21_create_ref_mkey)
 }
 
 /**
- * @test dpcp_adapter.ti_22_create_flow_table_by_attr
+ * @test dpcp_adapter.ti_23_create_flow_table_by_attr
  * @brief
  *    Check adapter::create_flow_table method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_22_create_flow_table_by_attr)
+TEST_F(dpcp_adapter, ti_23_create_flow_table_by_attr)
 {
     adapter* adapter_obj = OpenAdapter();
     ASSERT_NE(nullptr, adapter_obj);
@@ -928,8 +997,9 @@ TEST_F(dpcp_adapter, ti_22_create_flow_table_by_attr)
     std::shared_ptr<flow_table> table;
     flow_table_attr attr;
     attr.def_miss_action = flow_table_miss_action::FT_MISS_ACTION_DEF;
+    attr.op_mod = flow_table_op_mod::FT_OP_MOD_NORMAL;
     attr.level = 1;
-    attr.log_size = 0;
+    attr.log_size = 4;
     attr.type = flow_table_type::FT_RX;
 
     status ret = adapter_obj->create_flow_table(attr, table);
@@ -942,13 +1012,13 @@ TEST_F(dpcp_adapter, ti_22_create_flow_table_by_attr)
 }
 
 /**
- * @test dpcp_adapter.ti_23_get_root_flow_table_tx_rx
+ * @test dpcp_adapter.ti_24_get_root_flow_table_tx_rx
  * @brief
  *    Check adapter::get_root_table method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_23_get_root_flow_table_tx_rx)
+TEST_F(dpcp_adapter, ti_24_get_root_flow_table_tx_rx)
 {
     adapter* adapter_obj = OpenAdapter();
     ASSERT_NE(nullptr, adapter_obj);
@@ -973,3 +1043,114 @@ TEST_F(dpcp_adapter, ti_23_get_root_flow_table_tx_rx)
     delete adapter_obj;
 }
 
+/**
+* @test dpcp_adapter.DISABLED_perf_100k_dek_modify
+* @brief
+*    Check 100K dek modify() performance
+* @details
+*/
+TEST_F(dpcp_adapter, DISABLED_perf_100k_dek_modify)
+{
+    std::unique_ptr<adapter> ad(OpenAdapter());
+    ASSERT_NE(nullptr, ad);
+
+    status ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    adapter_hca_capabilities caps;
+    ret = ad->get_hca_capabilities(caps);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    bool is_tls_tx_supported = caps.tls_tx
+        && caps.general_object_types_encryption_key
+        && caps.log_max_num_deks && caps.tls_1_2_aes_gcm_256
+        && caps.synchronize_dek;
+    if (!is_tls_tx_supported) {
+        log_trace("TLS TX DEK modify is not supported\n");
+        return;
+    }
+
+    uint32_t tdn = ad->get_td();
+    ASSERT_NE(0, tdn);
+
+    uint32_t pdn = ad->get_pd();
+    ASSERT_NE(0, pdn);
+    log_trace("pdn: 0x%x\n", pdn);
+
+    uint64_t flags = tis_flags::TIS_TLS_EN;
+    const size_t LOOP_COUNT = 500000U;
+    const size_t SUB_LOOP_COUNT = 10000U;
+    std::vector<std::unique_ptr<dek>> dek_arr(LOOP_COUNT);
+    std::vector<std::unique_ptr<char[]>> key_arr(LOOP_COUNT);
+    std::vector<std::unique_ptr<char[]>> key_arr2(LOOP_COUNT);
+    const std::vector<std::unique_ptr<char[]>> *key_arr_ptr = &key_arr2;
+    uint32_t key_size_bytes = 32;
+
+    std::vector<char> key_base = {'a','6','a','7','e','e','7','a','b','e','c','9','c','4','c','e',
+                                  'a','6','a','7','e','e','7','a','b','e','c','9','c','4','c','e'};
+    uint64_t* ptr_key = reinterpret_cast<uint64_t*>(key_base.data());
+    dpcp::dek* temp_dek_ptr = nullptr;
+
+    log_trace("Creating %zu Keys ...\n", SUB_LOOP_COUNT);
+
+    for (size_t idx = 0U; idx < SUB_LOOP_COUNT; ++idx) {
+        key_arr[idx].reset(new char[key_size_bytes]);
+        key_arr2[idx].reset(new char[key_size_bytes]);
+        memcpy(key_arr[idx].get(), key_base.data(), key_size_bytes);  // Random key for the test.
+        ++*ptr_key;
+        memcpy(key_arr2[idx].get(), key_base.data(), key_size_bytes);  // Random key for the test.
+        ret = ad->create_dek(encryption_key_type_t::ENCRYPTION_KEY_TYPE_TLS, key_arr[idx].get(), key_size_bytes, temp_dek_ptr);
+        ASSERT_EQ(DPCP_OK, ret);
+        dek_arr[idx].reset(temp_dek_ptr);
+        ++*ptr_key;
+    }
+
+    int64_t pid = sys_getpid();
+
+    static constexpr size_t FMT_MAX_SIZE = 512U;
+    char timestr[FMT_MAX_SIZE] = {'\0'};
+    auto temp_now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    strftime(timestr, FMT_MAX_SIZE - 1U, "%F %T %Z", localtime(&temp_now));
+
+    log_trace("[PID-%" PRId64 "] Measurement started: %s (%zu)\n", pid, timestr, LOOP_COUNT);
+
+#define perf_log_trace(prefix, diff) \
+    log_trace("[PID-%zu] " prefix " Time, Time(sec): %.2f, Per-Second: %llu, Latency(usec): %llu\n", \
+        pid, static_cast<double>(diff) / 1000.0, (diff != 0 ? (LOOP_COUNT * 1000ULL) / diff : 0ULL), (diff * 1000ULL) / LOOP_COUNT)
+
+    auto temp_ts = std::chrono::high_resolution_clock::now();
+    auto diff_ts = std::chrono::duration_cast<std::chrono::milliseconds>(temp_ts - temp_ts);
+    auto totalCount = diff_ts.count();
+    auto tc_dek_modify = totalCount;
+
+    dek::attr attrs = {};
+    auto iterations = LOOP_COUNT / SUB_LOOP_COUNT;
+    while (iterations-- > 0ULL) {
+        auto start_ts = std::chrono::high_resolution_clock::now();
+        for (size_t idx = 0U; idx < SUB_LOOP_COUNT; ++idx) {
+            attrs.key = (*key_arr_ptr)[idx].get();
+            attrs.key_size_bytes = key_size_bytes;
+            ret = dek_arr[idx]->modify(attrs);
+            ASSERT_EQ(DPCP_OK, ret);
+        }
+
+        auto end_ts = std::chrono::high_resolution_clock::now();
+        diff_ts = std::chrono::duration_cast<std::chrono::milliseconds>(end_ts - start_ts);
+        tc_dek_modify += diff_ts.count();
+        totalCount += diff_ts.count();
+
+        key_arr_ptr = (key_arr_ptr == &key_arr2 ? &key_arr : &key_arr2);
+        ret = ad->sync_crypto_tls();
+        ASSERT_EQ(DPCP_OK, ret);
+    }
+
+    perf_log_trace("DEK Modify", tc_dek_modify);
+
+    log_trace("[PID-%zu] Overall Time, Time(sec): %.2f, Per-Second: %llu, Latency(usec): %llu\n",
+        pid, totalCount / 1000.0, (totalCount != 0 ? (LOOP_COUNT * 1000ULL) / totalCount : 0), (totalCount * 1000ULL) / LOOP_COUNT);
+
+    memset(timestr, 0, sizeof(timestr));
+    temp_now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    strftime(timestr, FMT_MAX_SIZE - 1U, "%F %T %Z", localtime(&temp_now));
+    log_trace("[PID-%zu] Measurement finished: %s\n", pid, timestr);
+}

@@ -1,15 +1,14 @@
 /*
-Copyright (C) Mellanox Technologies, Ltd. 2001-2020. ALL RIGHTS RESERVED.
-
-This software product is a proprietary product of Mellanox Technologies, Ltd.
-(the "Company") and all right, title, and interest in and to the software
-product, including all associated intellectual property rights, are and shall
-remain exclusively with the Company.  All rights in or to the software product
-are licensed, not sold.  All rights not licensed are reserved.
-
-This software product is governed by the End User License Agreement provided
-with the software product.
-*/
+ * Copyright © 2001-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ *
+ * This software product is a proprietary product of Nvidia Corporation and its affiliates
+ * (the "Company") and all right, title, and interest in and to the software
+ * product, including all associated intellectual property rights, are and
+ * shall remain exclusively with the Company.
+ *
+ * This software product is governed by the End User License Agreement
+ * provided with the software product.
+ */
 
 #include "stdafx.h"
 #include "dcmd/dcmd.h"
@@ -19,10 +18,10 @@ using namespace dcmd;
 
 flow::flow(ctx_handle handle, struct flow_desc* desc)
 {
-    if (!desc->num_dst_tir) {
+    if (!desc->num_dst_obj) {
         throw DCMD_ENOTSUP;
     }
-    size_t extra_dest_num = desc->num_dst_tir - 1; // the first is within devx_fs_rule_add_in
+    size_t extra_dest_num = desc->num_dst_obj - 1; // the first is within devx_fs_rule_add_in
     uint32_t in_len = (uint32_t)(DEVX_ST_SZ_BYTES(devx_fs_rule_add_in) +
                                  DEVX_ST_SZ_BYTES(dest_format_struct) * extra_dest_num);
     auto in = new (std::nothrow) uint8_t[in_len];

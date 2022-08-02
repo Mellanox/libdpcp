@@ -1,7 +1,7 @@
 Source: dpcp
 Section: libs
 Priority: optional
-Maintainer: Igor Ivanov <igori@mellanox.com>
+Maintainer: Ilan Smith <ilansm@nvidia.com>
 Build-Depends: debhelper (>= 7),
  pkg-config,
  autoconf,

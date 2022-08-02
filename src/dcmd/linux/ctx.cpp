@@ -1,3 +1,15 @@
+/*
+ * Copyright © 2019-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ *
+ * This software product is a proprietary product of Nvidia Corporation and its affiliates
+ * (the "Company") and all right, title, and interest in and to the software
+ * product, including all associated intellectual property rights, are and
+ * shall remain exclusively with the Company.
+ *
+ * This software product is governed by the End User License Agreement
+ * provided with the software product.
+ */
+
 #include <string>
 
 #include <utils/os.h>
@@ -11,13 +23,11 @@ using namespace dcmd;
 
 ctx::ctx(dev_handle handle)
 {
-#if defined(HAVE_DEVX)
-
     struct mlx5dv_context_attr dv_attr;
     struct ibv_context* ibv_ctx;
 
     memset(&dv_attr, 0, sizeof(dv_attr));
-    m_dv_context = new (std::nothrow) mlx5dv_context;
+    m_dv_context = new (std::nothrow) mlx5dv_context();
     if (nullptr == m_dv_context) {
         log_error("m_dv_context is not initialized");
         throw DCMD_ENOTSUP;
@@ -28,23 +38,15 @@ ctx::ctx(dev_handle handle)
         throw DCMD_ENOTSUP;
     }
     m_handle = ibv_ctx;
-
-#else
-    UNUSED(handle);
-    throw DCMD_ENOTSUP;
-#endif /* HAVE_DEVX */
 }
 
 ctx::~ctx()
 {
-#if defined(HAVE_DEVX)
-
     if (m_handle) {
         ibv_close_device(m_handle);
         m_handle = nullptr;
     }
-    free(m_dv_context);
-#endif /* HAVE_DEVX */
+    delete m_dv_context;
 }
 
 void* ctx::get_context()
@@ -54,18 +56,8 @@ void* ctx::get_context()
 
 int ctx::exec_cmd(const void* in, size_t inlen, void* out, size_t outlen)
 {
-#if defined(HAVE_DEVX)
-
     int ret = mlx5dv_devx_general_cmd(m_handle, in, inlen, out, outlen);
     return (ret ? DCMD_EIO : DCMD_EOK);
-
-#else
-    UNUSED(in);
-    UNUSED(inlen);
-    UNUSED(out);
-    UNUSED(outlen);
-    return DCMD_ENOTSUP;
-#endif /* HAVE_DEVX */
 }
 
 obj* ctx::create_obj(struct obj_desc* desc)

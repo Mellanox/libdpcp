@@ -1,15 +1,14 @@
 /*
-Copyright (C) Mellanox Technologies, Ltd. 2020. ALL RIGHTS RESERVED.
-
-This software product is a proprietary product of Mellanox Technologies, Ltd.
-(the "Company") and all right, title, and interest in and to the software
-product, including all associated intellectual property rights, are and shall
-remain exclusively with the Company. All rights in or to the software product
-are licensed, not sold. All rights not licensed are reserved.
-
-This software product is governed by the End User License Agreement provided
-with the software product.
-*/
+ * Copyright © 2020-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ *
+ * This software product is a proprietary product of Nvidia Corporation and its affiliates
+ * (the "Company") and all right, title, and interest in and to the software
+ * product, including all associated intellectual property rights, are and
+ * shall remain exclusively with the Company.
+ *
+ * This software product is governed by the End User License Agreement
+ * provided with the software product.
+ */
 
 #include <memory>
 
@@ -48,10 +47,11 @@ TEST_F(dpcp_flow_group, ti_01_add_flow_group)
     ft_attr.type = flow_table_type::FT_RX;
 
     // Create flow table SW object;
-    flow_table ft_obj(adapter_obj->get_ctx(), ft_attr);
+    std::shared_ptr<flow_table> ft_obj;
+    adapter_obj->create_flow_table(ft_attr, ft_obj);
 
     // Create flow table HW object;
-    ret = ft_obj.create();
+    ret = ft_obj->create();
     ASSERT_EQ(DPCP_OK, ret);
 
     // Set flow group attributes.
@@ -59,7 +59,7 @@ TEST_F(dpcp_flow_group, ti_01_add_flow_group)
     fg_attr.end_flow_index = 1;
     fg_attr.start_flow_index = 0;
     fg_attr.match_criteria_enable = flow_group_match_criteria_enable::FG_MATCH_OUTER_HDR;
-    
+
     uint64_t dmac = 0xFFFFFFFFFFFF;
     memcpy(fg_attr.match_criteria.match_lyr2.dst_mac,  &dmac, sizeof(fg_attr.match_criteria.match_lyr2.dst_mac));
     uint64_t smac = 0xFFFFFFFFFFFF;
@@ -75,10 +75,10 @@ TEST_F(dpcp_flow_group, ti_01_add_flow_group)
     fg_attr.match_criteria.match_lyr4.src_port = 0xFFFF;
 
     // Create flow group SW object;
-    flow_group* fg_obj = nullptr;
-    ret = ft_obj.add_flow_group(fg_attr, fg_obj);
+    std::weak_ptr<flow_group> fg_obj;
+    ret = ft_obj->add_flow_group(fg_attr, fg_obj);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(fg_obj, nullptr);
+    ASSERT_NE(fg_obj.lock().get(), nullptr);
 
     delete adapter_obj;
 }
@@ -107,10 +107,12 @@ TEST_F(dpcp_flow_group, ti_02_create_flow_group)
     ft_attr.type = flow_table_type::FT_RX;
 
     // Create flow table SW object;
-    flow_table ft_obj(adapter_obj->get_ctx(), ft_attr);
+    std::shared_ptr<flow_table> ft_obj;
+    adapter_obj->create_flow_table(ft_attr, ft_obj);
+
 
     // Create flow table HW object;
-    ret = ft_obj.create();
+    ret = ft_obj->create();
     ASSERT_EQ(DPCP_OK, ret);
 
     // Set flow group attributes.
@@ -118,7 +120,7 @@ TEST_F(dpcp_flow_group, ti_02_create_flow_group)
     fg_attr.end_flow_index = 1;
     fg_attr.start_flow_index = 0;
     fg_attr.match_criteria_enable = flow_group_match_criteria_enable::FG_MATCH_OUTER_HDR;
-    
+
     uint64_t dmac = 0xFFFFFFFFFFFF;
     memcpy(fg_attr.match_criteria.match_lyr2.dst_mac,  &dmac, sizeof(fg_attr.match_criteria.match_lyr2.dst_mac));
     uint64_t smac = 0xFFFFFFFFFFFF;
@@ -134,13 +136,13 @@ TEST_F(dpcp_flow_group, ti_02_create_flow_group)
     fg_attr.match_criteria.match_lyr4.src_port = 0xFFFF;
 
     // Create flow group SW object;
-    flow_group* fg_obj = nullptr;
-    ret = ft_obj.add_flow_group(fg_attr, fg_obj);
+    std::weak_ptr<flow_group> fg_obj;
+    ret = ft_obj->add_flow_group(fg_attr, fg_obj);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(fg_obj, nullptr);
+    ASSERT_NE(fg_obj.lock().get(), nullptr);
 
     // Create flow group HW object;
-    ret = fg_obj->create();
+    ret = fg_obj.lock()->create();
     ASSERT_EQ(DPCP_OK, ret);
 
     delete adapter_obj;
@@ -170,10 +172,11 @@ TEST_F(dpcp_flow_group, ti_03_get_group_id)
     ft_attr.type = flow_table_type::FT_RX;
 
     // Create flow table SW object;
-    flow_table ft_obj(adapter_obj->get_ctx(), ft_attr);
+    std::shared_ptr<flow_table> ft_obj;
+    adapter_obj->create_flow_table(ft_attr, ft_obj);
 
     // Create flow table HW object;
-    ret = ft_obj.create();
+    ret = ft_obj->create();
     ASSERT_EQ(DPCP_OK, ret);
 
     // Set flow group attributes.
@@ -181,7 +184,7 @@ TEST_F(dpcp_flow_group, ti_03_get_group_id)
     fg_attr.end_flow_index = 1;
     fg_attr.start_flow_index = 0;
     fg_attr.match_criteria_enable = flow_group_match_criteria_enable::FG_MATCH_OUTER_HDR;
-    
+
     uint64_t dmac = 0xFFFFFFFFFFFF;
     memcpy(fg_attr.match_criteria.match_lyr2.dst_mac,  &dmac, sizeof(fg_attr.match_criteria.match_lyr2.dst_mac));
     uint64_t smac = 0xFFFFFFFFFFFF;
@@ -197,17 +200,17 @@ TEST_F(dpcp_flow_group, ti_03_get_group_id)
     fg_attr.match_criteria.match_lyr4.src_port = 0xFFFF;
 
     // Create flow group SW object;
-    flow_group* fg_obj = nullptr;
-    ret = ft_obj.add_flow_group(fg_attr, fg_obj);
+    std::weak_ptr<flow_group> fg_obj;
+    ret = ft_obj->add_flow_group(fg_attr, fg_obj);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(fg_obj, nullptr);
+    ASSERT_NE(fg_obj.lock().get(), nullptr);
 
     // Create flow group HW object;
-    ret = fg_obj->create();
+    ret = fg_obj.lock()->create();
     ASSERT_EQ(DPCP_OK, ret);
 
     uint32_t fg_id = 0;
-    ret = fg_obj->get_group_id(fg_id);
+    ret = fg_obj.lock()->get_id(fg_id);
     ASSERT_EQ(DPCP_OK, ret);
     ASSERT_NE(fg_id, 0);
 
@@ -237,11 +240,12 @@ TEST_F(dpcp_flow_group, ti_04_remove_flow_group_01)
     ft_attr.op_mod = flow_table_op_mod::FT_OP_MOD_NORMAL;
     ft_attr.type = flow_table_type::FT_RX;
 
-    // Create flow table SW object.
-    flow_table ft_obj(adapter_obj->get_ctx(), ft_attr);
+    // Create flow table SW object;
+    std::shared_ptr<flow_table> ft_obj;
+    adapter_obj->create_flow_table(ft_attr, ft_obj);
 
     // Create flow table HW object.
-    ret = ft_obj.create();
+    ret = ft_obj->create();
     ASSERT_EQ(DPCP_OK, ret);
 
     // Set flow group attributes.
@@ -249,7 +253,7 @@ TEST_F(dpcp_flow_group, ti_04_remove_flow_group_01)
     fg_attr.end_flow_index = 1;
     fg_attr.start_flow_index = 0;
     fg_attr.match_criteria_enable = flow_group_match_criteria_enable::FG_MATCH_OUTER_HDR;
-    
+
     uint64_t dmac = 0xFFFFFFFFFFFF;
     memcpy(fg_attr.match_criteria.match_lyr2.dst_mac,  &dmac, sizeof(fg_attr.match_criteria.match_lyr2.dst_mac));
     uint64_t smac = 0xFFFFFFFFFFFF;
@@ -265,19 +269,19 @@ TEST_F(dpcp_flow_group, ti_04_remove_flow_group_01)
     fg_attr.match_criteria.match_lyr4.src_port = 0xFFFF;
 
     // Create flow group SW object.
-    flow_group* fg_obj = nullptr;
-    ret = ft_obj.add_flow_group(fg_attr, fg_obj);
+    std::weak_ptr<flow_group> fg_obj;
+    ret = ft_obj->add_flow_group(fg_attr, fg_obj);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(fg_obj, nullptr);
+    ASSERT_NE(fg_obj.lock().get(), nullptr);
 
     // Create flow group HW object.
-    ret = fg_obj->create();
+    ret = fg_obj.lock()->create();
     ASSERT_EQ(DPCP_OK, ret);
 
     // Remove flow group.
-    ret = ft_obj.remove_flow_group(fg_obj);
+    ret = ft_obj->remove_flow_group(fg_obj);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_EQ(fg_obj, nullptr);
+    ASSERT_EQ(fg_obj.lock().get(), nullptr);
 
     delete adapter_obj;
 }
@@ -305,11 +309,12 @@ TEST_F(dpcp_flow_group, ti_05_remove_flow_group_02)
     ft_attr.op_mod = flow_table_op_mod::FT_OP_MOD_NORMAL;
     ft_attr.type = flow_table_type::FT_RX;
 
-    // Create flow table SW object.
-    flow_table ft_obj(adapter_obj->get_ctx(), ft_attr);
+    // Create flow table SW object;
+    std::shared_ptr<flow_table> ft_obj;
+    adapter_obj->create_flow_table(ft_attr, ft_obj);
 
     // Create flow table HW object.
-    ret = ft_obj.create();
+    ret = ft_obj->create();
     ASSERT_EQ(DPCP_OK, ret);
 
     // Set flow group attributes.
@@ -317,7 +322,7 @@ TEST_F(dpcp_flow_group, ti_05_remove_flow_group_02)
     fg_attr.end_flow_index = 1;
     fg_attr.start_flow_index = 0;
     fg_attr.match_criteria_enable = flow_group_match_criteria_enable::FG_MATCH_OUTER_HDR;
-    
+
     uint64_t dmac = 0xFFFFFFFFFFFF;
     memcpy(fg_attr.match_criteria.match_lyr2.dst_mac,  &dmac, sizeof(fg_attr.match_criteria.match_lyr2.dst_mac));
     uint64_t smac = 0xFFFFFFFFFFFF;
@@ -333,23 +338,23 @@ TEST_F(dpcp_flow_group, ti_05_remove_flow_group_02)
     fg_attr.match_criteria.match_lyr4.src_port = 0xFFFF;
 
     // Create flow group SW object.
-    flow_group* fg_obj = nullptr;
-    ret = ft_obj.add_flow_group(fg_attr, fg_obj);
+    std::weak_ptr<flow_group> fg_obj;
+    ret = ft_obj->add_flow_group(fg_attr, fg_obj);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(fg_obj, nullptr);
+    ASSERT_NE(fg_obj.lock().get(), nullptr);
 
     // Create flow group HW object.
-    ret = fg_obj->create();
+    ret = fg_obj.lock()->create();
     ASSERT_EQ(DPCP_OK, ret);
 
     // Remove flow group.
-    flow_group* fg_obj_tmp = fg_obj;
-    ret = ft_obj.remove_flow_group(fg_obj);
+    std::weak_ptr<flow_group> fg_obj_tmp = fg_obj;
+    ret = ft_obj->remove_flow_group(fg_obj);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_EQ(fg_obj, nullptr);
+    ASSERT_EQ(fg_obj.lock().get(), nullptr);
 
     // Remove flow group second time.
-    ret = ft_obj.remove_flow_group(fg_obj_tmp);
+    ret = ft_obj->remove_flow_group(fg_obj_tmp);
     ASSERT_NE(DPCP_OK, ret);
 
     delete adapter_obj;

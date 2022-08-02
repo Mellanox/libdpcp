@@ -1,15 +1,15 @@
 /*
-Copyright (C) Mellanox Technologies, Ltd. 2020. ALL RIGHTS RESERVED.
+ * Copyright © 2020-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ *
+ * This software product is a proprietary product of Nvidia Corporation and its affiliates
+ * (the "Company") and all right, title, and interest in and to the software
+ * product, including all associated intellectual property rights, are and
+ * shall remain exclusively with the Company.
+ *
+ * This software product is governed by the End User License Agreement
+ * provided with the software product.
+ */
 
-This software product is a proprietary product of Mellanox Technologies, Ltd.
-(the "Company") and all right, title, and interest in and to the software
-product, including all associated intellectual property rights, are and shall
-remain exclusively with the Company. All rights in or to the software product
-are licensed, not sold. All rights not licensed are reserved.
-
-This software product is governed by the End User License Agreement provided
-with the software product.
-*/
 #ifndef SRC_DCMD_H_
 #define SRC_DCMD_H_
 
@@ -94,51 +94,77 @@ struct umem_desc {
     size_t size;
     uint32_t access;
 };
-#ifdef _WIN32
-// TODO: GalN to rethink with another fix and remove the warning disablement.
-#pragma warning(disable : 4201)
-#endif // _WIN32
 
-// Same struct as defined in DPDK - mlx5_modification_cmd
-// TODO: Need to think if we want to put it in other header file.
 struct modify_action {
-    union {
-        uint32_t data0;
-        struct {
-            uint32_t length:5;  /* Number of bits to be written starting from offset. 0 means length of 32 bits */
-            uint32_t rsvd0:3;
-            uint32_t offset:5;  /* The start offset in the field to be modified */
-            uint32_t rsvd1:3;
-            uint32_t field:12;  /* The field of packet to be modified. ..., OUT_UDP_DPORT [0xC], METADATA_REG_C_0 [0x51], ... */
-            uint32_t action_type:4; /* Action Type: SET [0x1], ADD [0x2], COPY[0x3] */
-        };
-    };
-    union {                 /* The data to be written on the specific field */
-        uint32_t data1;
-        uint8_t data[4];
-        struct {
-            uint32_t rsvd2:8;
-            uint32_t dst_offset:5;
-            uint32_t rsvd3:3;
-            uint32_t dst_field:12;
-            uint32_t rsvd4:4;
-        };
-    };
+    /**
+     * @brief modify_action_dst - represent the destination field, the field to modify.
+     */
+    union modify_action_dst {
+        uint32_t data; /**< Used to convert to network byte order */
+        struct modify_action_dst_config {
+            uint32_t length : 5; /**< Number of bits to be written starting from offset. 0 means
+                                      length of 32 bits */
+            uint32_t rsvd0 : 3;
+            uint32_t offset : 5; /**< The start offset in the field to be modified */
+            uint32_t rsvd1 : 3;
+            uint32_t field : 12; /**< The field of packet to be modified. OUT_UDP_DPORT,
+                                    METADATA_REG_C_0, ... */
+            uint32_t action_type : 4; /**< Action Type: MLX5_ACTION_TYPE_SET, MLX5_ACTION_TYPE_ADD,
+                                         ... */
+        } config;
+    } dst;
+    /**
+     * @brief modify_action_src - represent the src of the which we change the dst field.
+     *        Set - it will represent the value to set the dest field.
+     *        Add - it will represent the value to add the dest field.
+     *        copy - it will represent the field to copy from.
+     */
+    union modify_action_src {
+        uint32_t data; /**< the data to apply on dst field, valid for set, add.
+                            When use copy, it will be used to convers to network byte order*/
+        /**
+         * @brief modify_action_src_config - represent the src field, it will define the location of
+         *        the data to copy. Valid only on modify_action from type copy
+         */
+        struct modify_action_src_config {
+            uint32_t rsvd2 : 8;
+            uint32_t offset : 5; /**< offset inside the field */
+            uint32_t rsvd3 : 3;
+            uint32_t field : 12; /**< field to copy from */
+            uint32_t rsvd4 : 4;
+        } config;
+    } src;
 };
-#ifdef _WIN32
-// TODO: GalN to rethink with another fix and remove the warning disablement.
-#pragma warning(default : 4201)
-#endif // _WIN32
+
 struct flow_desc {
     struct flow_match_parameters* match_criteria;
     struct flow_match_parameters* match_value;
-    obj_handle* dst_tir_obj;
+    obj_handle* dst_obj;
     mlx5_ifc_dest_format_struct_bits* dst_formats;
     uint32_t flow_id;
-    size_t num_dst_tir;
+    size_t num_dst_obj;
     uint16_t priority;
     modify_action* modify_actions;
     size_t num_of_actions;
+
+    flow_desc()
+        : match_criteria()
+        , match_value()
+        , dst_obj()
+        , dst_formats()
+        , flow_id()
+        , num_dst_obj()
+        , priority()
+        , modify_actions()
+        , num_of_actions()
+    {
+    }
+};
+
+struct fwd_dst_desc {
+    int type;
+    uint32_t id;
+    uintptr_t handle;
 };
 
 } /* namespace dcmd */

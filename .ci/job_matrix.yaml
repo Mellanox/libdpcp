@@ -6,11 +6,14 @@ registry_path: /rivermax
 # rivermax user
 registry_auth: 65eb3652-9da0-4f39-8a4c-f61972fb65a1
 
+credentials:
+  - {credentialsId: 'ca8843ac-fb09-493e-aefb-29ea73501ee4', usernameVariable: 'DPCP_COV_USER', passwordVariable: 'DPCP_COV_PASSWORD'}
+
 kubernetes:
   cloud: swx-k8s-spray
 
-  limits: '{memory: 16Gi}'
-  requests: '{memory: 16Gi}'
+  limits: '{memory: 8Gi, cpu: 8000m}'
+  requests: '{memory: 8Gi, cpu: 8000m}'
 
   # swx-jenkins
   #runAsUser: '6213'
@@ -32,7 +35,6 @@ kubernetes:
 volumes:
   - {mountPath: /hpc/local, hostPath: /hpc/local}
   - {mountPath: /auto/sw_tools, hostPath: /auto/sw_tools}
-  - {mountPath: /auto/mtrswgwork, hostPath: /auto/mtrswgwork}
   # /.autodirect/sw/release/mlnx_ofed is a primary nfs volume for mlnx_ofed
   # Probably there is a race condition for autofs mount point while starting container with:
   # /auto/sw/release/mlnx_ofed
@@ -41,9 +43,13 @@ volumes:
 
 
 runs_on_dockers:
-  - {file: '.dockers/Dockerfile.ubuntu18.04', arch: 'x86_64', name: 'ubuntu18.04', uri: 'dpcp/x86_64/ubuntu18.04/builder', tag: 'mofed-5.2-2.1.2.0'}
-  - {file: '.dockers/Dockerfile.rhel7.7', arch: 'x86_64', name: 'rhel7.7', uri: 'dpcp/x86_64/rhel7.7/builder', tag: 'mofed-5.2-2.1.2.0'}
+  - {file: '.dockers/Dockerfile.ubuntu18.04', arch: 'x86_64', name: 'ubuntu18.04', uri: 'dpcp/x86_64/ubuntu18.04/builder', tag: 'mofed-5.7-0.0.8.0'}
+  - {file: '.dockers/Dockerfile.ubuntu20.04', arch: 'x86_64', name: 'ubuntu20.04', uri: 'dpcp/x86_64/ubuntu20.04/builder', tag: 'mofed-5.7-0.0.8.0'}
+  - {file: '.dockers/Dockerfile.ubuntu22.04', arch: 'x86_64', name: 'ubuntu22.04', uri: 'dpcp/x86_64/ubuntu22.04/builder', tag: 'mofed-5.6.1.0.3.3'}
+  - {file: '.dockers/Dockerfile.rhel7.7', arch: 'x86_64', name: 'rhel7.7', uri: 'dpcp/x86_64/rhel7.7/builder', tag: 'mofed-5.7-0.0.8.0'}
+  - {file: '.dockers/Dockerfile.ubuntu18.04', arch: 'x86_64', name: 'ubuntu18.04.cov', uri: 'dpcp/x86_64/ubuntu18.04/builder', tag: 'mofed-5.7-0.0.8.0', category: 'tool'}
   - {file: '.dockers/Dockerfile.fedora32', arch: 'x86_64', name: 'fedora32', uri: 'dpcp/x86_64/fedora32', tag: 'clang', category: 'tool'}
+  - {name: 'header-check', url: 'harbor.mellanox.com/toolbox/header_check:0.0.14', arch: 'x86_64', tag: '0.0.14', category: 'tool'}
 
 runs_on_agents:
   - {nodeLabel: 'r-aa-fatty09', category: 'base'}
@@ -68,6 +74,16 @@ steps:
         printenv
     parallel: false
 
+  - name: Copyrights
+    enable: ${do_copyrights}
+    run: env WORKSPACE=$PWD ./contrib/jenkins_tests/copyrights.sh
+    containerSelector:
+      - "{name: 'header-check', category: 'tool'}"
+    agentSelector:
+      - "{nodeLabel: 'skip-agent'}"
+    archiveArtifacts: '*.log,*.tar.gz'
+    parallel: false
+
   - name: Autogen
     run: |
       ./autogen.sh -s
@@ -75,7 +91,93 @@ steps:
 
   - name: Build
     run: |
-        env JENKINS_RUN_TESTS=no \
+        env DISTRO=$name \
+            JENKINS_RUN_TESTS=no \
+            jenkins_test_build=yes \
+            jenkins_test_compiler=no \
+            jenkins_test_rpm=yes \
+            jenkins_test_cov=no \
+            jenkins_test_cppcheck=no \
+            jenkins_test_csbuild=no \
+            jenkins_test_gtest=no \
+            jenkins_test_style=no \
+            ./contrib/test_jenkins.sh
+    containerSelector:
+      - "{name: 'rhel7.7'}"
+    agentSelector:
+      - "{nodeLabel: 'skip-agent'}"
+    archiveArtifacts: 'jenkins/dpcp-${BUILD_ID}-*.tar.gz'
+    archiveTap: |
+      jenkins/**/build-rhel7.7.tap
+
+  - name: Build
+    run: |
+        env DISTRO=$name \
+            JENKINS_RUN_TESTS=no \
+            jenkins_test_build=yes \
+            jenkins_test_compiler=no \
+            jenkins_test_rpm=yes \
+            jenkins_test_cov=no \
+            jenkins_test_cppcheck=no \
+            jenkins_test_csbuild=no \
+            jenkins_test_gtest=no \
+            jenkins_test_style=no \
+            ./contrib/test_jenkins.sh
+    containerSelector:
+      - "{name: 'ubuntu18.04'}"
+    agentSelector:
+      - "{nodeLabel: 'skip-agent'}"
+    archiveArtifacts: 'jenkins/dpcp-${BUILD_ID}-*.tar.gz'
+    archiveTap: |
+      jenkins/**/build-ubuntu18.04.tap
+
+  - name: Build
+    run: |
+        env DISTRO=$name \
+            JENKINS_RUN_TESTS=no \
+            jenkins_test_build=yes \
+            jenkins_test_compiler=no \
+            jenkins_test_rpm=yes \
+            jenkins_test_cov=no \
+            jenkins_test_cppcheck=no \
+            jenkins_test_csbuild=no \
+            jenkins_test_gtest=no \
+            jenkins_test_style=no \
+            ./contrib/test_jenkins.sh
+    containerSelector:
+      - "{name: 'ubuntu20.04'}"
+    agentSelector:
+      - "{nodeLabel: 'skip-agent'}"
+    archiveArtifacts: 'jenkins/dpcp-${BUILD_ID}-*.tar.gz'
+    archiveTap: |
+      jenkins/**/build-ubuntu20.04.tap
+
+  - name: Build
+    run: |
+        env DISTRO=$name \
+            JENKINS_RUN_TESTS=no \
+            jenkins_test_build=yes \
+            jenkins_test_compiler=no \
+            jenkins_test_rpm=yes \
+            jenkins_test_cov=no \
+            jenkins_test_cppcheck=no \
+            jenkins_test_csbuild=no \
+            jenkins_test_gtest=no \
+            jenkins_test_style=no \
+            ./contrib/test_jenkins.sh
+    containerSelector:
+      - "{name: 'ubuntu22.04'}"
+    agentSelector:
+      - "{nodeLabel: 'skip-agent'}"
+    archiveArtifacts: 'jenkins/dpcp-${BUILD_ID}-*.tar.gz'
+    archiveTap: |
+      jenkins/**/build-ubuntu22.04.tap
+
+  - name: Build
+    run: |
+        env WORKSPACE=$(pwd) \
+            DISTRO=$name \
+            JENKINS_RUN_TESTS=no \
             jenkins_test_build=yes \
             jenkins_test_compiler=no \
             jenkins_test_rpm=yes \
@@ -86,10 +188,16 @@ steps:
             jenkins_test_style=no \
             ./contrib/test_jenkins.sh
     archiveArtifacts: 'jenkins/dpcp-${BUILD_ID}-*.tar.gz'
+    containerSelector:
+      - "{name: 'skip-container'}"
+    agentSelector:
+      - "{nodeLabel: 'r-aa-fatty09'}"
+    archiveTap: |
+      jenkins/**/build-r-aa-fatty09.tap
 
   - name: Gtest
     run: |
-        env JENKINS_RUN_TESTS=no \
+        env JENKINS_RUN_TESTS=yes \
             jenkins_test_build=yes \
             jenkins_test_compiler=no \
             jenkins_test_rpm=no \
@@ -99,12 +207,22 @@ steps:
             jenkins_test_gtest=yes \
             jenkins_test_style=no \
             ./contrib/test_jenkins.sh
+    containerSelector:
+      - "{name: 'skip-container'}"
     agentSelector:
-      - "{nodeLabel: 'r-aa-fatty09', variant:1}"
+      - "{nodeLabel: 'r-aa-fatty09'}"
+    archiveTap: |
+      jenkins/**/gtest-*.tap
+    archiveJunit: |
+      jenkins/**/*.xml
 
   - name: Coverity
+    enable: ${do_coverity}
+    credentialsId: 'ca8843ac-fb09-493e-aefb-29ea73501ee4'
     run: |
         env JENKINS_RUN_TESTS=yes \
+            jenkins_test_build=no \
+            jenkins_test_compiler=no \
             jenkins_test_rpm=no \
             jenkins_test_cov=yes \
             jenkins_test_cppcheck=no \
@@ -118,11 +236,13 @@ steps:
       reportName: Coverity Report
       allowMissing: true
     containerSelector:
-      - "{name: 'ubuntu18.04', variant: 1}"
+      - "{name: 'ubuntu18.04.cov', category: 'tool'}"
+    agentSelector:
+      - "{nodeLabel: 'skip-agent'}"
     archiveArtifacts-onfail: |
       jenkins/**/*.tar.gz
-    archiveTap-onfail: |
-      jenkins/**/*.tap
+    archiveTap: |
+      jenkins/**/coverity.tap
 
   - name: Build RPM/DEB
     run: |
@@ -136,6 +256,66 @@ steps:
             jenkins_test_gtest=no \
             jenkins_test_style=no \
             ./contrib/test_jenkins.sh
+
+  - name: Compilers
+    run: |
+        env JENKINS_RUN_TESTS=no \
+            jenkins_test_build=no \
+            jenkins_test_compiler=yes \
+            jenkins_test_rpm=no \
+            jenkins_test_cov=no \
+            jenkins_test_cppcheck=no \
+            jenkins_test_csbuild=no \
+            jenkins_test_gtest=no \
+            jenkins_test_style=no \
+            ./contrib/test_jenkins.sh
+    containerSelector:
+      - "{name: 'ubuntu20.04'}"
+    agentSelector:
+      - "{nodeLabel: 'skip-agent'}"
+    archiveArtifacts-onfail: 'jenkins/dpcp-${BUILD_ID}-*.tar.gz'
+    archiveTap: |
+      jenkins/**/compiler.tap
+
+  - name: CppCheck
+    run: |
+        env JENKINS_RUN_TESTS=yes \
+            jenkins_test_build=no \
+            jenkins_test_compiler=no \
+            jenkins_test_rpm=no \
+            jenkins_test_cov=no \
+            jenkins_test_cppcheck=yes \
+            jenkins_test_csbuild=no \
+            jenkins_test_gtest=no \
+            jenkins_test_style=no \
+            ./contrib/test_jenkins.sh
+    containerSelector:
+      - "{name: 'skip-container'}"
+    agentSelector:
+      - "{nodeLabel: 'r-aa-fatty09'}"
+    archiveArtifacts-onfail: 'jenkins/dpcp-${BUILD_ID}-*.tar.gz'
+    archiveTap: |
+      jenkins/**/cppcheck.tap
+
+  - name: CSBuild
+    run: |
+        env JENKINS_RUN_TESTS=yes \
+            jenkins_test_build=no \
+            jenkins_test_compiler=no \
+            jenkins_test_rpm=no \
+            jenkins_test_cov=no \
+            jenkins_test_cppcheck=no \
+            jenkins_test_csbuild=yes \
+            jenkins_test_gtest=no \
+            jenkins_test_style=no \
+            ./contrib/test_jenkins.sh
+    containerSelector:
+      - "{name: 'skip-container'}"
+    agentSelector:
+      - "{nodeLabel: 'r-aa-fatty09'}"
+    archiveArtifacts-onfail: 'jenkins/dpcp-${BUILD_ID}-*.tar.gz'
+    archiveTap: |
+      jenkins/**/csbuild.tap
 
   - name: Style Check
     run: |
@@ -151,7 +331,8 @@ steps:
             ./contrib/test_jenkins.sh
     containerSelector:
       - "{name: 'fedora32', category: 'tool'}"
+    agentSelector:
+      - "{nodeLabel: 'skip-agent'}"
     archiveArtifacts: 'jenkins/*.tar.gz'
-    archiveTap-onfail: |
-      jenkins/**/*.tap
-
+    archiveTap: |
+      jenkins/**/style_test.tap
