@@ -1,192 +1,204 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="src\dcmd\windows\ctx.cpp">
-      <Filter>dcmd</Filter>
-    </ClCompile>
-    <ClCompile Include="src\dcmd\windows\device.cpp">
-      <Filter>dcmd</Filter>
-    </ClCompile>
-    <ClCompile Include="src\dcmd\windows\flow.cpp">
-      <Filter>dcmd</Filter>
-    </ClCompile>
+    <Filter Include="src">
+      <UniqueIdentifier>{ba970893-c688-4e50-9be5-2364a0000be9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\api">
+      <UniqueIdentifier>{6ce30ffb-8637-4ecf-951a-4e9cd792721f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\dcmd">
+      <UniqueIdentifier>{6ec7bb77-95a4-491a-a577-ffaec26775c1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\dpcp">
+      <UniqueIdentifier>{2c229d05-e8cb-4e33-9fce-1a4abda25bb3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\utils">
+      <UniqueIdentifier>{0f944a4b-a696-4aaa-bd82-3547ec04a354}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\utils\windows">
+      <UniqueIdentifier>{dfa41f8e-da03-4e7e-aa4d-d43bfbac57f9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\dcmd\base">
+      <UniqueIdentifier>{ed2d4bae-060e-4572-a291-6aff3c46a1d3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\dcmd\windows">
+      <UniqueIdentifier>{13f29617-7b52-4021-97b5-5e411fd61a5f}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
     <ClCompile Include="src\utils\windows\log.cpp">
-      <Filter>dcmd</Filter>
-    </ClCompile>
-    <ClCompile Include="src\dcmd\windows\obj.cpp">
-      <Filter>dcmd</Filter>
-    </ClCompile>
-    <ClCompile Include="src\dcmd\windows\umem.cpp">
-      <Filter>dcmd</Filter>
-    </ClCompile>
-    <ClCompile Include="src\utils\windows\utils.cpp">
-      <Filter>dcmd</Filter>
-    </ClCompile>
-    <ClCompile Include="src\dcmd\windows\provider.cpp">
-      <Filter>dcmd</Filter>
-    </ClCompile>
-    <ClCompile Include="src\dpcp\adapter.cpp">
-      <Filter>dpcp</Filter>
-    </ClCompile>
-    <ClCompile Include="src\dpcp\cq.cpp">
-      <Filter>dpcp</Filter>
-    </ClCompile>
-    <ClCompile Include="src\dpcp\dpcp.cpp">
-      <Filter>dpcp</Filter>
-    </ClCompile>
-    <ClCompile Include="src\dpcp\dpcp_obj.cpp">
-      <Filter>dpcp</Filter>
-    </ClCompile>
-    <ClCompile Include="src\dpcp\fr.cpp">
-      <Filter>dpcp</Filter>
-    </ClCompile>
-    <ClCompile Include="src\dpcp\mkey.cpp">
-      <Filter>dpcp</Filter>
-    </ClCompile>
-    <ClCompile Include="src\dpcp\rq.cpp">
-      <Filter>dpcp</Filter>
+      <Filter>src\utils\windows</Filter>
     </ClCompile>
     <ClCompile Include="src\utils\windows\stdafx.cpp">
-      <Filter>dpcp</Filter>
+      <Filter>src\utils\windows</Filter>
     </ClCompile>
-    <ClCompile Include="src\dpcp\tir.cpp">
-      <Filter>dpcp</Filter>
-    </ClCompile>
-    <ClCompile Include="src\dpcp\tis.cpp">
-      <Filter>dpcp</Filter>
-    </ClCompile>
-    <ClCompile Include="src\dcmd\windows\uar.cpp">
-      <Filter>dpcp</Filter>
+    <ClCompile Include="src\utils\windows\utils.cpp">
+      <Filter>src\utils\windows</Filter>
     </ClCompile>
     <ClCompile Include="src\dcmd\windows\compchannel.cpp">
-      <Filter>dcmd</Filter>
+      <Filter>src\dcmd\windows</Filter>
     </ClCompile>
-    <ClCompile Include="src\dpcp\eq.cpp">
-      <Filter>dpcp</Filter>
+    <ClCompile Include="src\dcmd\windows\ctx.cpp">
+      <Filter>src\dcmd\windows</Filter>
     </ClCompile>
-    <ClCompile Include="src\dpcp\dek.cpp">
-      <Filter>dpcp</Filter>
+    <ClCompile Include="src\dcmd\windows\device.cpp">
+      <Filter>src\dcmd\windows</Filter>
     </ClCompile>
-    <ClCompile Include="src\dpcp\sq.cpp">
-      <Filter>dpcp</Filter>
+    <ClCompile Include="src\dcmd\windows\flow.cpp">
+      <Filter>src\dcmd\windows</Filter>
     </ClCompile>
-    <ClCompile Include="src\dpcp\parser_graph_node.cpp">
-      <Filter>dpcp</Filter>
+    <ClCompile Include="src\dcmd\windows\obj.cpp">
+      <Filter>src\dcmd\windows</Filter>
     </ClCompile>
-    <ClCompile Include="src\dpcp\flow_action.cpp">
-      <Filter>dpcp</Filter>
+    <ClCompile Include="src\dcmd\windows\provider.cpp">
+      <Filter>src\dcmd\windows</Filter>
     </ClCompile>
-    <ClCompile Include="src\dpcp\flow_group.cpp">
-      <Filter>dpcp</Filter>
+    <ClCompile Include="src\dcmd\windows\uar.cpp">
+      <Filter>src\dcmd\windows</Filter>
     </ClCompile>
-    <ClCompile Include="src\dpcp\flow_matcher.cpp">
-      <Filter>dpcp</Filter>
-    </ClCompile>
-    <ClCompile Include="src\dpcp\flow_rule_ex.cpp">
-      <Filter>dpcp</Filter>
-    </ClCompile>
-    <ClCompile Include="src\dpcp\flow_table.cpp">
-      <Filter>dpcp</Filter>
+    <ClCompile Include="src\dcmd\windows\umem.cpp">
+      <Filter>src\dcmd\windows</Filter>
     </ClCompile>
     <ClCompile Include="src\dcmd\windows\action.cpp">
-      <Filter>dcmd</Filter>
+      <Filter>src\dcmd\windows</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\adapter.cpp">
+      <Filter>src\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\cq.cpp">
+      <Filter>src\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\dek.cpp">
+      <Filter>src\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\dpcp.cpp">
+      <Filter>src\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\dpcp_obj.cpp">
+      <Filter>src\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\eq.cpp">
+      <Filter>src\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\flow_action.cpp">
+      <Filter>src\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\flow_group.cpp">
+      <Filter>src\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\flow_matcher.cpp">
+      <Filter>src\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\flow_rule_ex.cpp">
+      <Filter>src\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\flow_table.cpp">
+      <Filter>src\dpcp</Filter>
     </ClCompile>
     <ClCompile Include="src\dpcp\forwardable_obj.cpp">
-      <Filter>dpcp</Filter>
+      <Filter>src\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\fr.cpp">
+      <Filter>src\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\mkey.cpp">
+      <Filter>src\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\parser_graph_node.cpp">
+      <Filter>src\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\rq.cpp">
+      <Filter>src\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\sq.cpp">
+      <Filter>src\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\tir.cpp">
+      <Filter>src\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dpcp\tis.cpp">
+      <Filter>src\dpcp</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\dcmd\windows\ctx.h">
-      <Filter>dcmd</Filter>
-    </ClInclude>
-    <ClInclude Include="src\dcmd\windows\def.h">
-      <Filter>dcmd</Filter>
-    </ClInclude>
-    <ClInclude Include="src\dcmd\dcmd.h">
-      <Filter>dcmd</Filter>
-    </ClInclude>
-    <ClInclude Include="src\dcmd\windows\device.h">
-      <Filter>dcmd</Filter>
-    </ClInclude>
-    <ClInclude Include="src\dcmd\windows\flow.h">
-      <Filter>dcmd</Filter>
-    </ClInclude>
-    <ClInclude Include="src\utils\windows\log.h">
-      <Filter>dcmd</Filter>
-    </ClInclude>
-    <ClInclude Include="src\dcmd\windows\obj.h">
-      <Filter>dcmd</Filter>
-    </ClInclude>
-    <ClInclude Include="src\dcmd\windows\prm.h">
-      <Filter>dcmd</Filter>
+    <ClInclude Include="src\api\dpcp.h">
+      <Filter>src\api</Filter>
     </ClInclude>
     <ClInclude Include="src\utils\os.h">
-      <Filter>dcmd</Filter>
+      <Filter>src\utils</Filter>
     </ClInclude>
-    <ClInclude Include="src\dcmd\windows\umem.h">
-      <Filter>dcmd</Filter>
-    </ClInclude>
-    <ClInclude Include="src\utils\windows\utils.h">
-      <Filter>dcmd</Filter>
-    </ClInclude>
-    <ClInclude Include="src\dcmd\windows\provider.h">
-      <Filter>dcmd</Filter>
-    </ClInclude>
-    <ClInclude Include="src\api\dpcp.h">
-      <Filter>dpcp</Filter>
-    </ClInclude>
-    <ClInclude Include="src\dpcp\internal.h">
-      <Filter>dpcp</Filter>
+    <ClInclude Include="src\utils\windows\log.h">
+      <Filter>src\utils\windows</Filter>
     </ClInclude>
     <ClInclude Include="src\utils\windows\stdafx.h">
-      <Filter>dpcp</Filter>
+      <Filter>src\utils\windows</Filter>
     </ClInclude>
-    <ClInclude Include="src\dcmd\windows\uar.h">
-      <Filter>dpcp</Filter>
+    <ClInclude Include="src\utils\windows\utils.h">
+      <Filter>src\utils\windows</Filter>
     </ClInclude>
-    <ClInclude Include="src\dcmd\windows\compchannel.h">
-      <Filter>dcmd</Filter>
+    <ClInclude Include="src\dcmd\dcmd.h">
+      <Filter>src\dcmd</Filter>
     </ClInclude>
-    <ClInclude Include="src\dcmd\base\base_ctx.h">
-      <Filter>dcmd_base</Filter>
-    </ClInclude>
-    <ClInclude Include="src\dcmd\base\base_device.h">
-      <Filter>dcmd_base</Filter>
-    </ClInclude>
-    <ClInclude Include="src\dcmd\base\base_flow.h">
-      <Filter>dcmd_base</Filter>
-    </ClInclude>
-    <ClInclude Include="src\dcmd\base\base_obj.h">
-      <Filter>dcmd_base</Filter>
-    </ClInclude>
-    <ClInclude Include="src\dcmd\base\base_provider.h">
-      <Filter>dcmd_base</Filter>
-    </ClInclude>
-    <ClInclude Include="src\dcmd\base\base_uar.h">
-      <Filter>dcmd_base</Filter>
-    </ClInclude>
-    <ClInclude Include="src\dcmd\base\base_umem.h">
-      <Filter>dcmd_base</Filter>
+    <ClInclude Include="src\dcmd\prm.h">
+      <Filter>src\dcmd</Filter>
     </ClInclude>
     <ClInclude Include="src\dcmd\base\base_action.h">
-      <Filter>dcmd_base</Filter>
+      <Filter>src\dcmd\base</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\base\base_ctx.h">
+      <Filter>src\dcmd\base</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\base\base_device.h">
+      <Filter>src\dcmd\base</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\base\base_flow.h">
+      <Filter>src\dcmd\base</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\base\base_obj.h">
+      <Filter>src\dcmd\base</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\base\base_provider.h">
+      <Filter>src\dcmd\base</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\base\base_uar.h">
+      <Filter>src\dcmd\base</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\base\base_umem.h">
+      <Filter>src\dcmd\base</Filter>
     </ClInclude>
     <ClInclude Include="src\dcmd\windows\action.h">
-      <Filter>dcmd</Filter>
+      <Filter>src\dcmd\windows</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <Filter Include="dcmd">
-      <UniqueIdentifier>{6fa7c01f-7d56-4599-9d74-033c385b5ba5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="dpcp">
-      <UniqueIdentifier>{7de0feef-5e7c-4006-918b-19cced94c40b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="dcmd_base">
-      <UniqueIdentifier>{02acc6d9-eae5-4baf-ba85-88270d6bd308}</UniqueIdentifier>
-    </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="sources.props" />
+    <ClInclude Include="src\dcmd\windows\compchannel.h">
+      <Filter>src\dcmd\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\windows\ctx.h">
+      <Filter>src\dcmd\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\windows\def.h">
+      <Filter>src\dcmd\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\windows\device.h">
+      <Filter>src\dcmd\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\windows\flow.h">
+      <Filter>src\dcmd\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\windows\obj.h">
+      <Filter>src\dcmd\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\windows\provider.h">
+      <Filter>src\dcmd\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\windows\uar.h">
+      <Filter>src\dcmd\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dcmd\windows\umem.h">
+      <Filter>src\dcmd\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dpcp\internal.h">
+      <Filter>src\dpcp</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -1,6 +1,8 @@
 # func.m4 - Collection of functions
 # 
-# Copyright (C) Mellanox Technologies Ltd. 2001-2020.  ALL RIGHTS RESERVED.
+# Copyright (c) 2020-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# BSD-3-Clause
+#
 # See file LICENSE for terms.
 #
 

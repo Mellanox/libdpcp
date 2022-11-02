@@ -17,7 +17,7 @@
         -U_NO_CRT_STDIO_INLINE
         /GS /Gy /Zi /Gm- /sdl /Zc:inline /W4
         /D "_LIB" /D "_CRT_SECURE_NO_WARNINGS" /D "_UNICODE" /D "UNICODE"
-        /D "_HAS_ITERATOR_DEBUGGING=0" /D "_SECURE_SCL=0"
+        /D "_HAS_ITERATOR_DEBUGGING=0" /D "_SECURE_SCL=0" /MP
         /errorReport:prompt /Zc:forScope /Oi /EHsc /nologo
     </USER_C_FLAGS>
 <!-- -->
@@ -27,7 +27,7 @@
 
     <INCLUDES Condition="'$(OVERRIDE_INCLUDES)'!='true'">
         $(INCLUDES);
-        contrib\MLNX_WinOF2_DevX_SDK\inc;
+        $(DEVX_INC_PATH);
         src\utils\windows\;
         $(ProjectDir);
         $(ProjectDir)\src;
@@ -42,7 +42,7 @@
 
     <TARGETLIBS Condition="'$(OVERRIDE_TARGETLIBS)'!='true'">
 	    $(SDK_LIB_PATH)\ws2_32.lib
-            contrib\MLNX_WinOF2_DevX_SDK\lib\mlx5devx.lib;
+        $(DEVX_LIB_PATH)\mlx5devx.lib;
     </TARGETLIBS>
 
     <LINKER_FLAGS Condition="'$(OVERRIDE_LINKER_FLAGS)'!='true'"> /MACHINE:X64 /NOLOGO </LINKER_FLAGS>

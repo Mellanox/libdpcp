@@ -1,13 +1,31 @@
 /*
- * Copyright © 2019-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ * Copyright (c) 2020-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * BSD-3-Clause
  *
- * This software product is a proprietary product of Nvidia Corporation and its affiliates
- * (the "Company") and all right, title, and interest in and to the software
- * product, including all associated intellectual property rights, are and
- * shall remain exclusively with the Company.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * This software product is governed by the End User License Agreement
- * provided with the software product.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "common/def.h"
@@ -732,5 +750,55 @@ TEST_F(dpcp_mkey, ti_rm03_create_badarg)
     ASSERT_EQ(DPCP_ERR_INVALID_PARAM, ret);
 
     delete[] buf;
+    delete ad;
+}
+
+/**
+ * @test dpcp_mkey.ti_em01_create_extern_key
+ * @brief
+ *    Check extern_key creation
+ * @details
+ * @note This test in a certain wey duplicates test {@link dpcp_adapter#ti_25_create_extern_mkey TEST_F(dpcp_adapter, ti_25_create_extern_mkey)}
+ * @see dpcp_adapter#ti_25_create_extern_mkey
+ */
+TEST_F(dpcp_mkey, ti_em01_create_extern_key)
+{
+    auto* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+
+    auto ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    const size_t length = 4096;
+    auto* address = new (std::nothrow) uint8_t[length];
+    ASSERT_NE(nullptr, address);
+
+    direct_mkey* someRegisteredKey;
+    ret = ad->create_direct_mkey(address, length, (mkey_flags)0, someRegisteredKey);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    uint32_t expectedId;
+    ret = someRegisteredKey->get_id(expectedId);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    extern_mkey externKey(ad, address, length, expectedId);
+
+    uint32_t receivedId;
+    ret = externKey.get_id(receivedId);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(expectedId, receivedId);
+
+    void* receivedAddr;
+    ret = externKey.get_address(receivedAddr);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(address, receivedAddr);
+
+    size_t receivedLength;
+    ret = externKey.get_length(receivedLength);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(length, receivedLength);
+
+    delete someRegisteredKey;
+    delete[] address;
     delete ad;
 }

@@ -1,4 +1,11 @@
 #!/bin/bash
+#
+# Build package
+#
+# Copyright (c) 2020-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# BSD-3-Clause
+#
+# See file LICENSE for terms.
 
 opt_srcpkg=0
 opt_binpkg=0

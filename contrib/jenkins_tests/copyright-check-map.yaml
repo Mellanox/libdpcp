@@ -16,7 +16,7 @@ general:
         - ".*Makefile\\.am"
         - ".*LICENSE"
         - ".*NOTICE"
-        - ".*README"
+        - ".*README\\.md"
         - ".*license"
         - ".*\\.md"
         - ".*\\.sh"
@@ -29,12 +29,14 @@ general:
         - ".*\\.in"
         - ".*\\.cmake"
         - ".*\\.png"
+        - ".*\\.m4"
 
-nbu-proprietary:
+bsd:
     include:
         - ".*"
     exclude:
         - ".*tests/gtest/common/tap\\.h"
         - ".*tests/gtest/common/gtest\\.h"
         - ".*tests/gtest/common/gtest-all\\.cpp"
+        - ".*tests/gtest/include/getopt\\.h"
         - ".*contrib/scripts/dpcp\\.spec\\.in"

@@ -9,4 +9,4 @@ EXTRA_DIST = \
 	contrib \
 	debian \
 	LICENSE \
-	README
+	README.md

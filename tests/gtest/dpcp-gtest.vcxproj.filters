@@ -1,129 +1,145 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <Filter Include="gtest">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="gtest\common">
+      <UniqueIdentifier>{23b9802a-aae2-46aa-a501-79a482557c3d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="gtest\dcmd">
+      <UniqueIdentifier>{bc688f75-b1c4-435d-8f6a-695be457fd1a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="gtest\dpcp">
+      <UniqueIdentifier>{ed766915-f249-4122-b1e5-cf5cc68bf851}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="gtest\include">
+      <UniqueIdentifier>{e9af80b1-aa27-45fa-8407-92cc40072946}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>gtest</Filter>
+    </ClCompile>
     <ClCompile Include="common\base.cpp">
-      <Filter>common</Filter>
+      <Filter>gtest\common</Filter>
     </ClCompile>
     <ClCompile Include="common\gtest-all.cpp">
-      <Filter>common</Filter>
-    </ClCompile>
-    <ClCompile Include="main.cpp">
-      <Filter>common</Filter>
+      <Filter>gtest\common</Filter>
     </ClCompile>
     <ClCompile Include="common\sys.cpp">
-      <Filter>common</Filter>
-    </ClCompile>
-    <ClCompile Include="dcmd\dcmd_ctx.cpp">
-      <Filter>dcmd_tests</Filter>
-    </ClCompile>
-    <ClCompile Include="dcmd\dcmd_obj.cpp">
-      <Filter>dcmd_tests</Filter>
-    </ClCompile>
-    <ClCompile Include="dcmd\dcmd_device.cpp">
-      <Filter>dcmd_tests</Filter>
-    </ClCompile>
-    <ClCompile Include="dcmd\dcmd_provider.cpp">
-      <Filter>dcmd_tests</Filter>
+      <Filter>gtest\common</Filter>
     </ClCompile>
     <ClCompile Include="dcmd\dcmd_base.cpp">
-      <Filter>dcmd_tests</Filter>
-    </ClCompile>
-    <ClCompile Include="dpcp\adapter_tests.cpp">
-      <Filter>dpcp_tests</Filter>
-    </ClCompile>
-    <ClCompile Include="dpcp\dpcp_base.cpp">
-      <Filter>dpcp_tests</Filter>
-    </ClCompile>
-    <ClCompile Include="dpcp\fr_tests.cpp">
-      <Filter>dpcp_tests</Filter>
-    </ClCompile>
-    <ClCompile Include="dpcp\mkey_tests.cpp">
-      <Filter>dpcp_tests</Filter>
-    </ClCompile>
-    <ClCompile Include="dpcp\obj_tests.cpp">
-      <Filter>dpcp_tests</Filter>
-    </ClCompile>
-    <ClCompile Include="dpcp\pd_tests.cpp">
-      <Filter>dpcp_tests</Filter>
-    </ClCompile>
-    <ClCompile Include="dpcp\provider_tests.cpp">
-      <Filter>dpcp_tests</Filter>
-    </ClCompile>
-    <ClCompile Include="dpcp\rq_tests.cpp">
-      <Filter>dpcp_tests</Filter>
-    </ClCompile>
-    <ClCompile Include="dpcp\td_tests.cpp">
-      <Filter>dpcp_tests</Filter>
-    </ClCompile>
-    <ClCompile Include="dpcp\tir_tests.cpp">
-      <Filter>dpcp_tests</Filter>
-    </ClCompile>
-    <ClCompile Include="dpcp\uar_tests.cpp">
-      <Filter>dpcp_tests</Filter>
+      <Filter>gtest\dcmd</Filter>
     </ClCompile>
     <ClCompile Include="dcmd\dcmd_compchannel.cpp">
-      <Filter>dcmd_tests</Filter>
+      <Filter>gtest\dcmd</Filter>
+    </ClCompile>
+    <ClCompile Include="dcmd\dcmd_ctx.cpp">
+      <Filter>gtest\dcmd</Filter>
+    </ClCompile>
+    <ClCompile Include="dcmd\dcmd_device.cpp">
+      <Filter>gtest\dcmd</Filter>
+    </ClCompile>
+    <ClCompile Include="dcmd\dcmd_obj.cpp">
+      <Filter>gtest\dcmd</Filter>
+    </ClCompile>
+    <ClCompile Include="dcmd\dcmd_provider.cpp">
+      <Filter>gtest\dcmd</Filter>
+    </ClCompile>
+    <ClCompile Include="dpcp\adapter_tests.cpp">
+      <Filter>gtest\dpcp</Filter>
     </ClCompile>
     <ClCompile Include="dpcp\dek_tests.cpp">
-      <Filter>dpcp_tests</Filter>
+      <Filter>gtest\dpcp</Filter>
     </ClCompile>
-    <ClCompile Include="dpcp\tis_tests.cpp">
-      <Filter>dpcp_tests</Filter>
-    </ClCompile>
-    <ClCompile Include="dpcp\pp_tests.cpp">
-      <Filter>dpcp_tests</Filter>
-    </ClCompile>
-    <ClCompile Include="dpcp\sq_tests.cpp">
-      <Filter>dpcp_tests</Filter>
-    </ClCompile>
-    <ClCompile Include="dpcp\parser_graph_node_tests.cpp">
-      <Filter>dpcp_tests</Filter>
+    <ClCompile Include="dpcp\dpcp_base.cpp">
+      <Filter>gtest\dpcp</Filter>
     </ClCompile>
     <ClCompile Include="dpcp\flow_group_tests.cpp">
-      <Filter>dpcp_tests</Filter>
+      <Filter>gtest\dpcp</Filter>
     </ClCompile>
     <ClCompile Include="dpcp\flow_rule_ex_tests.cpp">
-      <Filter>dpcp_tests</Filter>
+      <Filter>gtest\dpcp</Filter>
     </ClCompile>
     <ClCompile Include="dpcp\flow_table_tests.cpp">
-      <Filter>dpcp_tests</Filter>
+      <Filter>gtest\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="dpcp\fr_tests.cpp">
+      <Filter>gtest\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="dpcp\mkey_tests.cpp">
+      <Filter>gtest\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="dpcp\obj_tests.cpp">
+      <Filter>gtest\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="dpcp\parser_graph_node_tests.cpp">
+      <Filter>gtest\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="dpcp\pd_tests.cpp">
+      <Filter>gtest\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="dpcp\pp_tests.cpp">
+      <Filter>gtest\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="dpcp\provider_tests.cpp">
+      <Filter>gtest\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="dpcp\rq_ibq_tests.cpp">
+      <Filter>gtest\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="dpcp\rq_tests.cpp">
+      <Filter>gtest\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="dpcp\sq_tests.cpp">
+      <Filter>gtest\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="dpcp\td_tests.cpp">
+      <Filter>gtest\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="dpcp\tir_tests.cpp">
+      <Filter>gtest\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="dpcp\tis_tests.cpp">
+      <Filter>gtest\dpcp</Filter>
+    </ClCompile>
+    <ClCompile Include="dpcp\uar_tests.cpp">
+      <Filter>gtest\dpcp</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="common\cmn.h">
-      <Filter>common</Filter>
-    </ClInclude>
     <ClInclude Include="common\base.h">
-      <Filter>common</Filter>
+      <Filter>gtest\common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\cmn.h">
+      <Filter>gtest\common</Filter>
     </ClInclude>
     <ClInclude Include="common\def.h">
-      <Filter>common</Filter>
+      <Filter>gtest\common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\gtest.h">
+      <Filter>gtest\common</Filter>
     </ClInclude>
     <ClInclude Include="common\log.h">
-      <Filter>common</Filter>
+      <Filter>gtest\common</Filter>
     </ClInclude>
     <ClInclude Include="common\sys.h">
-      <Filter>common</Filter>
+      <Filter>gtest\common</Filter>
     </ClInclude>
     <ClInclude Include="common\tap.h">
-      <Filter>common</Filter>
+      <Filter>gtest\common</Filter>
     </ClInclude>
     <ClInclude Include="dcmd\dcmd_base.h">
-      <Filter>dcmd_tests</Filter>
+      <Filter>gtest\dcmd</Filter>
     </ClInclude>
     <ClInclude Include="dpcp\dpcp_base.h">
-      <Filter>dpcp_tests</Filter>
+      <Filter>gtest\dpcp</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <Filter Include="common">
-      <UniqueIdentifier>{4c545410-0821-4acb-ba5a-d7414da5840e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="dcmd_tests">
-      <UniqueIdentifier>{f948d1eb-cd49-4f0e-aebf-59c07e1e93d5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="dpcp_tests">
-      <UniqueIdentifier>{20246d6b-002f-443b-8c2c-ea05586054f9}</UniqueIdentifier>
-    </Filter>
+    <ClInclude Include="include\getopt.h">
+      <Filter>gtest\include</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

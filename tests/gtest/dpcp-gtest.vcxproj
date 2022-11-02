@@ -1,21 +1,179 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup>
-    <ConfigTopDir>$(ProjectDir)..\..\config\windows</ConfigTopDir>
-  </PropertyGroup>
-  <Import Project="$(ConfigTopDir)\Project.vcxproj-pre.inc" />
-  <PropertyGroup Label="PropertySheets">
-    <ConfigurationType>Application</ConfigurationType>
-    <TARGETNAME>$(ProjectName)</TARGETNAME>
-  </PropertyGroup>
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{594009B4-963D-4670-81C6-D533B5C1E2E2}</ProjectGuid>
-    <RootNamespace>$(MSBuildProjectName)</RootNamespace>
-    <WindowsTargetPlatformVersion>$(LatestTargetPlatformVersion)</WindowsTargetPlatformVersion>
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{0e40d6aa-c64f-4344-8ffa-aa59d3f04a08}</ProjectGuid>
+    <RootNamespace>dpcpgtest</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>$(DefaultPlatformToolset)</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>$(DefaultPlatformToolset)</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>$(DefaultPlatformToolset)</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>$(DefaultPlatformToolset)</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)\bin\user\objWin19H1$(Configuration)\$(Platform)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)\bin\user\objWin19H1$(Configuration)\$(Platform)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)\bin\user\objWin19H1$(Configuration)\$(Platform)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)\bin\user\objWin19H1$(Configuration)\$(Platform)\</OutDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);WIN32_LEAN_AND_MEAN=1;_ALLOW_RUNTIME_LIBRARY_MISMATCH;_CRT_SECURE_NO_WARNINGS;_HAS_ITERATOR_DEBUGGING=0;_SECURE_SCL=0;_SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS;_NO_CRT_STDIO_INLINE;_CRTIMP_=;_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING=1;GTEST_HAS_PTHREAD=0;_WINSOCK_DEPRECATED_NO_WARNINGS;_HAS_EXCEPTIONS=1</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(DEVX_INC_PATH);$(ProjectDir)..\..\;$(ProjectDir)..\..\src\;$(ProjectDir)..\..\src\api\;$(ProjectDir)..\..\src\dcmd\windows\;$(ProjectDir);$(ProjectDir)common\;$(ProjectDir)include\;$(UCRTContentRoot)\Include\$(Version_Number)\ucrt;$(UCRTContentRoot)\Include\$(Version_Number)\um;$(UCRTContentRoot)\Include\$(Version_Number)\shared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <CallingConvention>StdCall</CallingConvention>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>ws2_32.lib;mlx5devx.lib;dpcp.lib;legacy_stdio_definitions.lib;UCRT.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(DEVX_LIB_PATH);$(SolutionDir)\bin\user\objWin19H1$(Configuration)\$(Platform)\;$(UCRTContentRoot)\Lib\$(Version_Number)\um\x86;$(UCRTContentRoot)\Lib\$(Version_Number)\ucrt\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);_WIN64;_AMD64_;AMD64;WIN32_LEAN_AND_MEAN=1;_ALLOW_RUNTIME_LIBRARY_MISMATCH;_CRT_SECURE_NO_WARNINGS;_HAS_ITERATOR_DEBUGGING=0;_SECURE_SCL=0;_SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS;_NO_CRT_STDIO_INLINE;_CRTIMP_=;_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING=1;GTEST_HAS_PTHREAD=0;_WINSOCK_DEPRECATED_NO_WARNINGS;_HAS_EXCEPTIONS=1</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(DEVX_INC_PATH);$(ProjectDir)..\..\;$(ProjectDir)..\..\src\;$(ProjectDir)..\..\src\api\;$(ProjectDir)..\..\src\dcmd\windows\;$(ProjectDir);$(ProjectDir)common\;$(ProjectDir)include\;$(UCRTContentRoot)\Include\$(Version_Number)\ucrt;$(UCRTContentRoot)\Include\$(Version_Number)\um;$(UCRTContentRoot)\Include\$(Version_Number)\shared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <CallingConvention>StdCall</CallingConvention>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>ws2_32.lib;mlx5devx.lib;dpcp.lib;legacy_stdio_definitions.lib;UCRT.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(DEVX_LIB_PATH);$(SolutionDir)\bin\user\objWin19H1$(Configuration)\$(Platform)\;$(UCRTContentRoot)\Lib\$(Version_Number)\um\x86;$(UCRTContentRoot)\Lib\$(Version_Number)\ucrt\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions);_WIN64;_AMD64_;AMD64;WIN32_LEAN_AND_MEAN;_CRT_SECURE_NO_WARNINGS;_HAS_ITERATOR_DEBUGGING=0;_SECURE_SCL=0;_SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS;_NO_CRT_STDIO_INLINE;_CRTIMP_=;_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING=1;GTEST_HAS_PTHREAD=0;_WINSOCK_DEPRECATED_NO_WARNINGS;_HAS_EXCEPTIONS=1</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(DEVX_INC_PATH);$(ProjectDir)..\..\;$(ProjectDir)..\..\src\;$(ProjectDir)..\..\src\api\;$(ProjectDir)..\..\src\dcmd\windows\;$(ProjectDir);$(ProjectDir)common\;$(ProjectDir)include\;$(UCRTContentRoot)\Include\$(Version_Number)\ucrt;$(UCRTContentRoot)\Include\$(Version_Number)\um;$(UCRTContentRoot)\Include\$(Version_Number)\shared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <CallingConvention>StdCall</CallingConvention>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>ws2_32.lib;mlx5devx.lib;dpcp.lib;legacy_stdio_definitions.lib;UCRT.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(DEVX_LIB_PATH);$(SolutionDir)\bin\user\objWin19H1$(Configuration)\$(Platform)\;$(UCRTContentRoot)\Lib\$(Version_Number)\um\x64;$(UCRTContentRoot)\Lib\$(Version_Number)\ucrt\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions);_WIN64;_AMD64_;AMD64;WIN32_LEAN_AND_MEAN;_CRT_SECURE_NO_WARNINGS;_HAS_ITERATOR_DEBUGGING=0;_SECURE_SCL=0;_SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS;_NO_CRT_STDIO_INLINE;_CRTIMP_=;_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING=1;GTEST_HAS_PTHREAD=0;_WINSOCK_DEPRECATED_NO_WARNINGS;_HAS_EXCEPTIONS=1</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(DEVX_INC_PATH);$(ProjectDir)..\..\;$(ProjectDir)..\..\src\;$(ProjectDir)..\..\src\api\;$(ProjectDir)..\..\src\dcmd\windows\;$(ProjectDir);$(ProjectDir)common\;$(ProjectDir)include\;$(UCRTContentRoot)\Include\$(Version_Number)\ucrt;$(UCRTContentRoot)\Include\$(Version_Number)\um;$(UCRTContentRoot)\Include\$(Version_Number)\shared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <CallingConvention>StdCall</CallingConvention>
+      <ConformanceMode>true</ConformanceMode>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>ws2_32.lib;mlx5devx.lib;dpcp.lib;legacy_stdio_definitions.lib;UCRT.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(DEVX_LIB_PATH);$(SolutionDir)\bin\user\objWin19H1$(Configuration)\$(Platform)\;$(UCRTContentRoot)\Lib\$(Version_Number)\um\x64;$(UCRTContentRoot)\Lib\$(Version_Number)\ucrt\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+    </Link>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="common\base.cpp" />
     <ClCompile Include="common\gtest-all.cpp" />
@@ -39,6 +197,7 @@
     <ClCompile Include="dpcp\pd_tests.cpp" />
     <ClCompile Include="dpcp\pp_tests.cpp" />
     <ClCompile Include="dpcp\provider_tests.cpp" />
+    <ClCompile Include="dpcp\rq_ibq_tests.cpp" />
     <ClCompile Include="dpcp\rq_tests.cpp" />
     <ClCompile Include="dpcp\sq_tests.cpp" />
     <ClCompile Include="dpcp\td_tests.cpp" />
@@ -51,11 +210,15 @@
     <ClInclude Include="common\base.h" />
     <ClInclude Include="common\cmn.h" />
     <ClInclude Include="common\def.h" />
+    <ClInclude Include="common\gtest.h" />
     <ClInclude Include="common\log.h" />
     <ClInclude Include="common\sys.h" />
     <ClInclude Include="common\tap.h" />
     <ClInclude Include="dcmd\dcmd_base.h" />
     <ClInclude Include="dpcp\dpcp_base.h" />
+    <ClInclude Include="include\getopt.h" />
   </ItemGroup>
-  <Import Project="$(ConfigTopDir)\Project.vcxproj-post.inc" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
 </Project>

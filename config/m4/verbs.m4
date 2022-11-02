@@ -1,9 +1,8 @@
 # verbs.m4 - Parsing verbs capabilities
 #
-# Copyright (C) Mellanox Technologies Ltd. 2001-2020.  ALL RIGHTS RESERVED.
-# See file LICENSE for terms.
+# Copyright (c) 2019-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# BSD-3-Clause
 #
-
 
 # Check attributes
 # Usage: CHECK_VERBS_ATTRIBUTE([attribute], [header file], [definition])

@@ -1,13 +1,31 @@
 /*
- * Copyright © 2020-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ * Copyright (c) 2019-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * BSD-3-Clause
  *
- * This software product is a proprietary product of Nvidia Corporation and its affiliates
- * (the "Company") and all right, title, and interest in and to the software
- * product, including all associated intellectual property rights, are and
- * shall remain exclusively with the Company.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * This software product is governed by the End User License Agreement
- * provided with the software product.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #ifndef SRC_DCMD_PRM_H_
@@ -315,7 +333,11 @@ struct mlx5_ifc_flow_table_fields_supported_bits {
     u8 outer_gre_protocol[0x1];
     u8 outer_gre_key[0x1];
     u8 outer_vxlan_vni[0x1];
-    u8 reserved_at_1a[0x5];
+    u8 outer_geneve_vni[0x1];
+    u8 outer_geneve_oam[0x1];
+    u8 outer_geneve_protocol_type[0x1];
+    u8 outer_geneve_opt_len[0x1];
+    u8 reserved_at_1e[0x1];
     u8 source_eswitch_port[0x1];
 
     u8 inner_dmac[0x1];
@@ -341,13 +363,32 @@ struct mlx5_ifc_flow_table_fields_supported_bits {
     u8 inner_tcp_sport[0x1];
     u8 inner_tcp_dport[0x1];
     u8 inner_tcp_flags[0x1];
-    u8 reserved_at_37[0x9];
-    u8 reserved_at_40[0x17];
+    u8 outer_tcp_seq_num[0x1];
+    u8 inner_tcp_seq_num[0x1];
+    u8 prog_sample_field[0x1];
+    u8 reserved_at_3a[0x6];
+
+    u8 geneve_tlv_option_0_data[0x1];
+    u8 reserved_at_41[0x4];
+    u8 outer_first_mpls_over_udp[0x4];
+    u8 outer_first_mpls_over_gre[0x4];
+    u8 inner_first_mpls[0x4];
+    u8 outer_first_mpls[0x4];
+    u8 reserved_at_55[0x2];
     u8 outer_esp_spi[0x1];
     u8 reserved_at_58[0x2];
     u8 bth_dst_qp[0x1];
+    u8 reserved_at_5b[0x5];
 
-    u8 reserved_at_5b[0x25];
+    u8 reserved_at_60[0x18];
+    u8 metadata_reg_c_7[0x1];
+    u8 metadata_reg_c_6[0x1];
+    u8 metadata_reg_c_5[0x1];
+    u8 metadata_reg_c_4[0x1];
+    u8 metadata_reg_c_3[0x1];
+    u8 metadata_reg_c_2[0x1];
+    u8 metadata_reg_c_1[0x1];
+    u8 metadata_reg_c_0[0x1];
 };
 
 struct mlx5_ifc_flow_table_prop_layout_bits {
@@ -403,15 +444,17 @@ struct mlx5_ifc_flow_table_prop_layout_bits {
     u8 macsec_decrypt[0x1];
     u8 psp_encrypt[0x1];
     u8 psp_decrypt[0x1];
-    u8 reserved_at_68[0x10];
-
+    u8 reformat_and_macsec[0x1];
+    u8 reformat_remove_macsec[0x1];
+    u8 reparse[0x1];
+    u8 reserved_at_6b[0xd];
     u8 log_max_ft_num[0x8];
 
-    u8 reserved_at_80[0x10];
-    u8 log_max_flow_counter[0x8];
+    u8 reserved_at_80[0x18];
     u8 log_max_destination[0x8];
 
-    u8 reserved_at_a0[0x18];
+    u8 log_max_flow_counter[0x8];
+    u8 reserved_at_a8[0x10];
     u8 log_max_flow[0x8];
 
     u8 reserved_at_c0[0x40];
@@ -602,7 +645,9 @@ struct mlx5_ifc_header_modify_cap_properties_bits {
 
     u8 reserved_at_180[0x80];
 
-    u8 copy_action_field_support[8][0x20];
+    struct mlx5_ifc_flow_table_fields_supported_bits copy_action_field_support;
+
+    u8 reserved_at_280[0x80];
 
     u8 reserved_at_300[0x100];
 };
@@ -1002,7 +1047,7 @@ struct mlx5_ifc_cmd_hca_cap_bits {
     u8 cmd_on_behalf[0x1];
     u8 device_emulation_manager[0x1];
     u8 reserved_at_f6[0x3];
-    u8 dpp[0x1];
+    u8 ibq[0x1];
     u8 reserved_at_f7[0x2];
     u8 log_max_eq[0x4];
 
@@ -1289,7 +1334,39 @@ struct mlx5_ifc_cmd_hca_cap_bits {
     u8 num_vhca_ports[0x8];
     u8 reserved_at_618[0x6];
     u8 sw_owner_id[0x1];
-    u8 reserved_at_61f[0x1e1];
+    u8 reserve_not_to_use[0x1];
+    u8 reserved_at_620[0xa0];
+    u8 reserved_at_6c0[0x4];
+    u8 flex_parser_id_geneve_opt_0[0x4];
+    u8 flex_parser_id_icmp_dw1[0x4];
+    u8 flex_parser_id_icmp_dw0[0x4];
+    u8 flex_parser_id_icmpv6_dw1[0x4];
+    u8 flex_parser_id_icmpv6_dw0[0x4];
+    u8 flex_parser_id_outer_first_mpls_over_gre[0x4];
+    u8 flex_parser_id_outer_first_mpls_over_udp_label[0x4];
+
+    u8 reserved_at_6e0[0x20];
+
+    u8 flex_parser_id_gtpu_dw_2[0x4];
+    u8 flex_parser_id_gtpu_first_ext_dw_0[0x4];
+    u8 reserved_at_708[0x18];
+
+    u8 reserved_at_720[0x20];
+
+    u8 reserved_at_740[0x8];
+    u8 dma_mmo_qp[0x1];
+    u8 reserved_at_749[0x17];
+
+    u8 reserved_at_760[0x3];
+    u8 log_max_num_header_modify_argument[0x5];
+    u8 reserved_at_768[0x4];
+    u8 log_header_modify_argument_granularity[0x4];
+    u8 reserved_at_770[0x3];
+    u8 log_header_modify_argument_max_alloc[0x5];
+    u8 reserved_at_778[0x3];
+    u8 max_flow_execute_aso[0x5];
+
+    u8 reserved_at_780[0x80];
 };
 
 struct mlx5_ifc_cmd_hca_cap_2_bits {
@@ -2699,12 +2776,12 @@ struct mlx5_ifc_crypto_cap_bits {
     u8 reserved_at_80[0x780];
 };
 
-struct mlx5_ifc_dpp_cap_bits {
-    u8 dpp_wire_protocol[0x40];
+struct mlx5_ifc_ibq_cap_bits {
+    u8 ibq_wire_protocol[0x40];
 
     u8 reserverd_at_40[0x28];
 
-    u8 dpp_max_scatter_offset[0x8];
+    u8 ibq_max_scatter_offset[0x8];
     u8 reserverd_at_70[0x10];
 
     u8 reserverd_at_80[0x760];
@@ -2752,7 +2829,7 @@ union mlx5_ifc_hca_cap_union_bits {
             struct mlx5_ifc_fpga_cap_bits fpga_cap;
     */
     struct mlx5_ifc_emulation_cap_bits emulation_cap;
-    struct mlx5_ifc_dpp_cap_bits dpp_cap;
+    struct mlx5_ifc_ibq_cap_bits ibq_cap;
     struct mlx5_ifc_parse_graph_node_cap_bits parse_graph_node_cap;
     struct mlx5_ifc_crypto_cap_bits crypto_cap;
     u8 reserved_at_0[0x8000];
@@ -2768,6 +2845,7 @@ enum {
     MLX5_FLOW_CONTEXT_ACTION_MOD_HDR = 0x40,
     MLX5_FLOW_CONTEXT_ACTION_VLAN_POP = 0x80,
     MLX5_FLOW_CONTEXT_ACTION_VLAN_PUSH = 0x100,
+    MLX5_FLOW_CONTEXT_ACTION_REPARSE = 0x8000,
 };
 
 struct mlx5_ifc_vlan_bits {
@@ -3127,18 +3205,18 @@ struct mlx5_ifc_rqc_bits {
     u8 reserved_at_80[0x8];
     u8 rmpn[0x18];
 
-    u8 dpp_wire_protocol[0x8];
+    u8 ibq_wire_protocol[0x8];
     u8 hairpin_peer_sq[0x18];
 
-    u8 dpp_segment_size[0x10];
+    u8 ibq_segment_size[0x10];
     u8 hairpin_peer_vhca[0x10];
 
-    u8 dpp_mkey[0x20];
+    u8 ibq_mkey[0x20];
 
     u8 reserved_at_100[0x10];
-    u8 dpp_scatter_offset[0x8];
+    u8 ibq_scatter_offset[0x8];
     u8 reserved_at_118[0x3];
-    u8 log_dpp_buffer_size[0x5];
+    u8 log_ibq_buffer_size[0x5];
 
     u8 reserved_at_120[0x60];
 
@@ -5424,6 +5502,7 @@ union mlx5_ifc_set_add_copy_action_in_auto_bits {
 enum {
     MLX5_ACTION_TYPE_SET = 0x1,
     MLX5_ACTION_TYPE_ADD = 0x2,
+    MLX5_ACTION_TYPE_COPY = 0x3,
 };
 
 enum {

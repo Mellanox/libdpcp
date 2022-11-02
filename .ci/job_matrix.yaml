@@ -1,9 +1,7 @@
 ---
-job: rivermax-ci-demo-test
+job: dpcp-ci-demo
 
 registry_host: harbor.mellanox.com
-registry_path: /rivermax
-# rivermax user
 registry_auth: 65eb3652-9da0-4f39-8a4c-f61972fb65a1
 
 credentials:
@@ -14,12 +12,6 @@ kubernetes:
 
   limits: '{memory: 8Gi, cpu: 8000m}'
   requests: '{memory: 8Gi, cpu: 8000m}'
-
-  # swx-jenkins
-  #runAsUser: '6213'
-
-  # release_rivermax
-  #runAsGroup: '11429'
 
   # Use JNLP images with swx-jenkins user (TODO: think about making these images default and multi-arch).
   # K8s cluster nodes should run the folowing commands to allow running containers under swx-jenkins:
@@ -43,12 +35,18 @@ volumes:
 
 
 runs_on_dockers:
-  - {file: '.dockers/Dockerfile.ubuntu18.04', arch: 'x86_64', name: 'ubuntu18.04', uri: 'dpcp/x86_64/ubuntu18.04/builder', tag: 'mofed-5.7-0.0.8.0'}
-  - {file: '.dockers/Dockerfile.ubuntu20.04', arch: 'x86_64', name: 'ubuntu20.04', uri: 'dpcp/x86_64/ubuntu20.04/builder', tag: 'mofed-5.7-0.0.8.0'}
-  - {file: '.dockers/Dockerfile.ubuntu22.04', arch: 'x86_64', name: 'ubuntu22.04', uri: 'dpcp/x86_64/ubuntu22.04/builder', tag: 'mofed-5.6.1.0.3.3'}
-  - {file: '.dockers/Dockerfile.rhel7.7', arch: 'x86_64', name: 'rhel7.7', uri: 'dpcp/x86_64/rhel7.7/builder', tag: 'mofed-5.7-0.0.8.0'}
-  - {file: '.dockers/Dockerfile.ubuntu18.04', arch: 'x86_64', name: 'ubuntu18.04.cov', uri: 'dpcp/x86_64/ubuntu18.04/builder', tag: 'mofed-5.7-0.0.8.0', category: 'tool'}
-  - {file: '.dockers/Dockerfile.fedora32', arch: 'x86_64', name: 'fedora32', uri: 'dpcp/x86_64/fedora32', tag: 'clang', category: 'tool'}
+  - {file: '.dockers/Dockerfile.ubuntu18.04', arch: 'x86_64', name: 'ubuntu18.04',
+     url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/ubuntu18.04/builder:mofed-5.7-0.0.8.0', tag: 'mofed-5.7-0.0.8.0'}
+  - {file: '.dockers/Dockerfile.ubuntu20.04', arch: 'x86_64', name: 'ubuntu20.04',
+     url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/ubuntu20.04/builder:mofed-5.7-0.0.8.0', tag: 'mofed-5.7-0.0.8.0'}
+  - {file: '.dockers/Dockerfile.ubuntu22.04', arch: 'x86_64', name: 'ubuntu22.04',
+     url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/ubuntu22.04/builder:mofed-5.6.1.0.3.3', tag: 'mofed-5.6.1.0.3.3'}
+  - {file: '.dockers/Dockerfile.rhel7.7', arch: 'x86_64', name: 'rhel7.7',
+     url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/rhel7.7/builder:mofed-5.7-0.0.8.0', tag: 'mofed-5.7-0.0.8.0'}
+  - {file: '.dockers/Dockerfile.ubuntu18.04', arch: 'x86_64', name: 'ubuntu18.04.cov',
+     url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/ubuntu18.04/builder:mofed-5.7-0.0.8.0', tag: 'mofed-5.7-0.0.8.0', category: 'tool'}
+  - {file: '.dockers/Dockerfile.fedora32', arch: 'x86_64', name: 'fedora32',
+     url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/fedora32:clang', tag: 'clang', category: 'tool'}
   - {name: 'header-check', url: 'harbor.mellanox.com/toolbox/header_check:0.0.14', arch: 'x86_64', tag: '0.0.14', category: 'tool'}
 
 runs_on_agents:

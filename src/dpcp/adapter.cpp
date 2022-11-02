@@ -1,13 +1,31 @@
 /*
- * Copyright © 2020-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ * Copyright (c) 2019-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * BSD-3-Clause
  *
- * This software product is a proprietary product of Nvidia Corporation and its affiliates
- * (the "Company") and all right, title, and interest in and to the software
- * product, including all associated intellectual property rights, are and
- * shall remain exclusively with the Company.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * This software product is governed by the End User License Agreement
- * provided with the software product.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -176,24 +194,24 @@ static void store_hca_lro_caps(adapter_hca_capabilities* external_hca_caps,
               external_hca_caps->lro_timer_supported_periods[i]);
 }
 
-static void store_hca_dpp_caps(adapter_hca_capabilities* external_hca_caps,
+static void store_hca_ibq_caps(adapter_hca_capabilities* external_hca_caps,
                                const caps_map_t& caps_map)
 {
-    external_hca_caps->dpp = DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
-                                      capability.cmd_hca_cap.dpp);
-    log_trace("Capability - dpp: %d\n", external_hca_caps->dpp);
+    external_hca_caps->ibq = DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+                                      capability.cmd_hca_cap.ibq);
+    log_trace("Capability - ibq: %d\n", external_hca_caps->ibq);
 
-    external_hca_caps->dpp_wire_protocol =
+    external_hca_caps->ibq_wire_protocol =
         DEVX_GET64(query_hca_cap_out, caps_map.find(MLX5_CAP_DPP)->second,
-                   capability.dpp_cap.dpp_wire_protocol);
-    log_trace("Capability - dpp_wire_protocol: 0x%llx\n",
-              static_cast<unsigned long long>(external_hca_caps->dpp_wire_protocol));
+                   capability.ibq_cap.ibq_wire_protocol);
+    log_trace("Capability - ibq_wire_protocol: 0x%llx\n",
+              static_cast<unsigned long long>(external_hca_caps->ibq_wire_protocol));
 
-    external_hca_caps->dpp_max_scatter_offset =
+    external_hca_caps->ibq_max_scatter_offset =
         DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_DPP)->second,
-                 capability.dpp_cap.dpp_max_scatter_offset);
-    log_trace("Capability - dpp_max_scatter_offset: %d\n",
-              external_hca_caps->dpp_max_scatter_offset);
+                 capability.ibq_cap.ibq_max_scatter_offset);
+    log_trace("Capability - ibq_max_scatter_offset: %d\n",
+              external_hca_caps->ibq_max_scatter_offset);
 }
 
 static void store_hca_parse_graph_node_caps(adapter_hca_capabilities* external_hca_caps,
@@ -274,6 +292,15 @@ static void store_hca_2_reformat_caps(adapter_hca_capabilities* external_hca_cap
         "Capability - flow_table_receive.reformat_flow_action_caps.max_reformat_insert_offset: "
         "%d\n",
         external_hca_caps->flow_table_caps.reformat_flow_action_caps.max_reformat_insert_offset);
+    external_hca_caps->flow_table_caps.receive
+        .is_flow_action_non_tunnel_reformat_and_fwd_to_flow_table =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL_2)->second,
+                 capability.cmd_hca_cap_2.non_tunnel_reformat);
+    log_trace("Capability - "
+              "flow_table_caps.receive.is_flow_action_non_tunnel_reformat_and_fwd_to_flow_table: "
+              "%d\n",
+              external_hca_caps->flow_table_caps.receive
+                  .is_flow_action_non_tunnel_reformat_and_fwd_to_flow_table);
 }
 
 static void store_hca_flow_table_caps(adapter_hca_capabilities* external_hca_caps,
@@ -356,6 +383,38 @@ static void store_hca_flow_table_nic_receive_caps(adapter_hca_capabilities* exte
     log_trace("Capability - flow_table_caps.receive.modify_flow_action_caps.max_obj_log_num: %d\n",
               external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.max_obj_log_num);
 
+    external_hca_caps->flow_table_caps.receive.ft_field_support.outer_udp_dport =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                 capability.flow_table_nic_cap.flow_table_properties_nic_receive.ft_field_support
+                     .outer_udp_dport);
+    log_trace("Capability - "
+              "flow_table_caps.receive.ft_field_support.outer_udp_dport: %d\n",
+              external_hca_caps->flow_table_caps.receive.ft_field_support.outer_udp_dport);
+
+    external_hca_caps->flow_table_caps.receive.ft_field_support.prog_sample_field =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                 capability.flow_table_nic_cap.flow_table_properties_nic_receive.ft_field_support
+                     .prog_sample_field);
+    log_trace("Capability - "
+              "flow_table_caps.receive.ft_field_support.prog_sample_field: %d\n",
+              external_hca_caps->flow_table_caps.receive.ft_field_support.prog_sample_field);
+
+    external_hca_caps->flow_table_caps.receive.ft_field_support.metadata_reg_c_0 =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                 capability.flow_table_nic_cap.flow_table_properties_nic_receive.ft_field_support
+                     .metadata_reg_c_0);
+    log_trace("Capability - "
+              "flow_table_caps.receive.ft_field_support.metadata_reg_c_0: %d\n",
+              external_hca_caps->flow_table_caps.receive.ft_field_support.metadata_reg_c_0);
+
+    external_hca_caps->flow_table_caps.receive.ft_field_support.metadata_reg_c_1 =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                 capability.flow_table_nic_cap.flow_table_properties_nic_receive.ft_field_support
+                     .metadata_reg_c_1);
+    log_trace("Capability - "
+              "flow_table_caps.receive.ft_field_support.metadata_reg_c_1: %d\n",
+              external_hca_caps->flow_table_caps.receive.ft_field_support.metadata_reg_c_1);
+
     external_hca_caps->flow_table_caps.receive.modify_flow_action_caps
         .max_obj_in_flow_rule = DEVX_GET(
         query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
@@ -363,6 +422,36 @@ static void store_hca_flow_table_nic_receive_caps(adapter_hca_capabilities* exte
     log_trace(
         "Capability - flow_table_caps.receive.modify_flow_action_caps.max_obj_in_flow_rule: %d\n",
         external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.max_obj_in_flow_rule);
+
+    external_hca_caps->flow_table_caps.receive.modify_flow_action_caps
+        .log_max_num_header_modify_argument =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+                 capability.cmd_hca_cap.log_max_num_header_modify_argument);
+    log_trace(
+        "Capability - "
+        "flow_table_caps.receive.modify_flow_action_caps.log_max_num_header_modify_argument: %d\n",
+        external_hca_caps->flow_table_caps.receive.modify_flow_action_caps
+            .log_max_num_header_modify_argument);
+
+    external_hca_caps->flow_table_caps.receive.modify_flow_action_caps
+        .log_header_modify_argument_granularity =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+                 capability.cmd_hca_cap.log_header_modify_argument_granularity);
+    log_trace("Capability - "
+              "flow_table_caps.receive.modify_flow_action_caps.log_header_modify_argument_"
+              "granularity: %d\n",
+              external_hca_caps->flow_table_caps.receive.modify_flow_action_caps
+                  .log_header_modify_argument_granularity);
+
+    external_hca_caps->flow_table_caps.receive.modify_flow_action_caps
+        .log_header_modify_argument_max_alloc =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+                 capability.cmd_hca_cap.log_header_modify_argument_max_alloc);
+    log_trace("Capability - "
+              "flow_table_caps.receive.modify_flow_action_caps.log_header_modify_argument_max_"
+              "alloc: %d\n",
+              external_hca_caps->flow_table_caps.receive.modify_flow_action_caps
+                  .log_header_modify_argument_max_alloc);
 
     external_hca_caps->flow_table_caps.receive.max_flow_table_level =
         DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
@@ -397,6 +486,12 @@ static void store_hca_flow_table_nic_receive_caps(adapter_hca_capabilities* exte
     log_trace("Capability - flow_table_caps.receive.max_log_num_of_flow_rule: %d\n",
               external_hca_caps->flow_table_caps.receive.max_log_num_of_flow_rule);
 
+    external_hca_caps->flow_table_caps.receive.is_flow_action_reparse_supported =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                 capability.flow_table_nic_cap.flow_table_properties_nic_receive.reparse);
+    log_trace("Capability - flow_table_caps.receive.is_flow_action_reparse_supported: %d\n",
+              external_hca_caps->flow_table_caps.receive.is_flow_action_reparse_supported);
+
     external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.set_fields_support
         .outer_ethertype = DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
                                     capability.flow_table_nic_cap.header_modify_nic_receive
@@ -406,6 +501,66 @@ static void store_hca_flow_table_nic_receive_caps(adapter_hca_capabilities* exte
         "flow_table_caps.receive.modify_flow_action_caps.set_fields_support.outer_ethertype: %d\n",
         external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.set_fields_support
             .outer_ethertype);
+
+    external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.set_fields_support
+        .outer_udp_dport = DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                                    capability.flow_table_nic_cap.header_modify_nic_receive
+                                        .set_action_field_support.outer_udp_dport);
+    log_trace(
+        "Capability - "
+        "flow_table_caps.receive.modify_flow_action_caps.set_fields_support.outer_udp_dport: %d\n",
+        external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.set_fields_support
+            .outer_udp_dport);
+
+    external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.set_fields_support
+        .metadata_reg_c_0 = DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                                     capability.flow_table_nic_cap.header_modify_nic_receive
+                                         .set_action_field_support.metadata_reg_c_0);
+    log_trace(
+        "Capability - "
+        "flow_table_caps.receive.modify_flow_action_caps.set_fields_support.metadata_reg_c_0: %d\n",
+        external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.set_fields_support
+            .metadata_reg_c_0);
+
+    external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.set_fields_support
+        .metadata_reg_c_1 = DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                                     capability.flow_table_nic_cap.header_modify_nic_receive
+                                         .set_action_field_support.metadata_reg_c_1);
+    log_trace(
+        "Capability - "
+        "flow_table_caps.receive.modify_flow_action_caps.set_fields_support.metadata_reg_c_1: %d\n",
+        external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.set_fields_support
+            .metadata_reg_c_1);
+
+    external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.copy_fields_support
+        .outer_udp_dport = DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                                    capability.flow_table_nic_cap.header_modify_nic_receive
+                                        .copy_action_field_support.outer_udp_dport);
+    log_trace(
+        "Capability - "
+        "flow_table_caps.receive.modify_flow_action_caps.copy_fields_support.outer_udp_dport: %d\n",
+        external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.copy_fields_support
+            .outer_udp_dport);
+
+    external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.copy_fields_support
+        .metadata_reg_c_0 = DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                                     capability.flow_table_nic_cap.header_modify_nic_receive
+                                         .copy_action_field_support.metadata_reg_c_0);
+    log_trace("Capability - "
+              "flow_table_caps.receive.modify_flow_action_caps.copy_fields_support.metadata_reg_c_"
+              "0: %d\n",
+              external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.copy_fields_support
+                  .metadata_reg_c_0);
+
+    external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.copy_fields_support
+        .metadata_reg_c_1 = DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+                                     capability.flow_table_nic_cap.header_modify_nic_receive
+                                         .copy_action_field_support.metadata_reg_c_1);
+    log_trace("Capability - "
+              "flow_table_caps.receive.modify_flow_action_caps.copy_fields_support.metadata_reg_c_"
+              "1: %d\n",
+              external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.copy_fields_support
+                  .metadata_reg_c_1);
 }
 
 static void store_hca_crypto_caps(adapter_hca_capabilities* external_hca_caps,
@@ -432,7 +587,7 @@ static const std::vector<cap_cb_fn> caps_callbacks = {
     store_hca_sq_ts_format_caps,
     store_hca_rq_ts_format_caps,
     store_hca_lro_caps,
-    store_hca_dpp_caps,
+    store_hca_ibq_caps,
     store_hca_parse_graph_node_caps,
     store_hca_2_reformat_caps,
     store_hca_flow_table_caps,
@@ -660,61 +815,42 @@ status adapter::open()
     return ret;
 }
 
-status adapter::create_tir(uint32_t rqn, tir*& t_)
-{
-    tir* tr = new (std::nothrow) tir(get_ctx());
-    if (nullptr == tr) {
-        return DPCP_ERR_NO_MEMORY;
-    }
-
-    status ret = tr->create(m_td_id, rqn);
-    if (DPCP_OK != ret) {
-        delete tr;
-        return DPCP_ERR_CREATE;
-    }
-    t_ = tr;
-
-    return DPCP_OK;
-}
-
-status adapter::create_tir(tir::attr& tir_attr, tir*& tir_obj)
+status adapter::create_tir(const tir::attr& tir_attr, tir*& tir_obj)
 {
     status ret = DPCP_OK;
-    tir* tr = nullptr;
+    tir* _tir_obj = nullptr;
 
-    tr = new (std::nothrow) tir(get_ctx());
-    if (nullptr == tr) {
+    _tir_obj = new (std::nothrow) tir(get_ctx());
+    if (nullptr == _tir_obj) {
         return DPCP_ERR_NO_MEMORY;
     }
 
-    ret = tr->create(tir_attr);
+    ret = _tir_obj->create(tir_attr);
     if (DPCP_OK != ret) {
-        delete tr;
+        delete _tir_obj;
         return DPCP_ERR_CREATE;
     }
-    tir_obj = tr;
+    tir_obj = _tir_obj;
 
     return DPCP_OK;
 }
 
-status adapter::create_tis(const uint64_t& flags, tis*& out_tis)
+status adapter::create_tis(const tis::attr& tis_attr, tis*& tis_obj)
 {
-    tis* _tis = new (std::nothrow) tis(get_ctx(), flags);
-    if (_tis == nullptr) {
+    status ret = DPCP_OK;
+    tis* _tis_obj = nullptr;
+
+    _tis_obj = new (std::nothrow) tis(get_ctx());
+    if (nullptr == _tis_obj) {
         return DPCP_ERR_NO_MEMORY;
     }
 
-    uint32_t tis_pd_id = 0;
-    if (flags & tis_flags::TIS_TLS_EN) {
-        tis_pd_id = m_pd_id;
-    }
-
-    status ret = _tis->create(m_td_id, tis_pd_id);
-    if (ret != DPCP_OK) {
-        delete _tis;
+    ret = _tis_obj->create(tis_attr);
+    if (DPCP_OK != ret) {
+        delete _tis_obj;
         return DPCP_ERR_CREATE;
     }
-    out_tis = _tis;
+    tis_obj = _tis_obj;
 
     return DPCP_OK;
 }
@@ -817,6 +953,13 @@ status adapter::create_ref_mkey(mkey* parent, void* address, size_t length, ref_
     }
 
     return DPCP_OK;
+}
+
+status adapter::create_extern_mkey(void* address, size_t length, uint32_t id, extern_mkey*& mkey)
+{
+    mkey = new (std::nothrow) extern_mkey(this, address, length, id);
+    log_trace("extern_mk: %p\n", mkey);
+    return (nullptr == mkey) ? DPCP_ERR_NO_MEMORY : DPCP_OK;
 }
 
 status adapter::create_cq(const cq_attr& attrs, cq*& out_cq)
@@ -951,15 +1094,7 @@ status adapter::prepare_basic_rq(basic_rq& srq)
     return srq.init(&uar_p);
 }
 
-status adapter::create_striding_rq(rq_attr& rq_attr, size_t wqes_num, size_t wqe_sz,
-                                   striding_rq*& str_rq)
-{
-    rq_attr.wqe_num = wqes_num;
-    rq_attr.wqe_sz = wqe_sz;
-    return create_striding_rq(rq_attr, str_rq);
-}
-
-status adapter::create_striding_rq(rq_attr& rq_attr, striding_rq*& str_rq)
+status adapter::create_striding_rq(const rq_attr& rq_attr, striding_rq*& str_rq)
 {
     if (!m_uarpool) {
         // Allocate UAR pool
@@ -979,7 +1114,7 @@ status adapter::create_striding_rq(rq_attr& rq_attr, striding_rq*& str_rq)
     return ret;
 }
 
-status adapter::create_regular_rq(rq_attr& rq_attr, regular_rq*& reg_rq)
+status adapter::create_regular_rq(const rq_attr& rq_attr, regular_rq*& reg_rq)
 {
     if (!m_uarpool) {
         // Allocate UAR pool
@@ -999,26 +1134,14 @@ status adapter::create_regular_rq(rq_attr& rq_attr, regular_rq*& reg_rq)
     return ret;
 }
 
-/**
- * @brief Creates and returns dpp_rq
- *
- * @param [in]  rq_attr             RQ attributes
- * @param [in]  dpcp_dpp_protocol   How to extract the sequence number from the
- *packet.
- * @param [in]  mkey                Direct Placement mkey of the buffer
- *of 2
- * @param [out] rq              On Success created dpp_rq
- *
- * @retval      Returns DPCP_OK on success
- */
-status adapter::create_dpp_rq(rq_attr& rq_attr, dpcp_dpp_protocol dpp_protocol, uint32_t mkey,
-                              dpp_rq*& d_rq)
+status adapter::create_ibq_rq(rq_attr& rq_attr, dpcp_ibq_protocol ibq_protocol, uint32_t mkey,
+                              ibq_rq*& d_rq)
 {
-    dpp_rq* drq = new (std::nothrow) dpp_rq(this, rq_attr);
+    ibq_rq* drq = new (std::nothrow) ibq_rq(this, rq_attr);
     if (nullptr == drq) {
         return DPCP_ERR_NO_MEMORY;
     }
-    status ret = drq->init(dpp_protocol, mkey);
+    status ret = drq->init(ibq_protocol, mkey);
     if (DPCP_OK != ret) {
         delete drq;
         return ret;
@@ -1227,31 +1350,32 @@ status adapter::get_hca_caps_frequency_khz(uint32_t& freq)
     return DPCP_OK;
 }
 
-status adapter::create_dek(const encryption_key_type_t type, const void* const key,
-                           const uint32_t size_bytes, dek*& out_dek)
+status adapter::create_dek(const dek::attr& dek_attr, dek*& dek_obj)
 {
-    if (type != encryption_key_type_t::ENCRYPTION_KEY_TYPE_TLS) {
+    status ret = DPCP_OK;
+    dek* _dek_obj = nullptr;
+
+    if (!(dek_attr.flags & DEK_ATTR_TLS)) {
         log_trace("Only TLS encryption key type is supported");
         return DPCP_ERR_NO_SUPPORT;
     }
 
-    dek* _dek = new (std::nothrow) dek(get_ctx());
-    if (_dek == nullptr) {
-        return DPCP_ERR_NO_MEMORY;
-    }
-
     if (m_is_caps_available && !m_external_hca_caps->general_object_types_encryption_key) {
         log_trace("The adapter doesn't support the creation of general object encryption key");
-        delete _dek;
         return DPCP_ERR_NO_SUPPORT;
     }
 
-    status ret = _dek->create(m_pd_id, key, size_bytes);
-    if (ret != DPCP_OK) {
-        delete _dek;
+    _dek_obj = new (std::nothrow) dek(get_ctx());
+    if (nullptr == _dek_obj) {
+        return DPCP_ERR_NO_MEMORY;
+    }
+
+    ret = _dek_obj->create(dek_attr);
+    if (DPCP_OK != ret) {
+        delete _dek_obj;
         return DPCP_ERR_CREATE;
     }
-    out_dek = _dek;
+    dek_obj = _dek_obj;
 
     return DPCP_OK;
 }

@@ -1,4 +1,12 @@
 #!/bin/bash
+#
+# Testing script: global
+#
+# Copyright (c) 2020-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# BSD-3-Clause
+#
+# See file LICENSE for terms.
+#
 
 WORKSPACE=${WORKSPACE:=$PWD}
 if [ -z "$BUILD_NUMBER" ]; then

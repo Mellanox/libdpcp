@@ -1,15 +1,3 @@
-/*
- * Copyright © 2020-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
- *
- * This software product is a proprietary product of Nvidia Corporation and its affiliates
- * (the "Company") and all right, title, and interest in and to the software
- * product, including all associated intellectual property rights, are and
- * shall remain exclusively with the Company.
- *
- * This software product is governed by the End User License Agreement
- * provided with the software product.
- */
-
 #ifndef __GETOPT_H__
 /**
  * DISCLAIMER
@@ -124,7 +112,7 @@ extern char __declspec(dllimport) * __progname;
 #ifdef __CYGWIN__
 static char EMSG[] = "";
 #else
-#define EMSG ""
+char EMSG[] = "";
 #endif
 
 static int getopt_internal(int, char* const*, const char*, const struct option*, int*, int);

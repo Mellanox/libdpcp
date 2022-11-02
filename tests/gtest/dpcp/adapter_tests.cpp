@@ -1,13 +1,31 @@
 /*
- * Copyright © 2019-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ * Copyright (c) 2020-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * BSD-3-Clause
  *
- * This software product is a proprietary product of Nvidia Corporation and its affiliates
- * (the "Company") and all right, title, and interest in and to the software
- * product, including all associated intellectual property rights, are and
- * shall remain exclusively with the Company.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * This software product is governed by the End User License Agreement
- * provided with the software product.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "common/def.h"
@@ -351,12 +369,11 @@ TEST_F(dpcp_adapter, ti_09_create_striding_rq)
     rqattr.buf_stride_num = 16384;
     rqattr.user_index = 0;
     rqattr.cqn = cqd.cqn;
-
-    uint32_t rq_num = 4;
-    uint32_t wqe_sz = rqattr.buf_stride_num * rqattr.buf_stride_sz / 16; // in DS (16B)
+    rqattr.wqe_num = 4;
+    rqattr.wqe_sz = rqattr.buf_stride_num * rqattr.buf_stride_sz / 16; // in DS (16B)
 
     striding_rq* srq = nullptr;
-    ret = ad->create_striding_rq(rqattr, rq_num, wqe_sz, srq);
+    ret = ad->create_striding_rq(rqattr, srq);
     ASSERT_EQ(DPCP_OK, ret);
     ASSERT_NE(nullptr, srq);
 
@@ -393,12 +410,11 @@ TEST_F(dpcp_adapter, ti_10_create_tir)
     rqattr.buf_stride_num = 16384;
     rqattr.user_index = 0;
     rqattr.cqn = cqd.cqn;
-
-    uint32_t rq_num = 4;
-    uint32_t wqe_sz = rqattr.buf_stride_num * rqattr.buf_stride_sz / 16; // in DS (16B)
+    rqattr.wqe_num = 4;
+    rqattr.wqe_sz = rqattr.buf_stride_num * rqattr.buf_stride_sz / 16; // in DS (16B)
 
     striding_rq* srq = nullptr;
-    ret = ad->create_striding_rq(rqattr, rq_num, wqe_sz, srq);
+    ret = ad->create_striding_rq(rqattr, srq);
     ASSERT_EQ(DPCP_OK, ret);
     ASSERT_NE(nullptr, srq);
 
@@ -408,7 +424,12 @@ TEST_F(dpcp_adapter, ti_10_create_tir)
     ASSERT_NE(0, rqn);
 
     tir* t1 = nullptr;
-    ret = ad->create_tir(rqn, t1);
+    struct tir::attr tir_attr;
+    memset(&tir_attr, 0, sizeof(tir_attr));
+    tir_attr.flags = TIR_ATTR_INLINE_RQN | TIR_ATTR_TRANSPORT_DOMAIN;
+    tir_attr.inline_rqn = rqn;
+    tir_attr.transport_domain = ad->get_td();
+    ret = ad->create_tir(tir_attr, t1);
     ASSERT_EQ(DPCP_OK, ret);
     ASSERT_NE(nullptr, t1);
 
@@ -485,13 +506,13 @@ TEST_F(dpcp_adapter, ti_11_create_pattern_mkey)
     delete ad;
 }
 /**
- * @test dpcp_adapter.ti_12_create_dpp_rq
+ * @test dpcp_adapter.ti_12_create_ibq_rq
  * @brief
- *    Check adapter::create_dpp_rq method
+ *    Check adapter::create_ibq_rq method
  * @details
  *
  */
-TEST_F(dpcp_adapter, ti_12_create_dpp_rq)
+TEST_F(dpcp_adapter, ti_12_create_ibq_rq)
 {
     adapter* ad = OpenAdapter();
     ASSERT_NE(ad, nullptr);
@@ -536,8 +557,8 @@ TEST_F(dpcp_adapter, ti_12_create_dpp_rq)
 
     // Create
     uint32_t mkey = mk_id;
-    dpp_rq* drq = nullptr;
-    ret = ad->create_dpp_rq(rqattr, dpcp::DPCP_DPP_2110, mkey, drq);
+    ibq_rq* drq = nullptr;
+    ret = ad->create_ibq_rq(rqattr, dpcp::DPCP_IBQ_2110, mkey, drq);
     if (ret != DPCP_OK) { // TODO!! Should be replaced with HW capabilities check
         delete mk;
         delete ad;
@@ -652,7 +673,11 @@ TEST_F(dpcp_adapter, ti_15_create_pp_sq)
     ASSERT_NE(0, cqd.cqn);
 
     tis* s_tis;
-    ret = ad->create_tis(0, s_tis);
+    struct tis::attr tis_attr;
+    memset(&tis_attr, 0, sizeof(tis_attr));
+    tis_attr.flags = TIS_ATTR_TRANSPORT_DOMAIN;
+    tis_attr.transport_domain = ad->get_td();
+    ret = ad->create_tis(tis_attr, s_tis);
     ASSERT_EQ(DPCP_OK, ret);
     uint32_t tis_n = 0;
     ret = s_tis->get_tisn(tis_n);
@@ -785,8 +810,11 @@ TEST_F(dpcp_adapter, ti_18_create_tis)
     ASSERT_EQ(DPCP_OK, ret);
 
     tis* _tis = nullptr;
-    uint64_t flags = tis_flags::TIS_NONE;
-    ad->create_tis(flags, _tis);
+    struct tis::attr tis_attr;
+    memset(&tis_attr, 0, sizeof(tis_attr));
+    tis_attr.flags = TIS_ATTR_TRANSPORT_DOMAIN;
+    tis_attr.transport_domain = ad->get_td();
+    ret = ad->create_tis(tis_attr, _tis);
     ASSERT_EQ(DPCP_OK, ret);
     ASSERT_NE(nullptr, _tis);
 
@@ -828,8 +856,13 @@ TEST_F(dpcp_adapter, ti_19_create_tls_tis)
     }
 
     tis* _tis = nullptr;
-    uint64_t flags = tis_flags::TIS_TLS_EN;
-    ad->create_tis(flags, _tis);
+    struct tis::attr tis_attr;
+    memset(&tis_attr, 0, sizeof(tis_attr));
+    tis_attr.flags = TIS_ATTR_TRANSPORT_DOMAIN | TIS_ATTR_TLS | TIS_ATTR_PD;
+    tis_attr.transport_domain = ad->get_td();
+    tis_attr.tls_en = 1;
+    tis_attr.pd = ad->get_pd();
+    ret = ad->create_tis(tis_attr, _tis);
     ASSERT_EQ(DPCP_OK, ret);
     ASSERT_NE(nullptr, _tis);
 
@@ -877,9 +910,13 @@ TEST_F(dpcp_adapter, ti_20_create_dek)
     key_size_bytes = key_size_bytes;
 
     dek* _dek = nullptr;
-    ret = ad->create_dek(
-        encryption_key_type_t::ENCRYPTION_KEY_TYPE_TLS,
-        key, key_size_bytes, _dek);
+    struct dek::attr dek_attr;
+    memset(&dek_attr, 0, sizeof(dek_attr));
+    dek_attr.flags = DEK_ATTR_TLS;
+    dek_attr.key = key;
+    dek_attr.key_size_bytes = key_size_bytes;
+    dek_attr.pd_id = ad->get_pd();
+    ret = ad->create_dek(dek_attr, _dek);
     ASSERT_EQ(DPCP_OK, ret);
 
     uint32_t key_id = _dek->get_key_id();
@@ -1044,6 +1081,57 @@ TEST_F(dpcp_adapter, ti_24_get_root_flow_table_tx_rx)
 }
 
 /**
+ * @test dpcp_adapter.ti_25_create_extern_mkey
+ * @brief
+ *    Check adapter::create_extern_mkey method
+ * @details
+ *
+ */
+TEST_F(dpcp_adapter, ti_25_create_extern_mkey)
+{
+    auto* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+
+    auto ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    const size_t length = 4096;
+    auto* address = new (std::nothrow) uint8_t[length];
+    ASSERT_NE(nullptr, address);
+
+    direct_mkey* someRegisteredKey;
+    ret = ad->create_direct_mkey(address, length, (mkey_flags)0, someRegisteredKey);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    uint32_t expectedId;
+    ret = someRegisteredKey->get_id(expectedId);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    extern_mkey* mkey = nullptr;
+    ret = ad->create_extern_mkey(address, length, expectedId, mkey);
+    ASSERT_NE(nullptr, mkey);
+
+    uint32_t receivedId;
+    ret = mkey->get_id(receivedId);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(expectedId, receivedId);
+
+    void* receivedAddr;
+    ret = mkey->get_address(receivedAddr);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(address, receivedAddr);
+
+    size_t receivedLength;
+    ret = mkey->get_length(receivedLength);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(length, receivedLength);
+
+    delete someRegisteredKey;
+    delete[] address;
+    delete ad;
+}
+
+/**
 * @test dpcp_adapter.DISABLED_perf_100k_dek_modify
 * @brief
 *    Check 100K dek modify() performance
@@ -1077,7 +1165,6 @@ TEST_F(dpcp_adapter, DISABLED_perf_100k_dek_modify)
     ASSERT_NE(0, pdn);
     log_trace("pdn: 0x%x\n", pdn);
 
-    uint64_t flags = tis_flags::TIS_TLS_EN;
     const size_t LOOP_COUNT = 500000U;
     const size_t SUB_LOOP_COUNT = 10000U;
     std::vector<std::unique_ptr<dek>> dek_arr(LOOP_COUNT);
@@ -1099,7 +1186,14 @@ TEST_F(dpcp_adapter, DISABLED_perf_100k_dek_modify)
         memcpy(key_arr[idx].get(), key_base.data(), key_size_bytes);  // Random key for the test.
         ++*ptr_key;
         memcpy(key_arr2[idx].get(), key_base.data(), key_size_bytes);  // Random key for the test.
-        ret = ad->create_dek(encryption_key_type_t::ENCRYPTION_KEY_TYPE_TLS, key_arr[idx].get(), key_size_bytes, temp_dek_ptr);
+
+        struct dek::attr dek_attr;
+        memset(&dek_attr, 0, sizeof(dek_attr));
+        dek_attr.flags = DEK_ATTR_TLS;
+        dek_attr.key = key_arr[idx].get();
+        dek_attr.key_size_bytes = key_size_bytes;
+        dek_attr.pd_id = ad->get_pd();
+        ret = ad->create_dek(dek_attr, temp_dek_ptr);
         ASSERT_EQ(DPCP_OK, ret);
         dek_arr[idx].reset(temp_dek_ptr);
         ++*ptr_key;

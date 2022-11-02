@@ -1,13 +1,31 @@
 /*
- * Copyright © 2019-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ * Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * BSD-3-Clause
  *
- * This software product is a proprietary product of Nvidia Corporation and its affiliates
- * (the "Company") and all right, title, and interest in and to the software
- * product, including all associated intellectual property rights, are and
- * shall remain exclusively with the Company.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * This software product is governed by the End User License Agreement
- * provided with the software product.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "dpcp/internal.h"
@@ -20,6 +38,11 @@ static inline void copy_ether_mac(uint8_t* dst, const uint8_t* src)
 {
     *(uint32_t*)dst = *(const uint32_t*)src;
     *(uint16_t*)(dst + 4) = *(const uint16_t*)(src + 4);
+}
+
+flow_matcher::flow_matcher(const flow_matcher_attr& attr)
+    : m_attr(attr)
+{
 }
 
 status flow_matcher::set_outer_header_lyr_2_fields(void* outer,
@@ -64,6 +87,9 @@ status flow_matcher::set_outer_header_lyr_3_fields(void* outer,
     }
     if (match_crateria_lyr3.ip_protocol) {
         DEVX_SET(fte_match_set_lyr_2_4, outer, ip_protocol, match_value_lyr3.ip_protocol);
+    }
+    if (match_crateria_lyr3.ip_version) {
+        DEVX_SET(fte_match_set_lyr_2_4, outer, ip_version, match_value_lyr3.ip_version);
     }
 
     return DPCP_OK;
@@ -213,13 +239,42 @@ status flow_matcher::apply(void* match_params, const match_params_ex& match_valu
     if (ret != DPCP_OK) {
         return ret;
     }
+    ret = set_metadata_registers_fields(match_params, match_value);
+    if (ret != DPCP_OK) {
+        return ret;
+    }
 
     return DPCP_OK;
 }
 
-flow_matcher::flow_matcher(const flow_matcher_attr& attr)
-    : m_attr(attr)
+status flow_matcher::set_metadata_registers_fields(void* match_params,
+                                                   const match_params_ex& match_value) const
 {
+    void* metadata_registers = DEVX_ADDR_OF(fte_match_param, match_params, misc_parameters_2);
+
+    status ret = set_metadata_register_0_field(metadata_registers, match_value);
+    if (ret != DPCP_OK) {
+        return ret;
+    }
+
+    return ret;
+}
+
+status flow_matcher::set_metadata_register_0_field(void* metadata_registers,
+                                                   const match_params_ex& match_value) const
+{
+    // Check if match criteria metadata register fields was set.
+    if (!(m_attr.match_criteria_enabled &
+          flow_group_match_criteria_enable::FG_MATCH_METADATA_REG_C_0)) {
+        return DPCP_OK;
+    }
+
+    if (m_attr.match_criteria.match_metadata_reg_c_0) {
+        DEVX_SET(fte_match_set_misc2, metadata_registers, metadata_reg_c_0,
+                 match_value.match_metadata_reg_c_0);
+    }
+
+    return DPCP_OK;
 }
 
 } // namespace dpcp

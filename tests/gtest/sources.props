@@ -14,7 +14,7 @@
 	/D "UNICODE" /D "_UNICODE" /D "WIN32" /D "_WINDOWS" /D "_WIN32" /D "STRICT"
 	/D "WIN32_LEAN_AND_MEAN" /D "GTEST_HAS_PTHREAD=0" /D "_HAS_EXCEPTIONS=1"
         /D "_HAS_ITERATOR_DEBUGGING=0" /D "-SECURE_SCL=0" /D "_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING=1"
-        /TP /GS /Gy /GR /Zi /Gm- /Zc:inline
+        /TP /GS /Gy /GR /Zi /Gm- /Zc:inline /MP
         /errorReport:prompt /Zc:forScope /Oi /EHsc /nologo
     </USER_C_FLAGS>
 <!-- -->
@@ -24,26 +24,26 @@
    <USER_C_FLAGS Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(USER_C_FLAGS) /MD /O2</USER_C_FLAGS>
 
     <INCLUDES Condition="'$(OVERRIDE_INCLUDES)'!='true'">
-        $(INCLUDES);
-        $(ProjectDir)..\..\contrib\MLNX_WinOF2_DevX_SDK\inc;
-        $(ProjectDir)..\..\;
-        $(ProjectDir)..\..\src;
-        $(ProjectDir)..\..\src\api;
-        $(ProjectDir)..\..\src\dcmd\windows;
-        $(ProjectDir);
-        $(ProjectDir)common;
-        $(ProjectDir)include;
-    </INCLUDES>
+		$(INCLUDES);
+		$(DEVX_INC_PATH);
+		$(ProjectDir)..\..\;
+		$(ProjectDir)..\..\src;
+		$(ProjectDir)..\..\src\api;
+		$(ProjectDir)..\..\src\dcmd\windows;
+		$(ProjectDir);
+		$(ProjectDir)common;
+		$(ProjectDir)include;
+	</INCLUDES>
 
     <SOURCES Condition="'$(OVERRIDE_SOURCES)'!='true'"></SOURCES>
 
     <BUILD_PRODUCES Condition="'$(OVERRIDE_BUILD_PRODUCES)'!='true'">$(TARGETNAME)</BUILD_PRODUCES>
 
     <TARGETLIBS Condition="'$(OVERRIDE_TARGETLIBS)'!='true'">
-	$(SDK_LIB_PATH)\Ws2_32.lib
-        $(SolutionDir)bin\user\obj$(O)\dpcp.lib
-        $(ProjectDir)..\..\contrib\MLNX_WinOF2_DevX_SDK\lib\mlx5devx.lib;
-    </TARGETLIBS>
+		$(SDK_LIB_PATH)\Ws2_32.lib
+		$(SolutionDir)bin\user\obj$(O)\dpcp.lib
+		$(DEVX_LIB_PATH)\mlx5devx.lib;
+	</TARGETLIBS>
 
     <LINKER_FLAGS Condition="'$(OVERRIDE_LINKER_FLAGS)'!='true'">
         $(LINKER_FLAGS)

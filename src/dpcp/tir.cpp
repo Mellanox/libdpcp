@@ -1,13 +1,31 @@
 /*
- * Copyright © 2020-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ * Copyright (c) 2019-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * BSD-3-Clause
  *
- * This software product is a proprietary product of Nvidia Corporation and its affiliates
- * (the "Company") and all right, title, and interest in and to the software
- * product, including all associated intellectual property rights, are and
- * shall remain exclusively with the Company.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * This software product is governed by the End User License Agreement
- * provided with the software product.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -30,39 +48,7 @@ tir::~tir()
 {
 }
 
-status tir::create(uint32_t td_id, uint32_t rqn)
-{
-    if (0 == td_id) {
-        log_error("Transport Domain is not set\n");
-        return DPCP_ERR_INVALID_PARAM;
-    }
-
-    if (0 == rqn) {
-        log_error("ReceiveQueue is not set\n");
-        return DPCP_ERR_INVALID_PARAM;
-    }
-
-    uint32_t in[DEVX_ST_SZ_DW(create_tir_in)] = {};
-    uint32_t out[DEVX_ST_SZ_DW(create_tir_out)] = {};
-    size_t outlen = sizeof(out);
-    //
-    // Set fields in tir_context
-    void* tirc = DEVX_ADDR_OF(create_tir_in, in, tir_context);
-    DEVX_SET(tirc, tirc, disp_type, MLX5_TIRC_DISP_TYPE_DIRECT);
-
-    DEVX_SET(tirc, tirc, inline_rqn, rqn);
-    DEVX_SET(tirc, tirc, transport_domain, td_id);
-
-    DEVX_SET(create_tir_in, in, opcode, MLX5_CMD_OP_CREATE_TIR);
-    status ret = obj::create(in, sizeof(in), out, outlen);
-
-    if (DPCP_OK == ret) {
-        m_tirn = DEVX_GET(create_tir_out, out, tirn);
-    }
-    return DPCP_OK;
-}
-
-status tir::create(tir::attr& tir_attr)
+status tir::create(const tir::attr& tir_attr)
 {
     status ret = DPCP_OK;
     uint32_t in[DEVX_ST_SZ_DW(create_tir_in)] = {0};
@@ -110,7 +96,7 @@ status tir::create(tir::attr& tir_attr)
     return ret;
 }
 
-status tir::modify(tir::attr& tir_attr)
+status tir::modify(const tir::attr& tir_attr)
 {
     status ret = DPCP_OK;
     uint32_t in[DEVX_ST_SZ_DW(modify_tir_in)] = {0};

@@ -2,7 +2,8 @@
 #
 # Testing script, to run from Jenkins CI
 #
-# Copyright (C) Mellanox Technologies Ltd. 2001-2020.  ALL RIGHTS RESERVED.
+# Copyright (c) 2019-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# BSD-3-Clause
 #
 # See file LICENSE for terms.
 #

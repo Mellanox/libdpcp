@@ -1,13 +1,31 @@
 /*
- * Copyright © 2020-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ * Copyright (c) 2020-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * BSD-3-Clause
  *
- * This software product is a proprietary product of Nvidia Corporation and its affiliates
- * (the "Company") and all right, title, and interest in and to the software
- * product, including all associated intellectual property rights, are and
- * shall remain exclusively with the Company.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * This software product is governed by the End User License Agreement
- * provided with the software product.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "common/def.h"
@@ -60,12 +78,19 @@ TEST_F(dpcp_rq, ti_01_create)
     ASSERT_NE(0, cqd.cqn);
 
     s_rq_attr = {2048, 16384, 0, cqd.cqn};
-
     s_rq_num = 4;
     s_wqe_sz = s_rq_attr.buf_stride_num * s_rq_attr.buf_stride_sz / 16; // in DS (16B)
 
+    rq_attr rqattr = {};
+    rqattr.buf_stride_sz = s_rq_attr.buf_stride_sz;
+    rqattr.buf_stride_num = s_rq_attr.buf_stride_num;
+    rqattr.user_index = s_rq_attr.user_index;
+    rqattr.cqn = s_rq_attr.cqn;
+    rqattr.wqe_num = s_rq_num;
+    rqattr.wqe_sz = s_wqe_sz;
+
     striding_rq* srq = nullptr;
-    ret = ad->create_striding_rq(s_rq_attr, s_rq_num, s_wqe_sz, srq);
+    ret = ad->create_striding_rq(rqattr, srq);
     ASSERT_EQ(DPCP_OK, ret);
     ASSERT_NE(nullptr, srq);
     s_srq = srq;

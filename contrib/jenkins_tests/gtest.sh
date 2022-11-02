@@ -1,4 +1,12 @@
 #!/bin/bash -xeEl
+#
+# Testing script: gtest
+#
+# Copyright (c) 2019-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# BSD-3-Clause
+#
+# See file LICENSE for terms.
+#
 
 source $(dirname $0)/globals.sh
 

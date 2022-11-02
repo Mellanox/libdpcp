@@ -1,13 +1,31 @@
 /*
- * Copyright © 2020-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ * Copyright (c) 2019-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * BSD-3-Clause
  *
- * This software product is a proprietary product of Nvidia Corporation and its affiliates
- * (the "Company") and all right, title, and interest in and to the software
- * product, including all associated intellectual property rights, are and
- * shall remain exclusively with the Company.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * This software product is governed by the End User License Agreement
- * provided with the software product.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #ifndef SRC_DPCP_INTERNAL_H_
@@ -296,6 +314,10 @@ private:
     bool m_is_valid;
     uint32_t m_modify_id;
     std::unique_ptr<dcmd::modify_action, std::default_delete<dcmd::modify_action[]>> m_actions_root;
+    uint32_t m_out[DEVX_ST_SZ_DW(alloc_modify_header_context_out)] {0};
+    size_t m_outlen = sizeof(m_out);
+    std::unique_ptr<uint8_t[]> m_in;
+    size_t m_inlen = 0;
 
 public:
     flow_action_modify(dcmd::ctx* ctx, flow_action_modify_attr& attr);
@@ -308,8 +330,10 @@ public:
 private:
     // Help functions.
     void apply_modify_set_action(void* in, flow_action_modify_type_attr& attr);
+    void apply_modify_copy_action(void* in, flow_action_modify_type_attr& attr);
     status create_prm_modify();
     status prepare_flow_desc_buffs();
+    status prepare_prm_modify_buff();
 };
 
 /**
@@ -347,6 +371,17 @@ public:
 private:
     // Help functions.
     status create_root_action_fwd();
+};
+
+/**
+ * @brief: Flow action reparse, triggers HW packet reparse.
+ */
+class flow_action_reparse : public flow_action {
+public:
+    flow_action_reparse(dcmd::ctx* ctx);
+    virtual ~flow_action_reparse() = default;
+    virtual status apply(void* in) override;
+    virtual status apply(dcmd::flow_desc& flow_desc) override;
 };
 
 /**
@@ -390,6 +425,10 @@ private:
     status set_outer_header_lyr_4_fields(void* outer, const match_params_ex& match_value) const;
     status set_outer_header_lyr_3_fields(void* outer, const match_params_ex& match_value) const;
     status set_outer_header_lyr_2_fields(void* outer, const match_params_ex& match_value) const;
+    status set_metadata_registers_fields(void* match_params,
+                                         const match_params_ex& match_value) const;
+    status set_metadata_register_0_field(void* metadata_registers,
+                                         const match_params_ex& match_value) const;
 };
 
 /**

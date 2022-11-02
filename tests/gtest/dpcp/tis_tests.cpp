@@ -1,13 +1,31 @@
 /*
- * Copyright © 2020-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ * Copyright (c) 2020-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * BSD-3-Clause
  *
- * This software product is a proprietary product of Nvidia Corporation and its affiliates
- * (the "Company") and all right, title, and interest in and to the software
- * product, including all associated intellectual property rights, are and
- * shall remain exclusively with the Company.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * This software product is governed by the End User License Agreement
- * provided with the software product.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "common/def.h"
@@ -30,19 +48,23 @@ class dpcp_tis : public dpcp_base {
  */
 TEST_F(dpcp_tis, ti_01_Constructor)
 {
-    adapter* ad = OpenAdapter();
-    ASSERT_NE(nullptr, ad);
+    status ret = DPCP_OK;
+    adapter* adapter_obj = OpenAdapter();
+    ASSERT_NE(nullptr, adapter_obj);
 
-    uint64_t flags = tis_flags::TIS_NONE;
-    tis _tis(ad->get_ctx(), flags);
+    tis tis_obj(adapter_obj->get_ctx());
+
+    uintptr_t handle = 0;
+    ret = tis_obj.get_handle(handle);
+    ASSERT_EQ(DPCP_ERR_CREATE, ret);
+    ASSERT_EQ(0, handle);
+
     uint32_t id = 0;
-    status ret = _tis.get_id(id);
-
-    log_trace("ret: %d id: 0x%x\n", ret, id);
+    ret = tis_obj.get_id(id);
     ASSERT_EQ(DPCP_ERR_INVALID_ID, ret);
     ASSERT_EQ(0, id);
 
-    delete ad;
+    delete adapter_obj;
 }
 
 /**
@@ -65,10 +87,13 @@ TEST_F(dpcp_tis, ti_02_create)
 
     log_trace("tdn: 0x%x\n", tdn);
 
-    uint64_t flags = tis_flags::TIS_NONE;
-    tis _tis(ad->get_ctx(), flags);
+    tis tis_obj(ad->get_ctx());
 
-    ret = _tis.create(tdn);
+    struct tis::attr tis_attr;
+    memset(&tis_attr, 0, sizeof(tis_attr));
+    tis_attr.flags = TIS_ATTR_TRANSPORT_DOMAIN;
+    tis_attr.transport_domain = tdn;
+    ret = tis_obj.create(tis_attr);
     ASSERT_EQ(DPCP_OK, ret);
 
     delete ad;
@@ -113,13 +138,19 @@ TEST_F(dpcp_tis, ti_03_create_tls_enabled)
     ASSERT_NE(0, pdn);
     log_trace("pdn: 0x%x\n", pdn);
 
-    uint64_t flags = tis_flags::TIS_TLS_EN;
-    tis _tis(ad->get_ctx(), flags);
-    ret = _tis.create(tdn, pdn);
+    tis tis_obj(ad->get_ctx());
+
+    struct tis::attr tis_attr;
+    memset(&tis_attr, 0, sizeof(tis_attr));
+    tis_attr.flags = TIS_ATTR_TRANSPORT_DOMAIN | TIS_ATTR_TLS | TIS_ATTR_PD;
+    tis_attr.transport_domain = tdn;
+    tis_attr.tls_en = is_tls_supported;
+    tis_attr.pd = pdn;
+    ret = tis_obj.create(tis_attr);
     ASSERT_EQ(DPCP_OK, ret);
 
     uint32_t tisn = 0;
-    ret = _tis.get_tisn(tisn);
+    ret = tis_obj.get_tisn(tisn);
     ASSERT_EQ(DPCP_OK, ret);
     log_trace("tisn: 0x%x\n", tisn);
 
@@ -149,13 +180,16 @@ TEST_F(dpcp_tis, ti_04_destroy)
     ASSERT_NE(0, pdn);
     log_trace("pdn: 0x%x\n", pdn);
 
-    uint64_t flags = tis_flags::TIS_NONE;
-    tis _tis(ad->get_ctx(), flags);
+    tis tis_obj(ad->get_ctx());
 
-    ret = _tis.create(tdn, pdn);
+    struct tis::attr tis_attr;
+    memset(&tis_attr, 0, sizeof(tis_attr));
+    tis_attr.flags = TIS_ATTR_TRANSPORT_DOMAIN;
+    tis_attr.transport_domain = tdn;
+    ret = tis_obj.create(tis_attr);
     ASSERT_EQ(DPCP_OK, ret);
 
-    ret = _tis.destroy();
+    ret = tis_obj.destroy();
     ASSERT_EQ(DPCP_OK, ret);
 
     delete ad;
@@ -196,12 +230,17 @@ TEST_F(dpcp_tis, ti_05_destroy_tls_enabled)
     ASSERT_NE(0, pdn);
     log_trace("pdn: 0x%x\n", pdn);
 
-    uint64_t flags = tis_flags::TIS_TLS_EN;
-    tis _tis(ad->get_ctx(), flags);
-    ret = _tis.create(tdn, pdn);
-    ASSERT_EQ(DPCP_OK, ret);
+    tis tis_obj(ad->get_ctx());
 
-    ret = _tis.destroy();
+    struct tis::attr tis_attr;
+    memset(&tis_attr, 0, sizeof(tis_attr));
+    tis_attr.flags = TIS_ATTR_TRANSPORT_DOMAIN | TIS_ATTR_TLS | TIS_ATTR_PD;
+    tis_attr.transport_domain = tdn;
+    tis_attr.tls_en = is_tls_supported;
+    tis_attr.pd = pdn;
+    ret = tis_obj.create(tis_attr);
+
+    ret = tis_obj.destroy();
     ASSERT_EQ(DPCP_OK, ret);
 
     delete ad;
@@ -227,13 +266,17 @@ TEST_F(dpcp_tis, ti_06_get_tisn)
 
     log_trace("tdn: 0x%x\n", tdn);
 
-    uint64_t flags = tis_flags::TIS_NONE;
-    tis _tis(ad->get_ctx(), flags);
-    ret = _tis.create(tdn);
+    tis tis_obj(ad->get_ctx());
+
+    struct tis::attr tis_attr;
+    memset(&tis_attr, 0, sizeof(tis_attr));
+    tis_attr.flags = TIS_ATTR_TRANSPORT_DOMAIN;
+    tis_attr.transport_domain = tdn;
+    ret = tis_obj.create(tis_attr);
     ASSERT_EQ(DPCP_OK, ret);
 
     uint32_t tisn = 0;
-    ret = _tis.get_tisn(tisn);
+    ret = tis_obj.get_tisn(tisn);
     ASSERT_EQ(DPCP_OK, ret);
 
     log_trace("tisn: 0x%x\n", tisn);

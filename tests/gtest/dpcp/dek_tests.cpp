@@ -1,13 +1,31 @@
 /*
- * Copyright © 2020-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ * Copyright (c) 2021-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * BSD-3-Clause
  *
- * This software product is a proprietary product of Nvidia Corporation and its affiliates
- * (the "Company") and all right, title, and interest in and to the software
- * product, including all associated intellectual property rights, are and
- * shall remain exclusively with the Company.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * This software product is governed by the End User License Agreement
- * provided with the software product.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "common/def.h"
@@ -75,9 +93,15 @@ TEST_F(dpcp_dek, ti_02_create)
     void* key = new char[key_size_bytes];
 
     memcpy(key, "a6a7ee7abec9c4ce", key_size_bytes);  // Random key for the test.
-    key_size_bytes = key_size_bytes;
 
-    ret = _dek.create(ad->get_pd(), key, key_size_bytes);
+    struct dek::attr dek_attr;
+    memset(&dek_attr, 0, sizeof(dek_attr));
+    dek_attr.flags = DEK_ATTR_TLS;
+    dek_attr.key = key;
+    dek_attr.key_size_bytes = key_size_bytes;
+    dek_attr.pd_id = ad->get_pd();
+
+    ret = _dek.create(dek_attr);
     ASSERT_EQ(DPCP_OK, ret);
 
     uint32_t key_id = _dek.get_key_id();
@@ -117,9 +141,15 @@ TEST_F(dpcp_dek, ti_03_destroy)
     std::unique_ptr<char[]> key(new char[key_size_bytes]);
 
     memcpy(key.get(), "a6a7ee7abec9c4ce", key_size_bytes);  // Random key for the test.
-    key_size_bytes = key_size_bytes;
 
-    ret = _dek.create(ad->get_pd(), key.get(), key_size_bytes);
+    struct dek::attr dek_attr;
+    memset(&dek_attr, 0, sizeof(dek_attr));
+    dek_attr.flags = DEK_ATTR_TLS;
+    dek_attr.key = key.get();
+    dek_attr.key_size_bytes = key_size_bytes;
+    dek_attr.pd_id = ad->get_pd();
+
+    ret = _dek.create(dek_attr);
     ASSERT_EQ(DPCP_OK, ret);
 
     ret = _dek.destroy();
@@ -159,13 +189,15 @@ TEST_F(dpcp_dek, ti_04_create)
     void* key = new char[key_size_bytes];
 
     memcpy(key, "a6a7ee7abec9c4ce", key_size_bytes);  // Random key for the test.
-    key_size_bytes = key_size_bytes;
 
-    dek::attr attrs;
-    attrs.key = key;
-    attrs.key_size_bytes = key_size_bytes;
-    attrs.pd_id = ad->get_pd();
-    ret = _dek.create(attrs);
+    struct dek::attr dek_attr;
+    memset(&dek_attr, 0, sizeof(dek_attr));
+    dek_attr.flags = DEK_ATTR_TLS;
+    dek_attr.key = key;
+    dek_attr.key_size_bytes = key_size_bytes;
+    dek_attr.pd_id = ad->get_pd();
+
+    ret = _dek.create(dek_attr);
     ASSERT_EQ(DPCP_OK, ret);
 
     uint32_t key_id = _dek.get_key_id();
@@ -207,7 +239,13 @@ TEST_F(dpcp_dek, ti_05_modify)
 
     dek* _dek_ptr = nullptr;
     std::unique_ptr<dek> _dek;
-    ret = ad->create_dek(ENCRYPTION_KEY_TYPE_TLS, key.get(), key_size_128, _dek_ptr);
+    struct dek::attr dek_attr;
+    memset(&dek_attr, 0, sizeof(dek_attr));
+    dek_attr.flags = DEK_ATTR_TLS;
+    dek_attr.key = key.get();
+    dek_attr.key_size_bytes = key_size_128;
+    dek_attr.pd_id = ad->get_td();
+    ret = ad->create_dek(dek_attr, _dek_ptr);
     _dek.reset(_dek_ptr);
     ASSERT_EQ(DPCP_OK, ret);
 
@@ -270,7 +308,13 @@ TEST_F(dpcp_dek, ti_06_query)
 
     dek* _dek_ptr = nullptr;
     std::unique_ptr<dek> _dek;
-    ret = ad->create_dek(ENCRYPTION_KEY_TYPE_TLS, key.get(), key_size_128, _dek_ptr);
+    struct dek::attr dek_attr;
+    memset(&dek_attr, 0, sizeof(dek_attr));
+    dek_attr.flags = DEK_ATTR_TLS;
+    dek_attr.key = key.get();
+    dek_attr.key_size_bytes = key_size_128;
+    dek_attr.pd_id = ad->get_td();
+    ret = ad->create_dek(dek_attr, _dek_ptr);
     _dek.reset(_dek_ptr);
     ASSERT_EQ(DPCP_OK, ret);
 

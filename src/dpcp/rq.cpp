@@ -1,13 +1,31 @@
 /*
- * Copyright © 2020-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ * Copyright (c) 2019-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * BSD-3-Clause
  *
- * This software product is a proprietary product of Nvidia Corporation and its affiliates
- * (the "Company") and all right, title, and interest in and to the software
- * product, including all associated intellectual property rights, are and
- * shall remain exclusively with the Company.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * This software product is governed by the End User License Agreement
- * provided with the software product.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -23,7 +41,7 @@
 
 namespace dpcp {
 
-rq::rq(dcmd::ctx* ctx, rq_attr& attr)
+rq::rq(dcmd::ctx* ctx, const rq_attr& attr)
     : obj(ctx)
     , m_attr(attr)
     , m_state(RQ_RST)
@@ -117,7 +135,7 @@ status rq::get_cqn(uint32_t& cqn)
     return DPCP_OK;
 }
 
-basic_rq::basic_rq(adapter* ad, rq_attr& attr)
+basic_rq::basic_rq(const adapter* ad, const rq_attr& attr)
     : rq(ad->get_ctx(), attr)
     , m_uar(nullptr)
     , m_adapter(ad)
@@ -132,10 +150,10 @@ basic_rq::basic_rq(adapter* ad, rq_attr& attr)
     m_wq_buf_sz_bytes = (uint32_t)(16 * m_attr.wqe_sz * m_attr.wqe_num);
 }
 
-dpp_rq::dpp_rq(adapter* ad, rq_attr& attr)
+ibq_rq::ibq_rq(adapter* ad, rq_attr& attr)
     : rq(ad->get_ctx(), attr)
     , m_adapter(ad)
-    , m_protocol(DPCP_DPP_NOT_INITIALIZED)
+    , m_protocol(DPCP_IBQ_NOT_INITIALIZED)
     , m_mkey(0)
 {
 }
@@ -169,7 +187,7 @@ status basic_rq::destroy()
     return ret;
 }
 
-status dpp_rq::destroy()
+status ibq_rq::destroy()
 {
     status ret = obj::destroy();
     return ret;
@@ -180,12 +198,12 @@ basic_rq::~basic_rq()
     destroy();
 }
 
-dpp_rq::~dpp_rq()
+ibq_rq::~ibq_rq()
 {
     destroy();
 }
 
-status dpp_rq::get_dpp_protocol(dpcp_dpp_protocol& protocol)
+status ibq_rq::get_ibq_protocol(dpcp_ibq_protocol& protocol)
 {
     protocol = m_protocol;
     return DPCP_OK;
@@ -261,7 +279,7 @@ status basic_rq::get_wq_stride_sz(uint32_t& wq_stride_sz)
     return DPCP_OK;
 }
 
-striding_rq::striding_rq(adapter* ad, rq_attr& attr)
+striding_rq::striding_rq(const adapter* ad, const rq_attr& attr)
     : basic_rq(ad, attr)
 {
 }
@@ -383,7 +401,7 @@ status striding_rq::create()
     return ret;
 }
 
-regular_rq::regular_rq(adapter* ad, rq_attr& attr)
+regular_rq::regular_rq(const adapter* ad, const rq_attr& attr)
     : basic_rq(ad, attr)
 {
 }
@@ -470,7 +488,7 @@ status regular_rq::create()
     return ret;
 }
 
-status dpp_rq::create()
+status ibq_rq::create()
 {
     uint32_t in[DEVX_ST_SZ_DW(create_rq_in)] = {};
     uint32_t out[DEVX_ST_SZ_DW(create_rq_out)] = {};
@@ -481,8 +499,8 @@ status dpp_rq::create()
     void* p_rqc = DEVX_ADDR_OF(create_rq_in, in, ctx);
     // Disable VLAN stripping
     DEVX_SET(rqc, p_rqc, vlan_strip_disable, 1);
-    // DPP memory queue
-    DEVX_SET(rqc, p_rqc, mem_rq_type, MEMORY_RQ_DPP);
+    // IBQ memory queue
+    DEVX_SET(rqc, p_rqc, mem_rq_type, MEMORY_RQ_IBQ);
     // RQ in RESET
     DEVX_SET(rqc, p_rqc, state, m_state);
     // Set RQ ts_format
@@ -497,17 +515,17 @@ status dpp_rq::create()
     }
     DEVX_SET(rqc, p_rqc, cqn, id);
     // Sequence number extraction protocol
-    DEVX_SET(rqc, p_rqc, dpp_wire_protocol, m_protocol);
+    DEVX_SET(rqc, p_rqc, ibq_wire_protocol, m_protocol);
 
-    // DPP segment size in granularity of Bytes
+    // IBQ segment size in granularity of Bytes
     size_t buff_stride_sz = 0;
     ret = get_hw_buff_stride_sz(buff_stride_sz);
     if (DPCP_OK != ret && buff_stride_sz) {
         return DPCP_ERR_INVALID_PARAM;
     }
 
-    DEVX_SET(rqc, p_rqc, dpp_segment_size, buff_stride_sz);
-    // DPP segment size in granularity of Bytes
+    DEVX_SET(rqc, p_rqc, ibq_segment_size, buff_stride_sz);
+    // IBQ segment size in granularity of Bytes
     size_t buff_stride_num = 0;
     ret = get_hw_buff_stride_num(buff_stride_num);
     if (DPCP_OK != ret && buff_stride_num) {
@@ -516,9 +534,9 @@ status dpp_rq::create()
 
     // Log of WQ stride size. The size of a WQ stride equals 2^log_wq_stride.
     int32_t log_buff_stride_num = ilog2((int)buff_stride_num);
-    DEVX_SET(rqc, p_rqc, log_dpp_buffer_size, log_buff_stride_num);
-    DEVX_SET(rqc, p_rqc, dpp_scatter_offset, m_attr.dpp_scatter_offset);
-    DEVX_SET(rqc, p_rqc, dpp_mkey, m_mkey);
+    DEVX_SET(rqc, p_rqc, log_ibq_buffer_size, log_buff_stride_num);
+    DEVX_SET(rqc, p_rqc, ibq_scatter_offset, m_attr.ibq_scatter_offset);
+    DEVX_SET(rqc, p_rqc, ibq_mkey, m_mkey);
 
     // WQ
     void* p_wq = DEVX_ADDR_OF(rqc, p_rqc, wq);
@@ -527,7 +545,7 @@ status dpp_rq::create()
         return DPCP_ERR_INVALID_ID;
     }
 
-    log_trace("create DPP_RQ: pd: %u mkey: 0x%x\n", id, m_mkey);
+    log_trace("create IBQ_RQ: pd: %u mkey: 0x%x\n", id, m_mkey);
     DEVX_SET(wq, p_wq, pd, (id & 0xFFFFFF));
 
     // Send mailbox
@@ -538,7 +556,7 @@ status dpp_rq::create()
     }
 
     ret = obj::get_id(id);
-    log_trace("DPP_RQ created id=0x%x ret=%d\n", id, ret);
+    log_trace("IBQ_RQ created id=0x%x ret=%d\n", id, ret);
     return ret;
 }
 
@@ -558,7 +576,7 @@ status basic_rq::init(const uar_t* rq_uar)
     return ret;
 }
 
-status dpp_rq::init(dpcp_dpp_protocol protocol, uint32_t mkey)
+status ibq_rq::init(dpcp_ibq_protocol protocol, uint32_t mkey)
 {
     m_protocol = protocol;
     m_mkey = mkey;
@@ -566,7 +584,7 @@ status dpp_rq::init(dpcp_dpp_protocol protocol, uint32_t mkey)
     return ret;
 }
 
-status dpp_rq::get_mkey(uint32_t& mkey)
+status ibq_rq::get_mkey(uint32_t& mkey)
 {
     mkey = m_mkey;
     return DPCP_OK;

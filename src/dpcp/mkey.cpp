@@ -1,13 +1,31 @@
 /*
- * Copyright © 2019-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ * Copyright (c) 2019-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * BSD-3-Clause
  *
- * This software product is a proprietary product of Nvidia Corporation and its affiliates
- * (the "Company") and all right, title, and interest in and to the software
- * product, including all associated intellectual property rights, are and
- * shall remain exclusively with the Company.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * This software product is governed by the End User License Agreement
- * provided with the software product.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -538,12 +556,56 @@ status reserved_mkey::get_id(uint32_t& id)
     return DPCP_OK;
 }
 
-ref_mkey::ref_mkey(adapter* ad, void* address, size_t length)
+base_ref_mkey::base_ref_mkey(adapter* ad, void* address, size_t length, uint32_t idx)
     : mkey(ad->get_ctx())
     , m_address(address)
     , m_length(length)
-    , m_idx(0)
+    , m_idx(idx)
     , m_flags(MKEY_NONE)
+{
+}
+
+status base_ref_mkey::get_address(void*& address)
+{
+    if (!m_idx) {
+        return DPCP_ERR_CREATE;
+    }
+    address = m_address;
+    return DPCP_OK;
+}
+
+status base_ref_mkey::get_length(size_t& len)
+{
+    if (!m_idx) {
+        return DPCP_ERR_CREATE;
+    }
+    len = m_length;
+    if (0 == len) {
+        return DPCP_ERR_OUT_OF_RANGE;
+    }
+    return DPCP_OK;
+}
+
+status base_ref_mkey::get_flags(mkey_flags& flags)
+{
+    if (!m_idx) {
+        return DPCP_ERR_CREATE;
+    }
+    flags = m_flags;
+    return DPCP_OK;
+}
+
+status base_ref_mkey::get_id(uint32_t& id)
+{
+    if (!m_idx) {
+        return DPCP_ERR_CREATE;
+    }
+    id = m_idx;
+    return DPCP_OK;
+}
+
+ref_mkey::ref_mkey(adapter* ad, void* address, size_t length)
+    : base_ref_mkey(ad, address, length, 0)
 {
     log_trace("REF KEY CTR ad: %p\n", ad);
 }
@@ -594,43 +656,10 @@ status ref_mkey::create(mkey* parent)
     return DPCP_OK;
 }
 
-status ref_mkey::get_address(void*& address)
+extern_mkey::extern_mkey(adapter* ad, void* address, size_t length, uint32_t id)
+    : base_ref_mkey(ad, address, length, id)
 {
-    if (!m_idx) {
-        return DPCP_ERR_CREATE;
-    }
-    address = m_address;
-    return DPCP_OK;
-}
-
-status ref_mkey::get_length(size_t& len)
-{
-    if (!m_idx) {
-        return DPCP_ERR_CREATE;
-    }
-    len = m_length;
-    if (0 == len) {
-        return DPCP_ERR_OUT_OF_RANGE;
-    }
-    return DPCP_OK;
-}
-
-status ref_mkey::get_flags(mkey_flags& flags)
-{
-    if (!m_idx) {
-        return DPCP_ERR_CREATE;
-    }
-    flags = m_flags;
-    return DPCP_OK;
-}
-
-status ref_mkey::get_id(uint32_t& id)
-{
-    if (!m_idx) {
-        return DPCP_ERR_CREATE;
-    }
-    id = m_idx;
-    return DPCP_OK;
+    log_trace("EXTERN KEY CTR ad: %p\n", ad);
 }
 
 } // namespace dpcp

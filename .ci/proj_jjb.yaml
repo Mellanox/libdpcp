@@ -64,9 +64,9 @@
             cron: 'H/5 * * * *'
             trigger-phrase: '.*\bbot:retest\b.*'
             status-context: "{jjb_proj}"
-            success-status: "Build passed."
-            failure-status: "Build failed."
-            error-status:   "Build failed."
+            success-status: "[PASS}"
+            failure-status: "[FAIL]"
+            error-status:   "[FAIL]"
             status-add-test-results: true
             # swx-jenkins2 from GitHub Pull Request Builder
             auth-id: 'cb48aefb-4f90-4d52-a9bc-63d92382e0be'

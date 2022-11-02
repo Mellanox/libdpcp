@@ -1,13 +1,31 @@
 /*
- * Copyright © 2020-2022 NVIDIA CORPORATION & AFFILIATES. ALL RIGHTS RESERVED.
+ * Copyright (c) 2019-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * BSD-3-Clause
  *
- * This software product is a proprietary product of Nvidia Corporation and its affiliates
- * (the "Company") and all right, title, and interest in and to the software
- * product, including all associated intellectual property rights, are and
- * shall remain exclusively with the Company.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * This software product is governed by the End User License Agreement
- * provided with the software product.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #ifndef DPCP_H_
@@ -34,7 +52,7 @@
 using std::function;
 using std::unordered_map;
 
-static const char* dpcp_version = "1.1.29";
+static const char* dpcp_version = "1.1.37";
 
 #if defined(__linux__)
 typedef void* LPOVERLAPPED;
@@ -100,11 +118,11 @@ enum status {
     DPCP_ERR_NOT_APPLIED = -14 /**< Flow is different on HW vs current */
 };
 
-enum dpcp_dpp_protocol {
-    DPCP_DPP_2110 = 0x0, /**< 16 bit RTP sequence number */
-    DPCP_DPP_2110_EXT = 0x1, /**< 32 bit RTP sequence number */
-    DPCP_DPP_ORAN_ECPRI = 0x4, /**< ORAN eCPRI protocol */
-    DPCP_DPP_NOT_INITIALIZED
+enum dpcp_ibq_protocol {
+    DPCP_IBQ_2110 = 0x0, /**< 16 bit RTP sequence number */
+    DPCP_IBQ_2110_EXT = 0x1, /**< 32 bit RTP sequence number */
+    DPCP_IBQ_ORAN_ECPRI = 0x4, /**< ORAN eCPRI protocol */
+    DPCP_IBQ_NOT_INITIALIZED
 };
 
 class obj {
@@ -113,9 +131,6 @@ class obj {
     dcmd::ctx* m_ctx;
     uint32_t m_last_status;
     uint32_t m_last_syndrome;
-
-    obj(obj const&); // for VMA
-    void operator=(obj const&); // for VMA
 
 public:
     /**
@@ -126,6 +141,9 @@ public:
      */
     obj(dcmd::ctx* ctx);
     virtual ~obj(); // destroy_handle handled in DTR
+
+    obj(obj const&) = delete;
+    void operator=(obj const&) = delete;
 
     /**
      * @brief Returns object Id
@@ -144,9 +162,6 @@ public:
     {
         return m_ctx;
     }
-    // VMA doesn't support yet C++11
-    //    obj(obj const&) = delete;
-    //    void operator=(obj const&) = delete;
 
     /**
      * @brief Creates object in HW
@@ -489,19 +504,56 @@ public:
 };
 
 /**
- * @brief class ref_mkey - References memory region associated with another (parent) memory key.
- *
- * This class is used to pass subregions of one or more registered memory
- * regions into @ref pattern_mkey. Creation method validates that memory region
- * specified by address and length is a subregion of parent's memory.
+ * Base class for the reference-key types
  */
-class ref_mkey : public mkey {
+class base_ref_mkey : public mkey {
+protected:
     friend class adapter;
     void* m_address;
     size_t m_length;
     uint32_t m_idx; // memory key index
     mkey_flags m_flags;
 
+public:
+    base_ref_mkey(adapter* ad, void* address, size_t length, uint32_t idx);
+
+    /**
+     * @brief Returns virtual address of memory region.
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    virtual status get_address(void*& address); // override;
+
+    /**
+     * @brief Returns length of memory region
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    virtual status get_length(size_t& len); // override;
+
+    /**
+     * @brief Returns memory region flags
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    virtual status get_flags(mkey_flags& flags); // override;
+
+    /**
+     * @brief Returns MKEY ID created by create()
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    virtual status get_id(uint32_t& id); // override;
+};
+
+/**
+ * @brief class ref_mkey - References memory region associated with another (parent) memory key.
+ *
+ * This class is used to pass subregions of one or more registered memory
+ * regions into @ref pattern_mkey. Creation method validates that memory region
+ * specified by address and length is a subregion of parent's memory.
+ */
+class ref_mkey : public base_ref_mkey {
 public:
     /**
      * @brief Constructor of ref_mkey
@@ -519,31 +571,25 @@ public:
      * @retval Returns DPCP_OK on success.
      */
     status create(mkey* parent);
+};
 
+/**
+ * @brief Refers a memory key that is already registered
+ *
+ * Creates a valid {@link dpcp#mkey mkey} that refers an already
+ * registered memory key that is associated with the specified memory range.
+ */
+class extern_mkey : public base_ref_mkey {
+public:
     /**
-     * @brief Returns virtual address of memory region.
+     * @brief Constructor of extern_mkey
      *
-     * @retval Returns DPCP_OK on success.
+     * @param [in]  ad              Pointer to Adapter
+     * @param [in]  address         Virtual Address
+     * @param [in]  length          Address Length in bytes
+     * @param [in]  id              Valid id of externally registered key
      */
-    virtual status get_address(void*& address); // override;
-    /**
-     * @brief Returns length of memory region
-     *
-     * @retval Returns DPCP_OK on success.
-     */
-    virtual status get_length(size_t& len); // override;
-    /**
-     * @brief Returns memory region flags
-     *
-     * @retval Returns DPCP_OK on success.
-     */
-    virtual status get_flags(mkey_flags& flags); // override;
-    /**
-     * @brief Returns MKEY ID created by create()
-     *
-     * @retval Returns DPCP_OK on success.
-     */
-    virtual status get_id(uint32_t& id); // override;
+    extern_mkey(adapter* ad, void* address, size_t length, uint32_t id);
 };
 
 /**
@@ -813,7 +859,7 @@ enum rq_state {
 enum rq_mem_type {
     MEMORY_RQ_INLINE = 0, /**< packet to be inline in RQ WQE */
     MEMORY_RQ_RMP = 1,
-    MEMORY_RQ_DPP = 2 /**< Dual Packet Placement memory */
+    MEMORY_RQ_IBQ = 2
 };
 
 enum wq_type {
@@ -837,7 +883,7 @@ struct rq_attr {
     size_t wqe_num; // Number of WQEs in RQ, must be power of 2
     size_t wqe_sz; // WQE size, i.e. number of DS (16B) in each RQ WQE, must be power of 2
     uint8_t ts_format;
-    uint8_t dpp_scatter_offset;
+    uint8_t ibq_scatter_offset;
 };
 
 enum {
@@ -853,7 +899,7 @@ protected:
     rq_state m_state;
 
 public:
-    rq(dcmd::ctx* ctx, rq_attr& attr);
+    rq(dcmd::ctx* ctx, const rq_attr& attr);
     /**
      * @brief Changes state of RQ
      *
@@ -875,7 +921,7 @@ class basic_rq : public rq {
 protected:
     friend class adapter;
     uar_t* m_uar;
-    adapter* m_adapter;
+    const adapter* m_adapter;
 
     void* m_wq_buf;
     dcmd::umem* m_wq_buf_umem;
@@ -888,7 +934,7 @@ protected:
     uint32_t m_db_rec_umem_id;
     rq_mem_type m_mem_type;
 
-    basic_rq(adapter* ad, rq_attr& attr);
+    basic_rq(const adapter* ad, const rq_attr& attr);
     status allocate_wq_buf(void*& buf, size_t sz);
     status allocate_db_rec(uint32_t*& db_rec, size_t& sz);
     status init(const uar_t* rq_uar);
@@ -948,7 +994,7 @@ public:
  */
 class striding_rq : public basic_rq {
     friend class adapter;
-    striding_rq(adapter* ad, rq_attr& attr);
+    striding_rq(const adapter* ad, const rq_attr& attr);
 
     virtual status create() override;
 
@@ -964,7 +1010,7 @@ public:
  */
 class regular_rq : public basic_rq {
     friend class adapter;
-    regular_rq(adapter* ad, rq_attr& attr);
+    regular_rq(const adapter* ad, const rq_attr& attr);
 
     virtual status create() override;
 
@@ -975,33 +1021,33 @@ public:
 };
 
 /**
- * @brief class dpp_rq - Handles DPP ReceiveQueue
+ * @brief class ibq_rq - Handles IBQ ReceiveQueue
  *
  */
-class dpp_rq : public rq {
+class ibq_rq : public rq {
     friend class adapter;
     adapter* m_adapter;
 
-    dpcp_dpp_protocol m_protocol;
+    dpcp_ibq_protocol m_protocol;
     uint32_t m_mkey;
 
-    dpp_rq(adapter* ad, rq_attr& attr);
+    ibq_rq(adapter* ad, rq_attr& attr);
 
     status create();
-    status init(dpcp_dpp_protocol protocol, uint32_t mkey);
+    status init(dpcp_ibq_protocol protocol, uint32_t mkey);
 
 public:
-    virtual ~dpp_rq();
+    virtual ~ibq_rq();
     virtual status destroy();
 
     /**
-     * @brief Returns how dpp extract the sequence number from the packet
-     * @param [out] protocol      how dpp extract the sequence number from the
-     *packet
+     * @brief Returns how ibq extract the sequence number from the packet
+     * @param [out] protocol      how ibq extract the sequence number from the
+     * packet
      *
      * @retval Returns DPCP_OK on success.
      */
-    status get_dpp_protocol(dpcp_dpp_protocol& protocol);
+    status get_ibq_protocol(dpcp_ibq_protocol& protocol);
 
     status get_mkey(uint32_t& mkey);
 };
@@ -1011,6 +1057,7 @@ public:
  *
  */
 enum {
+    TIR_ATTR_EXTEND = (1 << 0), /**< Special bit to extend flags field */
     TIR_ATTR_LRO = (1 << 1),
     TIR_ATTR_INLINE_RQN = (1 << 2),
     TIR_ATTR_TRANSPORT_DOMAIN = (1 << 3),
@@ -1040,24 +1087,16 @@ public:
      */
     tir(dcmd::ctx* ctx);
     virtual ~tir();
-
-    /**
-     * @brief Create TIR object in HW
-     *
-     * @param [in]  td           Pointer to TransportDomain object
-     * @param [in]  rq           Pointer to ReceiveQueu object
-     */
-    status create(uint32_t td_id, uint32_t rqn);
     /**
      * @brief Create TIR object using requested properties
      *
      * @param [in]  tir_attr     Object attributies
      */
-    status create(tir::attr& tir_attr);
+    status create(const tir::attr& tir_attr);
     /**
      * @brief Modify TIR object in HW
      */
-    status modify(tir::attr& tir_attr);
+    status modify(const tir::attr& tir_attr);
     /**
      * @brief Query TIR object in HW
      */
@@ -1065,7 +1104,7 @@ public:
     /**
      * @brief Get TIR Number
      */
-    inline uint32_t get_tirn()
+    inline uint32_t get_tirn() const
     {
         return m_tirn;
     }
@@ -1080,42 +1119,43 @@ private:
 };
 
 /**
- * @brief Represent TIS object flags
- */
-typedef enum tis_flags {
-    TIS_NONE = 0ULL, /**< TIS without special flags */
-    TIS_TLS_EN = 1ULL << 0 /**< TIS with TLS offload enabled */
-} tis_flags;
-
-/**
  * @brief Represent and handles TIS object
  */
+enum {
+    TIS_ATTR_EXTEND = (1 << 0), /**< Special bit to extend flags field */
+    TIS_ATTR_TRANSPORT_DOMAIN = (1 << 1),
+    TIS_ATTR_TLS = (1 << 2),
+    TIS_ATTR_PD = (1 << 3)
+};
+
 class tis : public obj {
-private:
-    uint64_t m_flags;
-    uint32_t m_tisn;
+public:
+    struct attr {
+        uint32_t flags;
+        uint32_t tls_en : 1;
+        uint32_t transport_domain : 24;
+        uint32_t pd : 24;
+    };
 
 public:
     /**
      * @brief TIS Object constructor, object is initialized but not created yet
      *
      * @param [in]  ctx           Pointer to adapter context
-     * @param [in]  flags         Bitwise OR of @ref tis_flags ENUM
      *
      */
-    tis(dcmd::ctx* ctx, const uint64_t flags);
+    tis(dcmd::ctx* ctx);
     virtual ~tis();
     /**
-     * @brief Creates TIS object in HW
+     * @brief Create TIS object using requested properties
      *
-     * @param [in]  td_id         Transport Domain ID assign the TIS with
-     * @param [in]  pd_id         Protection Domain ID assign the TIS with
-     *      @note: valid only when flags has @ref tis_flags::TIS_TLS_EN bit
-     * enabled
-     *
-     * @retval Returns @ref dpcp::status with the status code
+     * @param [in]  tis_attr     Object attributies
      */
-    status create(const uint32_t td_id, const uint32_t pd_id = 0);
+    status create(const tis::attr& tis_attr);
+    /**
+     * @brief Query TIR object in HW
+     */
+    status query(tis::attr& tis_attr);
     /**
      * @brief Get TIS number object in HW
      *
@@ -1131,6 +1171,10 @@ public:
         tisn = m_tisn;
         return DPCP_OK;
     }
+
+private:
+    struct attr m_attr;
+    uint32_t m_tisn;
 };
 
 /**
@@ -1355,6 +1399,7 @@ struct match_params_lyr_3 {
     uint32_t src_ip;
     uint32_t dst_ip;
     uint8_t ip_protocol;
+    uint8_t ip_version : 4;
     // TODO: Add ipv6 support
 };
 
@@ -1385,8 +1430,10 @@ struct match_params_ex {
     match_params_lyr_4 match_lyr4;
     std::vector<parser_sample_field> match_parser_sample_field_vec; /**< Samples received by
                                                                          @ref parser_graph_node. */
+    uint32_t match_metadata_reg_c_0;
 
     match_params_ex()
+        : match_metadata_reg_c_0(0)
     {
         memset(&match_lyr2, 0, sizeof(match_lyr2));
         memset(&match_lyr3, 0, sizeof(match_lyr3));
@@ -1399,6 +1446,7 @@ struct match_params_ex {
  */
 enum flow_group_match_criteria_enable {
     FG_MATCH_OUTER_HDR = 0x1, /**< Enable match on outer header fields */
+    FG_MATCH_METADATA_REG_C_0 = 0x8, /**< Enable match on metadata register 0 */
     FG_MATCH_PARSER_FIELDS = 0x20, /**< Enable match on samples received by
                                         @ref parser_graph_node.*/
 };
@@ -1536,13 +1584,16 @@ enum flow_action_modify_field {
     OUT_IP_TTL = 0xa,
     OUT_UDP_SPORT = 0xb,
     OUT_UDP_DPORT = 0xc,
+    METADATA_REG_C_0 = 0x51,
+    METADATA_REG_C_1 = 0x52,
 };
 
 /**
  * @brief: Flow Action modify type.
  */
 enum flow_action_modify_type {
-    SET = 0x1,
+    SET = 0x1, /**< Write a specific data value a field */
+    COPY = 0x3, /**< Copy a specify field to another one in a packet/metadata register */
 };
 
 /**
@@ -1591,6 +1642,27 @@ struct flow_action_modify_set_attr {
 };
 
 /**
+ * @brief: Flow action modify from type copy attributes.
+ */
+struct flow_action_modify_copy_attr {
+    flow_action_modify_type type; /**< Flow action modify type, must be set to
+                                       @ref flow_action_modify_type::COPY
+                                       Note: this field should always be first.*/
+    flow_action_modify_field src_field; /**< The source field of packet where data is copied from.
+                                             The supported copy operations reported in Header
+                                             Modify Capabilities per Flow Table that uses the
+                                             modify action. */
+    uint8_t src_offset : 5; /**< The start offset in the source field. */
+    uint8_t length : 5; /**< Number of bits to be copied starting from offset, 0 means length of 32
+                           bits. */
+    flow_action_modify_field
+        dst_field; /**< The destination field of packet where data is copied to.
+                        The supported copy operations reported in Header
+                        Modify Capabilities per Flow Table that uses the modify action. */
+    uint8_t dst_offset : 5; /**< The start offset in the destination field. */
+};
+
+/**
  * @brief: Union represent flow_action_modify attributes by type.
  *         To support new modify types (copy, add) please add attributes
  *         structure to the union.
@@ -1600,6 +1672,7 @@ struct flow_action_modify_set_attr {
 union flow_action_modify_type_attr {
     flow_action_modify_type type; /**< Flow action modify type (set, add, copy) */
     flow_action_modify_set_attr set; /**< Flow action modify from type set attributes */
+    flow_action_modify_copy_attr copy; /**< Flow action modify from type copy attributes */
 };
 
 /**
@@ -1662,6 +1735,12 @@ public:
      * @retval flow_action action pointer or nullptr.
      */
     std::shared_ptr<flow_action> create_modify(flow_action_modify_attr& attr);
+    /**
+     * @brief Create flow action reparse, allow to trigger HW packet reparse.
+     *
+     * @retval flow_action action pointer or nullptr.
+     */
+    std::shared_ptr<flow_action> create_reparse();
 
 private:
     // Should be created only by @ref class adapter
@@ -1911,28 +1990,24 @@ typedef struct qos_packet_pacing_s {
     uint16_t packet_sz; /**< typical packet size */
 } qos_packet_pacing;
 
-/**
- * @brief Represent cryptography offloads key types
- */
-typedef enum encryption_key_type_t {
-    ENCRYPTION_KEY_TYPE_TLS = 0x1, /**< TLS encryption key type */
-    ENCRYPTION_KEY_TYPE_IPSEC = 0x2 /**< IPsec encryption key type */
-} encryption_key_type_t;
+enum {
+    DEK_ATTR_TLS = (1 << 1), /**< TLS encryption key type */
+    DEK_ATTR_IPSEC = (1 << 2) /**< IPsec encryption key type */
+};
 
 /**
  * @brief Represent and handles DEK object
  */
 class dek : public obj {
-private:
-    uint32_t m_key_id;
-
 public:
     struct attr {
-        void* key = nullptr;
-        uint32_t key_size_bytes = 0U;
-        uint32_t pd_id = 0U;
+        uint32_t flags;
+        void* key;
+        uint32_t key_size_bytes;
+        uint32_t pd_id;
     };
 
+public:
     /**
      * @brief DEK Object constructor, object is initialized but not created yet
      *
@@ -1941,19 +2016,6 @@ public:
      */
     dek(dcmd::ctx* ctx);
     virtual ~dek();
-    /**
-     * @brief Creates DEK object in HW
-     *
-     * @param [in]  pd_id           Protection Domain ID assign the DEK with
-     * @param [in]  key             Pointer to the encryption key
-     * @param [in]  key_size_bytes  Size in bytes of the key
-     *
-     * @note: The call supports @ref
-     * encryption_key_type_t::ENCRYPTION_KEY_TYPE_TLS
-     *
-     * @retval Returns @ref dpcp::status with the status code
-     */
-    status create(const uint32_t pd_id, const void* key, const uint32_t key_size_bytes);
 
     /**
      * @brief Create DEK object using requested properties
@@ -1985,7 +2047,8 @@ public:
         return m_key_id;
     }
 
-    uint32_t m_pd_id = 0U;
+private:
+    uint32_t m_key_id;
 };
 
 /*
@@ -1993,7 +2056,11 @@ public:
  *        e.g @ref class flow_action_modify, which fields can be modified.
  */
 struct flow_table_fields_capabilities {
-    bool outer_ethertype;
+    bool outer_ethertype; /**< When set, match on Ethernet type supported */
+    bool outer_udp_dport; /**< When set, match on UDP destination port supported */
+    bool prog_sample_field; /**< When set, match on Flex programmable parser fields supported */
+    bool metadata_reg_c_0; /**< When set, match on metadata reg_c_0 supported */
+    bool metadata_reg_c_1; /**< When set, match on metadata reg_c_1 supported */
 };
 
 /*
@@ -2003,11 +2070,19 @@ struct modify_flow_action_capabilities {
     uint8_t max_obj_log_num; /**< Total number of Flow Action modify user can create */
     uint32_t max_obj_in_flow_rule; /** Total number of Flow Action modify can be applied to single
                                        Flow Rule */
-
-    flow_table_fields_capabilities set_fields_support; /* Supported fields for Flow Action
-                                                          modify from type Set */
+    uint8_t log_max_num_header_modify_argument; /**< Log (base 2) of the maximum number of supported
+                                                   Header Modify Argument Object objects. */
+    uint8_t log_header_modify_argument_granularity; /**< Log (base 2) of the minimum allocation
+                                                       granularity of Header Modify Argument Object,
+                                                       given in 64[B] units. */
+    uint8_t log_header_modify_argument_max_alloc; /**< Log (base 2) of the maximum allocation
+                                                     granularity of Header Modify Argument Object,
+                                                     given in 64[B] units. */
+    flow_table_fields_capabilities set_fields_support; /**< Supported fields for Flow Action
+                                                            modify from type Set. */
+    flow_table_fields_capabilities copy_fields_support; /**< Supported fields for Flow Action
+                                                             modify from type Copy. */
     // flow_table_fields_support add_fields_support;
-    // flow_table_fields_support copy_fields_support;
 };
 
 /*
@@ -2031,18 +2106,33 @@ struct flow_table_type_capabilities {
                                                                   insert header can be supported
                                                                   even if reformat is not
                                                                   supported */
+    bool
+        is_flow_action_non_tunnel_reformat_and_fwd_to_flow_table; /**< Is packet non-tunnel reformat
+                                                                       types @ref
+                                                                       flow_action_reformat_type::INSERT_HDR
+                                                                       or @ref
+                                                                       flow_action_reformat_type::REMOVE_HDR
+                                                                       with Forward to Table action
+                                                                       in the same rule supported.
+                                                                   */
     bool is_flow_action_reformat_and_modify_supported; /**< is reformat and modify supported
                                                             together for the same Flow Rule */
     bool is_flow_action_reformat_and_fwd_to_flow_table; /**< Is reformat and forward to flow table
                                                              supported
                                                              together for the same Flow Rule */
-    uint32_t max_steering_depth;
+    uint32_t max_steering_depth; /**< Indicates a limit to the longest path of packet traversing
+                                 through the NIC receive steering table. The field is given in
+                                 device specific units*/
     uint8_t max_log_size_flow_table; /**< Maximum log size of flow table in Flow Rules */
     uint32_t max_flow_table_level;
     uint8_t max_log_num_of_flow_table; /**< Maximum log number of Flow Table that can be created */
     uint8_t max_log_num_of_flow_rule; /**< Maximum log number of Flow Rules that can be created */
-
-    modify_flow_action_capabilities modify_flow_action_caps;
+    bool is_flow_action_reparse_supported; /**< When set, this Flow Table type supports Flow Table
+                                                Entries with reparse indication or Rule Table
+                                                Context(RTC) with always reparse mode.
+                                            */
+    modify_flow_action_capabilities modify_flow_action_caps; /**< Flow Action modify capabilities */
+    flow_table_fields_capabilities ft_field_support; /**< Supported fields for the table. */
 };
 
 /*
@@ -2098,11 +2188,9 @@ typedef struct adapter_hca_capabilities {
     uint16_t lro_min_mss_size; /**< the minimal size of TCP segment required for coalescing */
     uint8_t lro_timer_supported_periods[4]; /**< Array of supported LRO timer periods in
                                                microseconds. */
-    bool dpp; /** <is Direct Packet Placement supported */
-    uint64_t dpp_wire_protocol; /**< Direct Packet Placement protocol. List of supported protocols
-                                     @ref dpcp_dpp_protocol */
-    uint16_t dpp_max_scatter_offset; /**< Direct Packet Placement protocol max scatter offset
-                                        supported */
+    bool ibq; /** <indicates Inline Buffer Queue capability (IBQ) */
+    uint64_t ibq_wire_protocol; /**< List of supported protocols for IBQ @ref dpcp_ibq_protocol */
+    uint16_t ibq_max_scatter_offset; /**< IBQ maximum supported scatter offset */
     bool general_object_types_parse_graph_node; /**< If set, creation of programmable parse graph
                                                    node is supported. */
     uint32_t parse_graph_node_in; /**< Bitmask for the supported protocol headers that programmable
@@ -2141,7 +2229,6 @@ typedef struct adapter_hca_capabilities {
                                                        parser_graph_node_attr.header_length_field_mask,
                                                        For example, value 5 indicates bits[4:0]
                                                        are valid*/
-
     bool is_flow_table_caps_supported; /**< Capability to query flow table HCH.cap */
     flow_table_capabilities flow_table_caps; /**< Flow table from type receive capabilities */
 } adapter_hca_capabilities;
@@ -2567,14 +2654,14 @@ public:
     std::string get_name();
 
     status set_td(uint32_t tdn);
-    inline uint32_t get_td()
+    inline uint32_t get_td() const
     {
         return m_td_id;
     }
 
     status set_pd(uint32_t pdn, void* verbs_pd);
 
-    inline uint32_t get_pd()
+    inline uint32_t get_pd() const
     {
         return m_pd_id;
     }
@@ -2596,7 +2683,7 @@ public:
         return DPCP_ERR_NO_CONTEXT;
     }
 
-    dcmd::ctx* get_ctx()
+    dcmd::ctx* get_ctx() const
     {
         return m_dcmd_ctx;
     }
@@ -2626,6 +2713,7 @@ public:
      *              object operarions
      */
     status open();
+
     /**
      * @brief Perform check was adapter opened or not
      *
@@ -2633,10 +2721,11 @@ public:
      * @retval      true if adapter was opened
      *              false if not
      */
-    bool is_opened()
+    bool is_opened() const
     {
         return m_opened;
     }
+
     /**
      * @brief Creates and returns direct_mkey
      *
@@ -2648,6 +2737,7 @@ public:
      * @retval      Returns DPCP_OK on success
      */
     status create_direct_mkey(void* address, size_t length, mkey_flags flags, direct_mkey*& mkey);
+
     /**
      * @brief Creates and returns pattern_mkey
      *
@@ -2684,11 +2774,24 @@ public:
      * @param [in]  parent          Parent Memory Key to reference
      * @param [in]  address         Virtual Address
      * @param [in]  length          Address Length in bytes
-     * @param [out] mkey            On Success created direct_mkey
+     * @param [out] mkey            On Success created ref_mkey
      *
      * @retval      Returns DPCP_OK on success
      */
     status create_ref_mkey(mkey* parent, void* address, size_t length, ref_mkey*& mkey);
+
+    /**
+     * @brief Creates and returns an extern_mkey
+     *
+     * @param [in]  address         Virtual Address
+     * @param [in]  length          Address Length in bytes
+     * @param [in]  id              Valid id of externally registered key
+     * @param [out] mkey            On Success created extern_mkey
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status create_extern_mkey(void* address, size_t length, uint32_t id, extern_mkey*& mkey);
+
     /**
      * @brief Creates and returns CQ
      *
@@ -2698,18 +2801,6 @@ public:
      * @retval      Returns DPCP_OK on success
      */
     status create_cq(const cq_attr& attr, cq*& cq);
-    /**
-     * @brief Creates and returns striding_rq
-     *
-     * @param [in]  rq_attr         RQ attributes
-     * @param [in]  rq_num          Number of WQEs in RQ, must be power of 2
-     * @param [in]  wqe_sz          WQE size, i.e. number of DS (16B) in each RQ
-     *WQE, must be power of 2
-     * @param [out] rq              On Success created striding_rq
-     *
-     * @retval      Returns DPCP_OK on success
-     */
-    status create_striding_rq(rq_attr& rq_attr, size_t rq_num, size_t wqe_sz, striding_rq*& rq);
 
     /**
      * @brief Creates and returns striding_rq
@@ -2719,7 +2810,7 @@ public:
      *
      * @retval      Returns DPCP_OK on success
      */
-    status create_striding_rq(rq_attr& rq_attr, striding_rq*& rq);
+    status create_striding_rq(const rq_attr& rq_attr, striding_rq*& rq);
 
     /**
      * @brief Creates and returns regular_rq
@@ -2729,49 +2820,42 @@ public:
      *
      * @retval      Returns DPCP_OK on success
      */
-    status create_regular_rq(rq_attr& rq_attr, regular_rq*& rq);
+    status create_regular_rq(const rq_attr& rq_attr, regular_rq*& rq);
 
     /**
-     * @brief Creates and returns dpp_rq
+     * @brief Creates and returns ibq_rq
      *
-     * @param [in]  rq_attr        RQ attributes
-     * @param [in]  dpp_protocol   How to extract the sequence number from the
-     *packet.
-     * @param [in]  mkey           Direct Placement mkey of the buffer
-     *of 2
-     * @param [out] rq              On Success created dpp_rq
-     *
-     * @retval      Returns DPCP_OK on success
-     */
-    status create_dpp_rq(rq_attr& rq_attr, dpcp_dpp_protocol dpp_protocol, uint32_t mkey,
-                         dpp_rq*& rq);
-    /**
-     * @brief Creates and returns DPCP TIR
-     *
-     * @param [in]  rqn             RQ number (index)
-     * @param [out] tr              Pointer to TIR object on success
+     * @param [in]  rq_attr         RQ attributes
+     * @param [in]  ibq_protocol    How to extract the sequence number from the
+     * packet.
+     * @param [in]  mkey            Buffer mkey value
+     * @param [out] rq              On Success created ibq_rq
      *
      * @retval      Returns DPCP_OK on success
      */
-    status create_tir(uint32_t rqn, tir*& tr);
+    status create_ibq_rq(rq_attr& rq_attr, dpcp_ibq_protocol ibq_protocol, uint32_t mkey,
+                         ibq_rq*& rq);
+
     /**
      * @brief Creates and returns DPCP TIR
      *
      * @param [in]  tir_attr        Object attributes
-     * @param [out] tr              Pointer to TIR object on success
+     * @param [out] tir_obj         Pointer to TIR object on success
      *
      * @retval      Returns DPCP_OK on success
      */
-    status create_tir(tir::attr& tir_attr, tir*& tir_obj);
+    status create_tir(const tir::attr& tir_attr, tir*& tir_obj);
+
     /**
      * @brief Creates and returns DPCP TIS
      *
-     * @param [in]  flags           Bitwise OR of @ref tis_flags ENUM.
-     * @param [out] _tis            Pointer to TIS object on success
+     * @param [in]  tis_attr        Object attributes
+     * @param [out] ts              Pointer to TIS object on success
      *
-     * @retval Returns @ref dpcp::status with the status code
+     * @retval      Returns DPCP_OK on success
      */
-    status create_tis(const uint64_t& flags, tis*& _tis);
+    status create_tis(const tis::attr& tis_attr, tis*& tis_obj);
+
     /**
      * @brief Get root flow table by type
      *
@@ -2780,6 +2864,7 @@ public:
      * @retval Returns pointer to @ref flow_table or nullptr
      */
     std::shared_ptr<flow_table> get_root_table(flow_table_type type);
+
     /**
      * @brief Creates and returns flow_rule
      *
@@ -2789,6 +2874,7 @@ public:
      * @retval      Returns DPCP_OK on success
      */
     status create_flow_table(flow_table_attr& attr, std::shared_ptr<flow_table>& flow_table);
+
     /**
      * @brief Creates and returns flow_rule
      *
@@ -2799,6 +2885,7 @@ public:
      * @retval      Returns DPCP_OK on success
      */
     status create_flow_rule(uint16_t priority, match_params& match_criteria, flow_rule*& flow_rule);
+
     /**
      * @brief Creates Completion Channel
      *
@@ -2807,7 +2894,9 @@ public:
      * @retval      Returns DPCP_OK on success
      */
     status create_comp_channel(comp_channel*& cch);
+
     status query_eqn(uint32_t& eqn, uint32_t cpu_vector = 0);
+
     status get_hca_caps_frequency_khz(uint32_t& freq); // TODO: Deprecate.
 
     /**
@@ -2819,6 +2908,7 @@ public:
      * @retval      Returns DPCP_OK on success
      */
     status create_pp_sq(sq_attr& sq_attr, pp_sq*& sq);
+
     /**
      * @brief Get general HCA capabilities
      *
@@ -2834,27 +2924,16 @@ public:
         }
         return DPCP_ERR_QUERY;
     }
+
     /**
      * @brief Creates and returns DPCP DEK
      *
-     * @param [in]  type        Type of the encryption key
-     * @param [in]  key         Pointer to the key
-     * @param [in]  size_bytes  Size in bytes of the key
-     * @param [out] _dek        Pointer to DEK object on success
+     * @param [in]  dek_attr        Object attributes
+     * @param [out] dek_obj         Pointer to DEK object on success
      *
-     * @note: The call supported @ref
-     * adapter_hca_capabilities::general_object_types_encryption_key is on
-     * @note: The call support key type of @ref
-     * encryption_key_type_t::ENCRYPTION_KEY_TYPE_TLS
-     * @note: @ref key should be a pointer to encryption key,
-     *        e.g. key variable of @ref struct tls12_crypto_info_aes_gcm_128 type.
-     *        See tls.h API, e.g. for Linux it is in /usr/include/linux/tls.h
-     * @note: _dek object holds the key ID, can be queried by @ref dek::get_key_id
-     *
-     * @retval Returns @ref dpcp::status with the status code
+     * @retval      Returns DPCP_OK on success
      */
-    status create_dek(const encryption_key_type_t type, const void* const key,
-                      const uint32_t size_bytes, dek*& _dek);
+    status create_dek(const dek::attr& dek_attr, dek*& dek_obj);
 
     /**
      * @brief Creates Protection Domain for the Adapter.
@@ -2897,6 +2976,7 @@ public:
      * @retval: Returns DPCP_ERR_MODIFY on error, otherwise DPCP_OK.
      */
     status sync_crypto_tls();
+
     /**
      * @brief Returns flow action generator.
      *
