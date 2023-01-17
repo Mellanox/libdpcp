@@ -1,6 +1,6 @@
 # func.m4 - Collection of functions
 # 
-# Copyright (c) 2020-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2020-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # BSD-3-Clause
 #
 # See file LICENSE for terms.

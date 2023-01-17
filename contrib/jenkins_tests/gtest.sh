@@ -2,7 +2,7 @@
 #
 # Testing script: gtest
 #
-# Copyright (c) 2019-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2019-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # BSD-3-Clause
 #
 # See file LICENSE for terms.
