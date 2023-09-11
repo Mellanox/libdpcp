@@ -1,9 +1,16 @@
 ARG ARCH=x86_64
-FROM harbor.mellanox.com/swx-infra/$ARCH/rhel7.7/builder:mofed-5.7-0.0.8.0
+FROM harbor.mellanox.com/rivermax/dpcp/x86_64/rhel7.7/core:7.7
 ARG _UID=6213
 ARG _GID=11429
 ARG _LOGIN=swx-jenkins
 ARG _HOME=/var/home/
+
+RUN echo "[mlnx-opt]" > /etc/yum.repos.d/mlnx-opt.repo && \
+    echo "name=RHEL 7.7 mirror" >> /etc/yum.repos.d/mlnx-opt.repo && \
+    echo "baseurl=http://webrepo.mtr.labs.mlnx/RH/7.7/x86_64/" >> /etc/yum.repos.d/mlnx-opt.repo && \
+    echo "enabled=1" >> /etc/yum.repos.d/mlnx-opt.repo && \
+    echo "gpgcheck=0" >> /etc/yum.repos.d/mlnx-opt.repo && \
+    yum makecache
 
 RUN yum install -y \
     atk \
@@ -29,7 +36,31 @@ RUN yum install -y \
     tk \
     wget \
     environment-modules \
-    net-tools
+    net-tools \
+    numactl-libs \
+    libmnl
+
+# MOFED
+ARG MOFED_OS=rhel7.7
+ARG MOFED_VERSION=23.07-0.5.1.2
+ENV MOFED_DIR MLNX_OFED_LINUX-${MOFED_VERSION}-${MOFED_OS}-x86_64
+ENV MOFED_SITE_PLACE MLNX_OFED-${MOFED_VERSION}
+ENV MOFED_IMAGE ${MOFED_DIR}.tgz
+
+RUN wget --no-verbose http://content.mellanox.com/ofed/${MOFED_SITE_PLACE}/${MOFED_IMAGE} && \
+    tar -xzf ${MOFED_IMAGE} && \
+    ${MOFED_DIR}/mlnxofedinstall --all -q \
+	--force \
+	--upstream-libs \
+	--vma \
+	--user-space-only \
+	--without-fw-update \
+	--skip-unsupported-devices-check \
+	--without-libxlio \
+	--without-libxlio-utils \
+	--without-libxlio-dev \
+        --distro ${MOFED_OS} \
+    && rm -rf ${MOFED_DIR} && rm -rf *.tgz
 
 RUN echo "$_LOGIN ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
     mkdir -p ${_HOME} && \

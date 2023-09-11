@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * Copyright (c) 2019-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -78,6 +78,35 @@ static void store_hca_cap_crypto_enable(adapter_hca_capabilities* external_hca_c
     external_hca_caps->crypto_enable = DEVX_GET(
         query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second, capability.cmd_hca_cap.crypto);
     log_trace("Capability - crypto: %d\n", external_hca_caps->crypto_enable);
+
+    external_hca_caps->aes_xts_multi_block_le_tweak =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+                 capability.cmd_hca_cap.aes_xts_multi_block_le_tweak);
+    log_trace("Capability - aes_xts_multi_block_le_tweak: %d\n",
+              external_hca_caps->aes_xts_multi_block_le_tweak);
+
+    external_hca_caps->aes_xts_tweak_inc_shift =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+                 capability.cmd_hca_cap.aes_xts_tweak_inc_shift);
+    log_trace("Capability - aes_xts_tweak_inc_shift: %d\n",
+              external_hca_caps->aes_xts_tweak_inc_shift);
+
+    external_hca_caps->aes_xts_single_block_le_tweak =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+                 capability.cmd_hca_cap.aes_xts_single_block_le_tweak);
+    log_trace("Capability - aes_xts_single_block_le_tweak: %d\n",
+              external_hca_caps->aes_xts_single_block_le_tweak);
+
+    external_hca_caps->aes_xts_tweak_inc_64 =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+                 capability.cmd_hca_cap.aes_xts_tweak_inc_64);
+    log_trace("Capability - aes_xts_tweak_inc_64: %d\n", external_hca_caps->aes_xts_tweak_inc_64);
+
+    external_hca_caps->aes_xts_multi_block_be_tweak =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+                 capability.cmd_hca_cap.aes_xts_multi_block_be_tweak);
+    log_trace("Capability - aes_xts_multi_block_be_tweak: %d\n",
+              external_hca_caps->aes_xts_multi_block_be_tweak);
 }
 
 static void store_hca_general_object_types_encryption_key_caps(
@@ -1002,6 +1031,22 @@ status adapter::create_extern_mkey(void* address, size_t length, uint32_t id, ex
     return (nullptr == mkey) ? DPCP_ERR_NO_MEMORY : DPCP_OK;
 }
 
+status adapter::create_crypto_mkey(crypto_mkey*& cmk, const uint32_t max_sge)
+{
+    cmk = new (std::nothrow) crypto_mkey(this, max_sge);
+    if (nullptr == cmk) {
+        return DPCP_ERR_NO_MEMORY;
+    }
+    // Create MKey
+    status ret = cmk->create();
+    if (DPCP_OK != ret) {
+        delete cmk;
+        return DPCP_ERR_CREATE;
+    }
+
+    return DPCP_OK;
+}
+
 status adapter::create_cq(const cq_attr& attrs, cq*& out_cq)
 {
     // CQ_SIZE is mandatory
@@ -1390,32 +1435,77 @@ status adapter::get_hca_caps_frequency_khz(uint32_t& freq)
     return DPCP_OK;
 }
 
-status adapter::create_dek(const dek::attr& dek_attr, dek*& dek_obj)
+status adapter::create_tls_dek(const dek_attr& attr, tls_dek*& tls_dek_obj)
 {
     status ret = DPCP_OK;
-    dek* _dek_obj = nullptr;
-
-    if (!(dek_attr.flags & DEK_ATTR_TLS)) {
-        log_trace("Only TLS encryption key type is supported");
-        return DPCP_ERR_NO_SUPPORT;
-    }
+    tls_dek* _tls_dek_obj = nullptr;
 
     if (m_is_caps_available && !m_external_hca_caps->general_object_types_encryption_key) {
         log_trace("The adapter doesn't support the creation of general object encryption key");
         return DPCP_ERR_NO_SUPPORT;
     }
 
-    _dek_obj = new (std::nothrow) dek(get_ctx());
-    if (nullptr == _dek_obj) {
+    _tls_dek_obj = new (std::nothrow) tls_dek(get_ctx());
+    if (nullptr == _tls_dek_obj) {
         return DPCP_ERR_NO_MEMORY;
     }
 
-    ret = _dek_obj->create(dek_attr);
+    ret = _tls_dek_obj->create(attr);
     if (DPCP_OK != ret) {
-        delete _dek_obj;
+        delete _tls_dek_obj;
         return DPCP_ERR_CREATE;
     }
-    dek_obj = _dek_obj;
+    tls_dek_obj = _tls_dek_obj;
+
+    return DPCP_OK;
+}
+
+status adapter::create_ipsec_dek(const dek_attr& attr, ipsec_dek*& ipsec_dek_obj)
+{
+    status ret = DPCP_OK;
+    ipsec_dek* _ipsec_dek_obj = nullptr;
+
+    if (m_is_caps_available && !m_external_hca_caps->general_object_types_encryption_key) {
+        log_trace("The adapter doesn't support the creation of general object encryption key");
+        return DPCP_ERR_NO_SUPPORT;
+    }
+
+    _ipsec_dek_obj = new (std::nothrow) ipsec_dek(get_ctx());
+    if (nullptr == _ipsec_dek_obj) {
+        return DPCP_ERR_NO_MEMORY;
+    }
+
+    ret = _ipsec_dek_obj->create(attr);
+    if (DPCP_OK != ret) {
+        delete _ipsec_dek_obj;
+        return DPCP_ERR_CREATE;
+    }
+    ipsec_dek_obj = _ipsec_dek_obj;
+
+    return DPCP_OK;
+}
+
+status adapter::create_aes_txs_dek(const dpcp::dek_attr& attr, aes_xts_dek*& aes_txs_obj)
+{
+    status ret = DPCP_OK;
+    aes_xts_dek* _aes_txs_obj = nullptr;
+
+    if (m_is_caps_available && !m_external_hca_caps->general_object_types_encryption_key) {
+        log_trace("The adapter doesn't support the creation of general object encryption key");
+        return DPCP_ERR_NO_SUPPORT;
+    }
+
+    _aes_txs_obj = new (std::nothrow) aes_xts_dek(get_ctx());
+    if (nullptr == _aes_txs_obj) {
+        return DPCP_ERR_NO_MEMORY;
+    }
+
+    ret = _aes_txs_obj->create(attr);
+    if (DPCP_OK != ret) {
+        delete _aes_txs_obj;
+        return DPCP_ERR_CREATE;
+    }
+    aes_txs_obj = _aes_txs_obj;
 
     return DPCP_OK;
 }

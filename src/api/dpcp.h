@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * Copyright (c) 2019-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -52,7 +52,7 @@
 using std::function;
 using std::unordered_map;
 
-static const char* dpcp_version = "1.1.43";
+static const char* dpcp_version = "1.1.46";
 
 #if defined(__linux__)
 typedef void* LPOVERLAPPED;
@@ -590,6 +590,52 @@ public:
      * @param [in]  id              Valid id of externally registered key
      */
     extern_mkey(adapter* ad, void* address, size_t length, uint32_t id);
+};
+
+class crypto_mkey : public mkey {
+    adapter* m_adapter;
+    uint32_t m_idx; // memory key index
+    const uint32_t m_max_sge; // max number of scatter gather elements
+
+public:
+    /**
+     * @brief Constructor of crypto_mkey
+     *
+     * @param [in]  ad              Pointer to Adapter
+     * @param [in]  max_sge         Max number of scatter gather elements
+     */
+    explicit crypto_mkey(adapter* ad, uint32_t max_sge);
+    virtual ~crypto_mkey() = default;
+    /**
+     * @brief Creates Memory Key for given type
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    status create();
+    /*
+     * @brief Returns virtual address of memory region.
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    virtual status get_address(void*& address) override;
+    /**
+     * @brief Returns length of memory region
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    virtual status get_length(size_t& len) override;
+    /**
+     * @brief Returns memory region flags
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    virtual status get_flags(mkey_flags& flags) override;
+    /**
+     * @brief Returns MKEY ID created by create()
+     *
+     * @retval Returns DPCP_OK on success.
+     */
+    virtual status get_id(uint32_t& id) override;
 };
 
 /**
@@ -1999,24 +2045,25 @@ typedef struct qos_packet_pacing_s {
     uint16_t packet_sz; /**< typical packet size */
 } qos_packet_pacing;
 
-enum {
-    DEK_ATTR_TLS = (1 << 1), /**< TLS encryption key type */
-    DEK_ATTR_IPSEC = (1 << 2) /**< IPsec encryption key type */
+/**
+ * @brief Dek attributes
+ *
+ */
+struct dek_attr {
+    void* key_blob; /**< key buffer layout, depended on the key type:
+                         plaintext tls key - key
+                         plaintext ipsec key - key
+                         plaintext aes_xts key - key1 + key2 + keytag(optional) */
+    uint32_t key_blob_size; /**< size of key blob in bytes */
+    uint32_t key_size; /**< size of key in bytes */
+    uint32_t pd_id; /**< Protection domain id */
+    uint64_t opaque; /**< Plaintext metadata to describe the key */
 };
 
 /**
- * @brief Represent and handles DEK object
+ * @brief Represent and handles DEK object, Abstract class
  */
 class dek : public obj {
-public:
-    struct attr {
-        uint32_t flags;
-        void* key;
-        uint32_t key_size_bytes;
-        uint32_t pd_id;
-        uint64_t opaque;
-    };
-
 public:
     /**
      * @brief DEK Object constructor, object is initialized but not created yet
@@ -2024,25 +2071,25 @@ public:
      * @param [in]  ctx           Pointer to adapter context
      *
      */
-    dek(dcmd::ctx* ctx);
-    virtual ~dek();
+    explicit dek(dcmd::ctx* ctx);
+    virtual ~dek() = default;
 
     /**
      * @brief Create DEK object using requested properties
      *
      * @param [in] dek_attr Object attributies
      */
-    status create(const dek::attr& dek_attr);
+    status create(const dek_attr& attr);
 
     /**
      * @brief Modify DEK object in HW
      */
-    status modify(const dek::attr& dek_attr);
+    status modify(const dek_attr& attr);
 
     /**
      * @brief Query DEK object in HW
      */
-    status query(dek::attr& dek_attr);
+    status query(dek_attr& attr);
 
     /**
      * @brief Get key ID object in HW
@@ -2059,6 +2106,85 @@ public:
 
 private:
     uint32_t m_key_id;
+
+protected:
+    struct key_params {
+        uint8_t type;
+        uint8_t size;
+        bool has_keytag;
+        uint32_t offset;
+    };
+
+private:
+    virtual status get_key_params(uint32_t key_blob_size, uint32_t key_size,
+                                  dek::key_params& params) const;
+    virtual uint8_t get_key_type() const = 0;
+
+private:
+    static status verify_attr(const dek_attr& attr);
+    static uint32_t key_size_flag_to_bytes_size(uint8_t size_flag);
+};
+
+/**
+ * @brief Represent and handles TLS DEK object
+ */
+class tls_dek : public dek {
+public:
+    /**
+     * @brief TLS DEK Object constructor, object is initialized but not created yet
+     *
+     * @param [in]  ctx           Pointer to adapter context
+     *
+     */
+    explicit tls_dek(dcmd::ctx* ctx);
+    virtual ~tls_dek() = default;
+
+private:
+    virtual uint8_t get_key_type() const override;
+};
+
+/**
+ * @brief Represent and handles IPSEC DEK object
+ */
+class ipsec_dek : public dek {
+public:
+    /**
+     * @brief IPSEC DEK Object constructor, object is initialized but not created yet
+     *
+     * @param [in]  ctx           Pointer to adapter context
+     *
+     */
+    explicit ipsec_dek(dcmd::ctx* ctx);
+    virtual ~ipsec_dek() = default;
+
+private:
+    virtual uint8_t get_key_type() const override;
+};
+
+/**
+ * @brief Represent and handles AES_XTS DEK object
+ */
+class aes_xts_dek : public dek {
+public:
+    /**
+     * @brief AES_XTS DEK Object constructor, object is initialized but not created yet
+     *
+     * @param [in]  ctx           Pointer to adapter context
+     *
+     */
+    explicit aes_xts_dek(dcmd::ctx* ctx);
+    virtual ~aes_xts_dek() = default;
+
+private:
+    virtual status get_key_params(uint32_t key_blob_size, uint32_t key_size,
+                                  dek::key_params& params) const override;
+    virtual uint8_t get_key_type() const override;
+
+private:
+    static constexpr uint32_t key_size_to_blob_size(uint32_t key_size, bool has_keytag)
+    {
+        return key_size * 2 + has_keytag * 8;
+    }
 };
 
 /*
@@ -2194,6 +2320,14 @@ typedef struct adapter_hca_capabilities {
     uint8_t log_max_dek; /**< Log (base 2) of maximum DEK Objects that are
                             supported, 0 means not supported */
     bool crypto_enable; /**< no prm description. if set, crypto capabilites are supported */
+    bool aes_xts_multi_block_le_tweak;
+    bool aes_xts_tweak_inc_64; /**< Tweak is limited to 0-2^64-2. To have the tweak increment
+                                  by (1<<64) between blocks */
+    bool aes_xts_single_block_le_tweak; /**<  indicates multi stx block per mkey is not supported,
+                                         and trying to encrypt/decrypt multiple blocks in this case
+                                         will result in non-complient output blocks. */
+    bool aes_xts_multi_block_be_tweak; /**< the tweak must be supplied as big-endian */
+    bool aes_xts_tweak_inc_shift; /**< tweak incremented according to tweak_increment_shift */
     uint8_t sq_ts_format; /**< Indicates the supported ts_format in SQ Context.
                              0x0: FREE_RUNNING_TS
                              0x1: REAL_TIME_TS
@@ -2840,6 +2974,8 @@ public:
      */
     status create_extern_mkey(void* address, size_t length, uint32_t id, extern_mkey*& mkey);
 
+    status create_crypto_mkey(crypto_mkey*& mkey, uint32_t max_sge);
+
     /**
      * @brief Creates and returns CQ
      *
@@ -2974,14 +3110,34 @@ public:
     }
 
     /**
-     * @brief Creates and returns DPCP DEK
+     * @brief Creates and returns DPCP TLS DEK
      *
      * @param [in]  dek_attr        Object attributes
      * @param [out] dek_obj         Pointer to DEK object on success
      *
      * @retval      Returns DPCP_OK on success
      */
-    status create_dek(const dek::attr& dek_attr, dek*& dek_obj);
+    status create_tls_dek(const dek_attr& attr, tls_dek*& tls_dek_obj);
+
+    /**
+     * @brief Creates and returns DPCP IPSEC DEK
+     *
+     * @param [in]  dek_attr        Object attributes
+     * @param [out] dek_obj         Pointer to DEK object on success
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status create_ipsec_dek(const dek_attr& attr, ipsec_dek*& ipsec_dek_obj);
+
+    /**
+     * @brief Creates and returns DPCP AES XTS DEK
+     *
+     * @param [in]  dek_attr        Object attributes
+     * @param [out] dek_obj         Pointer to DEK object on success
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status create_aes_txs_dek(const dek_attr& attr, aes_xts_dek*& aes_txs_dek_obj);
 
     /**
      * @brief Creates Protection Domain for the Adapter.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * Copyright (c) 2020-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -790,5 +790,220 @@ TEST_F(dpcp_mkey, ti_em01_create_extern_key)
 
     delete someRegisteredKey;
     delete[] address;
+    delete ad;
+}
+
+////////////////////////////////////////////////////////////////////////
+// crypto mkey tests.                                                 //
+////////////////////////////////////////////////////////////////////////
+
+/**
+ * @test dpcp_mkey.ti_cm01_Constructor
+ * @brief
+ *    Check crypto-mkey constructor
+ * @details
+ */
+TEST_F(dpcp_mkey, ti_cm01_Constructor)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+    ad->open();
+
+    adapter_hca_capabilities caps;
+    status ret = ad->get_hca_capabilities(caps);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    bool is_dek_supported = caps.general_object_types_encryption_key
+        && caps.log_max_dek;
+    if (!is_dek_supported) {
+        log_trace("crypto_mkey is not supported \n");
+        return;
+    }
+
+    crypto_mkey cm(ad, 4);
+
+    ret = cm.create();
+    ASSERT_EQ(ret, DPCP_OK);
+
+    delete ad;
+}
+
+/**
+ * @test dpcp_mkey.ti_cm02_get_address
+ * @brief
+ *    Check crypto_mkey::get_address method
+ * @details
+ *
+ */
+TEST_F(dpcp_mkey, ti_cm02_get_address)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+    ad->open();
+
+    adapter_hca_capabilities caps;
+    status ret = ad->get_hca_capabilities(caps);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    bool is_dek_supported = caps.general_object_types_encryption_key
+        && caps.log_max_dek;
+    if (!is_dek_supported) {
+        log_trace("crypto_mkey is not supported \n");
+        return;
+    }
+
+    crypto_mkey cm(ad, 4);
+
+    ret = cm.create();
+    ASSERT_EQ(ret, DPCP_OK);
+
+    void* addr;
+    ret = cm.get_address(addr);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(nullptr, addr);
+
+    delete ad;
+}
+
+/**
+ * @test dpcp_mkey.ti_cm03_get_length
+ * @brief
+ *    Check crypto_mkey::get_length method
+ * @details
+ *
+ */
+TEST_F(dpcp_mkey, ti_cm03_get_length)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+    ad->open();
+
+    adapter_hca_capabilities caps;
+    status ret = ad->get_hca_capabilities(caps);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    bool is_dek_supported = caps.general_object_types_encryption_key
+        && caps.log_max_dek;
+    if (!is_dek_supported) {
+        log_trace("crypto_mkey is not supported \n");
+        return;
+    }
+
+    crypto_mkey cm(ad, 4);
+
+    ret = cm.create();
+    ASSERT_EQ(ret, DPCP_OK);
+
+    size_t len;
+    ret = cm.get_length(len);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(0, len);
+
+    delete ad;
+}
+
+/**
+ * @test dpcp_mkey.ti_cm04_get_id
+ * @brief
+ *    Check crypto_mkey get_id method
+ * @details
+ *
+ */
+TEST_F(dpcp_mkey, ti_cm04_get_id)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+    ad->open();
+
+    adapter_hca_capabilities caps;
+    status ret = ad->get_hca_capabilities(caps);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    bool is_dek_supported = caps.general_object_types_encryption_key
+        && caps.log_max_dek;
+    if (!is_dek_supported) {
+        log_trace("crypto_mkey is not supported \n");
+        return;
+    }
+
+    crypto_mkey cm(ad, 4);
+
+    ret = cm.create();
+    ASSERT_EQ(ret, DPCP_OK);
+
+    uint32_t id = 0;
+    ret = cm.get_id(id);
+    ASSERT_EQ(ret, DPCP_OK);
+    ASSERT_NE(id, 0);
+
+    delete ad;
+}
+
+/**
+ * @test dpcp_mkey.ti_cm05_get_flags
+ * @brief
+ *    Check crypto_mkey::get_flags method
+ * @details
+ *
+ */
+TEST_F(dpcp_mkey, ti_cm05_get_flags)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+    ad->open();
+
+    adapter_hca_capabilities caps;
+    status ret = ad->get_hca_capabilities(caps);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    bool is_dek_supported = caps.general_object_types_encryption_key
+        && caps.log_max_dek;
+    if (!is_dek_supported) {
+        log_trace("crypto_mkey is not supported \n");
+        return;
+    }
+
+    crypto_mkey cm(ad, 4);
+
+    ret = cm.create();
+    ASSERT_EQ(ret, DPCP_OK);
+
+    dpcp::mkey_flags flags = MKEY_NONE;
+    ret = cm.get_flags(flags);
+    ASSERT_EQ(ret, DPCP_OK);
+    ASSERT_EQ(flags, MKEY_ZERO_BASED);
+
+    delete ad;
+}
+
+/**
+ * @test dpcp_mkey.ti_cm06_max_sge_bad_attr
+ * @brief
+ *    Check crypto_mkey::create
+ * @details
+ *
+ */
+TEST_F(dpcp_mkey, ti_cm06_max_sge_bad_attr)
+{
+    adapter* ad = OpenAdapter();
+    ASSERT_NE(nullptr, ad);
+    ad->open();
+
+    adapter_hca_capabilities caps;
+    status ret = ad->get_hca_capabilities(caps);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    bool is_dek_supported = caps.general_object_types_encryption_key
+        && caps.log_max_dek;
+    if (!is_dek_supported) {
+        log_trace("crypto_mkey is not supported \n");
+        return;
+    }
+
+    crypto_mkey cm(ad, 5);
+
+    ret = cm.create();
+    ASSERT_NE(ret, DPCP_OK);
+
     delete ad;
 }

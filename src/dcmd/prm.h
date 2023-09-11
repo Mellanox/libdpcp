@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * Copyright (c) 2019-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,7 +34,7 @@
 #define u8 uint8_t
 
 /*
- * Copyright (C) Mellanox Technologies Ltd, 2001-2023. ALL RIGHTS RESERVED.
+ * Copyright (C) Mellanox Technologies Ltd, 2001-2024. ALL RIGHTS RESERVED.
  *
  * See file LICENSE for terms.
  */
@@ -1284,17 +1284,21 @@ struct mlx5_ifc_cmd_hca_cap_bits {
     u8 log_min_hairpin_wq_data_sz[0x5];
     u8 reserved_at_3e8[0x3];
     u8 log_max_vlan_list[0x5];
-    u8 reserved_at_3f0[0x3];
+    u8 aes_xts_tweak_inc_64[0x1];
+    u8 aes_xts_single_block_le_tweak[0x1];
+    u8 aes_xts_multi_block_be_tweak[0x1];
     u8 log_max_current_mc_list[0x5];
-    u8 reserved_at_3f8[0x3];
+    u8 aes_xts_tweak_inc_shift[0x1];
+    u8 reserved_at_3f8[0x2];
     u8 log_max_current_uc_list[0x5];
 
     u8 general_obj_types[0x40];
 
     u8 sq_ts_format[0x2];
     u8 rq_ts_format[0x2];
-    u8 reserved_at_444[0x25];
+    u8 reserved_at_443[0x24];
 
+    u8 aes_xts_multi_block_le_tweak[0x1];
     u8 crypto[0x1];
     u8 reserved_at_46a[0x16];
 
@@ -3366,7 +3370,9 @@ struct mlx5_ifc_mkc_bits {
     u8 reserved_at_1c0[0x1b];
     u8 log_entity_size[0x5];
 
-    u8 reserved_at_1e0[0x20];
+    u8 reserved_at_1e0[0x3];
+    u8 crypto_en[0x2];
+    u8 reserved_at_1e5[0x1b];
 };
 
 struct mlx5_ifc_pkey_bits {
@@ -9889,7 +9895,8 @@ struct mlx5_ifc_encryption_key_obj_bits {
     u8 sw_wrapped[0x1];
     u8 reserved_at_49[0xB];
     u8 key_size[0x4];
-    u8 reserved_at_58[0x4];
+    u8 has_keytag[0x1];
+    u8 reserved_at_59[0x3];
     u8 key_type[0x4];
 
     u8 reserved_at_60[0x8];
@@ -9943,6 +9950,7 @@ enum {
 enum {
     MLX5_GENERAL_OBJECT_TYPE_ENCRYPTION_KEY_TYPE_TLS = 0x1,
     MLX5_GENERAL_OBJECT_TYPE_ENCRYPTION_KEY_TYPE_IPSEC = 0x2,
+    MLX5_GENERAL_OBJECT_TYPE_ENCRYPTION_KEY_TYPE_AES_XTS = 0x3,
 };
 
 struct mlx5_ifc_tls_static_params_bits {

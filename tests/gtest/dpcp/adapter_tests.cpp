@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * Copyright (c) 2020-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -918,14 +918,14 @@ TEST_F(dpcp_adapter, ti_20_create_dek)
     memcpy(key, "a6a7ee7abec9c4ce", key_size_bytes);  // Random key for the test.
     key_size_bytes = key_size_bytes;
 
-    dek* _dek = nullptr;
-    struct dek::attr dek_attr;
-    memset(&dek_attr, 0, sizeof(dek_attr));
-    dek_attr.flags = DEK_ATTR_TLS;
-    dek_attr.key = key;
-    dek_attr.key_size_bytes = key_size_bytes;
-    dek_attr.pd_id = ad->get_pd();
-    ret = ad->create_dek(dek_attr, _dek);
+    tls_dek* _dek = nullptr;
+    struct dek_attr attr;
+    memset(&attr, 0, sizeof(attr));
+    attr.key_blob = key;
+    attr.key_blob_size = key_size_bytes;
+    attr.key_size = key_size_bytes;
+    attr.pd_id = ad->get_pd();
+    ret = ad->create_tls_dek(attr, _dek);
     ASSERT_EQ(DPCP_OK, ret);
 
     uint32_t key_id = _dek->get_key_id();
@@ -1185,7 +1185,7 @@ TEST_F(dpcp_adapter, DISABLED_perf_100k_dek_modify)
     std::vector<char> key_base = {'a','6','a','7','e','e','7','a','b','e','c','9','c','4','c','e',
                                   'a','6','a','7','e','e','7','a','b','e','c','9','c','4','c','e'};
     uint64_t* ptr_key = reinterpret_cast<uint64_t*>(key_base.data());
-    dpcp::dek* temp_dek_ptr = nullptr;
+    dpcp::tls_dek* temp_dek_ptr = nullptr;
 
     log_trace("Creating %zu Keys ...\n", SUB_LOOP_COUNT);
 
@@ -1196,13 +1196,13 @@ TEST_F(dpcp_adapter, DISABLED_perf_100k_dek_modify)
         ++*ptr_key;
         memcpy(key_arr2[idx].get(), key_base.data(), key_size_bytes);  // Random key for the test.
 
-        struct dek::attr dek_attr;
-        memset(&dek_attr, 0, sizeof(dek_attr));
-        dek_attr.flags = DEK_ATTR_TLS;
-        dek_attr.key = key_arr[idx].get();
-        dek_attr.key_size_bytes = key_size_bytes;
-        dek_attr.pd_id = ad->get_pd();
-        ret = ad->create_dek(dek_attr, temp_dek_ptr);
+        dek_attr attr;
+        memset(&attr, 0, sizeof(attr));
+        attr.key_blob = key_arr[idx].get();
+        attr.key_blob_size = key_size_bytes;
+        attr.key_size = key_size_bytes;
+        attr.pd_id = ad->get_pd();
+        ret = ad->create_tls_dek(attr, temp_dek_ptr);
         ASSERT_EQ(DPCP_OK, ret);
         dek_arr[idx].reset(temp_dek_ptr);
         ++*ptr_key;
@@ -1226,14 +1226,15 @@ TEST_F(dpcp_adapter, DISABLED_perf_100k_dek_modify)
     auto totalCount = diff_ts.count();
     auto tc_dek_modify = totalCount;
 
-    dek::attr attrs = {};
+    dek_attr modify_attr = {};
     auto iterations = LOOP_COUNT / SUB_LOOP_COUNT;
     while (iterations-- > 0ULL) {
         auto start_ts = std::chrono::high_resolution_clock::now();
         for (size_t idx = 0U; idx < SUB_LOOP_COUNT; ++idx) {
-            attrs.key = (*key_arr_ptr)[idx].get();
-            attrs.key_size_bytes = key_size_bytes;
-            ret = dek_arr[idx]->modify(attrs);
+            modify_attr.key_blob = (*key_arr_ptr)[idx].get();
+            modify_attr.key_blob_size = key_size_bytes;
+            modify_attr.key_size = key_size_bytes;
+            ret = dek_arr[idx]->modify(modify_attr);
             ASSERT_EQ(DPCP_OK, ret);
         }
 

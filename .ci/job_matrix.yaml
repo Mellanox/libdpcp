@@ -21,8 +21,10 @@ kubernetes:
   arch_table:
     x86_64:
       jnlpImage: 'harbor.mellanox.com/swx-infra/swx-jenkins-agent-jnlp:x86_64'
+      dockerImage: 'harbor.mellanox.com/rivermax/docker:19.03'
     aarch64:
       jnlpImage: 'harbor.mellanox.com/swx-infra/swx-jenkins-agent-jnlp:aarch64'
+      dockerImage: 'harbor.mellanox.com/rivermax/docker:19.03_aarch64'
 
 volumes:
   - {mountPath: /hpc/local, hostPath: /hpc/local}
@@ -35,19 +37,28 @@ volumes:
 
 
 runs_on_dockers:
-  - {file: '.dockers/Dockerfile.ubuntu18.04', arch: 'x86_64', name: 'ubuntu18.04',
-     url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/ubuntu18.04/builder:mofed-5.7-0.0.8.0', tag: 'mofed-5.7-0.0.8.0'}
-  - {file: '.dockers/Dockerfile.ubuntu20.04', arch: 'x86_64', name: 'ubuntu20.04',
-     url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/ubuntu20.04/builder:mofed-5.7-0.0.8.0', tag: 'mofed-5.7-0.0.8.0'}
-  - {file: '.dockers/Dockerfile.ubuntu22.04', arch: 'x86_64', name: 'ubuntu22.04',
-     url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/ubuntu22.04/builder:mofed-5.6.1.0.3.3', tag: 'mofed-5.6.1.0.3.3'}
-  - {file: '.dockers/Dockerfile.rhel7.7', arch: 'x86_64', name: 'rhel7.7',
-     url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/rhel7.7/builder:mofed-5.7-0.0.8.0', tag: 'mofed-5.7-0.0.8.0'}
-  - {file: '.dockers/Dockerfile.ubuntu18.04', arch: 'x86_64', name: 'ubuntu18.04.cov',
-     url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/ubuntu18.04/builder:mofed-5.7-0.0.8.0', tag: 'mofed-5.7-0.0.8.0', category: 'tool'}
+  - {file: '.dockers/Dockerfile.ubuntu18.04', arch: 'x86_64', name: 'ubuntu18.04', url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/ubuntu18.04/core:mofed-23.07-0.5.1.2', tag: 'mofed-23.07-0.5.1.2', build_args: '--no-cache' }
+  - {file: '.dockers/Dockerfile.ubuntu20.04', arch: 'x86_64', name: 'ubuntu20.04', url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/ubuntu20.04/core:mofed-23.07-0.5.1.2', tag: 'mofed-23.07-0.5.1.2', build_args: '--no-cache'}
+  - {file: '.dockers/Dockerfile.ubuntu20.04.arm64', arch: 'aarch64', name: 'ubuntu20.04.arm64', url: 'harbor.mellanox.com/rivermax/dpcp/aarch64/ubuntu20.04/core:mofed-23.07-0.5.1.2', tag: 'mofed-23.07-0.5.1.2', build_args: '--no-cache'}
+  - {file: '.dockers/Dockerfile.ubuntu22.04', arch: 'x86_64', name: 'ubuntu22.04', url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/ubuntu22.04/core:mofed-23.07-0.5.1.2', tag: 'mofed-23.07-0.5.1.2', build_args: '--no-cache'}
+  - {file: '.dockers/Dockerfile.ubuntu22.04.arm64', arch: 'aarch64', name: 'ubuntu22.04.arm64', url: 'harbor.mellanox.com/rivermax/dpcp/aarch64/ubuntu22.04/core:mofed-23.07-0.5.1.2', tag: 'mofed-23.07-0.5.1.2', build_args: '--no-cache'}
+  - {file: '.dockers/Dockerfile.rhel7.7', arch: 'x86_64', name: 'rhel7.7', url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/rhel7.7/core:mofed-23.07-0.5.1.2', tag: 'mofed-23.07-0.5.1.2', build_args: '--no-cache'}
+  - {file: '.dockers/Dockerfile.rhel7.8', arch: 'x86_64', name: 'rhel7.8', url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/rhel7.8/core:mofed-23.07-0.5.1.2', tag: 'mofed-23.07-0.5.1.2', build_args: '--no-cache'}
+  - {file: '.dockers/Dockerfile.rhel7.9', arch: 'x86_64', name: 'rhel7.9', url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/rhel7.9/core:mofed-23.07-0.5.1.2', tag: 'mofed-23.07-0.5.1.2', build_args: '--no-cache'}
+  - {file: '.dockers/Dockerfile.rhel8.1', arch: 'x86_64', name: 'rhel8.1', url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/rhel8.1/core:mofed-23.07-0.5.1.2', tag: 'mofed-23.07-0.5.1.2', build_args: '--no-cache'}
+  - {file: '.dockers/Dockerfile.rhel8.3', arch: 'x86_64', name: 'rhel8.3', url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/rhel8.3/core:mofed-23.07-0.5.1.2', tag: 'mofed-23.07-0.5.1.2', build_args: '--no-cache'}
+  - {file: '.dockers/Dockerfile.rhel8.4', arch: 'x86_64', name: 'rhel8.4', url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/rhel8.4/core:mofed-23.07-0.5.1.2', tag: 'mofed-23.07-0.5.1.2', build_args: '--no-cache'}
+  - {file: '.dockers/Dockerfile.rhel8.4.arm', arch: 'aarch64', name: 'rhel8.4.arm64', url: 'harbor.mellanox.com/rivermax/dpcp/aarch64/rhel8.4/core:mofed-23.07-0.5.1.2', tag: 'mofed-23.07-0.5.1.2', build_args: '--no-cache'}
+  - {file: '.dockers/Dockerfile.rhel8.6', arch: 'x86_64', name: 'rhel8.6', url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/rhel8.6/core:mofed-23.07-0.5.1.2', tag: 'mofed-23.07-0.5.1.2', build_args: '--no-cache'}
+  - {file: '.dockers/Dockerfile.rhel8.6.arm', arch: 'aarch64', name: 'rhel8.6.arm64', url: 'harbor.mellanox.com/rivermax/dpcp/aarch64/rhel8.6/core:mofed-23.07-0.5.1.2', tag: 'mofed-23.07-0.5.1.2', build_args: '--no-cache'}
+  - {file: '.dockers/Dockerfile.rhel9.2', arch: 'x86_64', name: 'rhel9.2', url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/rhel9.2/core:mofed-23.07-0.5.1.2', tag: 'mofed-23.07-0.5.1.2', build_args: '--no-cache'}
+  - {file: '.dockers/Dockerfile.oel8.4', arch: 'x86_64', name: 'oel8.4', url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/oel8.4/core:mofed-23.07-0.5.1.2', tag: 'mofed-23.07-0.5.1.2', build_args: '--no-cache'}
+  - {file: '.dockers/Dockerfile.oel8.6', arch: 'x86_64', name: 'oel8.6', url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/oel8.6/core:mofed-23.07-0.5.1.2', tag: 'mofed-23.07-0.5.1.2', build_args: '--no-cache'}
+  - {file: '.dockers/Dockerfile.oel8.7', arch: 'x86_64', name: 'oel8.7', url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/oel8.7/core:mofed-23.07-0.5.1.2', tag: 'mofed-23.07-0.5.1.2', build_args: '--no-cache'}
+  - {file: '.dockers/Dockerfile.ubuntu18.04', arch: 'x86_64', name: 'ubuntu18.04.cov', url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/ubuntu18.04/cov:mofed-23.07-0.5.1.2', tag: 'mofed-23.07-0.5.1.2', category: 'tool', build_args: '--no-cache'}
   - {file: '.dockers/Dockerfile.fedora32', arch: 'x86_64', name: 'fedora32',
-     url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/fedora32:clang', tag: 'clang', category: 'tool'}
-  - {name: 'header-check', url: 'harbor.mellanox.com/toolbox/header_check:0.0.14', arch: 'x86_64', tag: '0.0.14', category: 'tool'}
+     url: 'harbor.mellanox.com/rivermax/dpcp/x86_64/fedora32:clang', tag: 'clang', category: 'tool', build_args: '--no-cache'}
+  - {name: 'header-check', url: 'harbor.mellanox.com/toolbox/header_check:0.0.14', arch: 'x86_64', tag: '0.0.14', category: 'tool', build_args: '--no-cache'}
 
 runs_on_agents:
   - {nodeLabel: 'beni09', category: 'base'}

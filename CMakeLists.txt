@@ -54,6 +54,14 @@ target_link_libraries(${PROJECT_NAME} PRIVATE dpcp_config dpcp_common_deps)
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_LIST_DIR})
 
+install(TARGETS ${PROJECT_NAME}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
+)
+
+if (NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
+	install(FILES src/api/dpcp.h DESTINATION include/mellanox)
+endif()
+
 add_subdirectory(src)
 if (${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_SOURCE_DIR})
     add_subdirectory(tests)

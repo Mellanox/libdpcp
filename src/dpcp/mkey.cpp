@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * Copyright (c) 2019-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -182,6 +182,8 @@ status direct_mkey::reg_mem(void* verbs_pd)
     return DPCP_ERR_UMEM;
 }
 
+// TODO: there is code duplication in create method, need to have one create function in
+// mkey abstract class and have a virtual function to get params (see dek implementation).
 status direct_mkey::create()
 {
     if (m_ibv_mem) {
@@ -660,6 +662,120 @@ extern_mkey::extern_mkey(adapter* ad, void* address, size_t length, uint32_t id)
     : base_ref_mkey(ad, address, length, id)
 {
     log_trace("EXTERN KEY CTR ad: %p\n", ad);
+}
+
+crypto_mkey::crypto_mkey(adapter* ad, const uint32_t max_sge)
+    : mkey(ad->get_ctx())
+    , m_adapter(ad)
+    , m_idx()
+    , m_max_sge(max_sge)
+{
+}
+
+status crypto_mkey::create()
+{
+    uint32_t in[DEVX_ST_SZ_DW(create_mkey_in)] = {};
+    uint32_t out[DEVX_ST_SZ_DW(create_mkey_out)] = {};
+    size_t outlen = sizeof(out);
+    const uint32_t pd_id = m_adapter->get_pd();
+
+    if (0 == pd_id) {
+        log_error("crypto_mkey::create PD num is not avalaible!\n");
+        return DPCP_ERR_INVALID_PARAM;
+    }
+
+    if (m_max_sge % 4 != 0) {
+        log_error("crypto_mkey::create max_sge should be in multiplication of 4\n");
+        return DPCP_ERR_INVALID_PARAM;
+    }
+
+    // Set fields in mkey_entry
+    void* p_mkeyc = DEVX_ADDR_OF(create_mkey_in, in, memory_key_mkey_entry);
+
+    // 2 LSB of the access mode, shall be set to 0x2 (KLM - indirect access)
+    DEVX_SET(mkc, p_mkeyc, access_mode_1_0, MLX5_MKC_ACCESS_MODE_KLMS);
+    DEVX_SET(mkc, p_mkeyc, log_entity_size, 0);
+
+    DEVX_SET(mkc, p_mkeyc, free, 1);
+    DEVX_SET(mkc, p_mkeyc, en_rinval, 1);
+    // Allow local write access
+    DEVX_SET(mkc, p_mkeyc, lw, 1);
+    // Allow local read access
+    DEVX_SET(mkc, p_mkeyc, lr, 1);
+    // Not allow remote write access
+    DEVX_SET(mkc, p_mkeyc, rw, 0);
+    // Not allow remote read access
+    DEVX_SET(mkc, p_mkeyc, rr, 0);
+    // Enable umr operation on this MKey
+    DEVX_SET(mkc, p_mkeyc, umr_en, 1);
+    // When no QPN is attached must be set to 0xffffff.
+    DEVX_SET(mkc, p_mkeyc, qpn, 0xffffff);
+    // Set protection Domain
+    DEVX_SET(mkc, p_mkeyc, pd, pd_id);
+    DEVX_SET(mkc, p_mkeyc, translations_octword_size, 128);
+
+    // TODO: need to understand if we can enable relax ordering as it improve performance.
+    // DEVX_SET(mkc, p_mkeyc, relaxed_ordering_write, attr->relaxed_ordering_write);
+    // DEVX_SET(mkc, p_mkeyc, relaxed_ordering_read, attr->relaxed_ordering_read);
+
+    // Enable encryption and decryption operations
+    DEVX_SET(mkc, p_mkeyc, crypto_en, 1);
+    // Enable having bsf list on this MKey
+    DEVX_SET(mkc, p_mkeyc, bsf_en, 1);
+    // Size (in units of 16B) required for this MKey’s BSF. Must be a multiple of 4.
+    DEVX_SET(mkc, p_mkeyc, bsf_octword_size, m_max_sge);
+
+    // Obtain next Mkey counter from static value
+    int mkey_cnt = g_mkey_cnt.load();
+    while (!g_mkey_cnt.compare_exchange_strong(mkey_cnt, mkey_cnt + 1, std::memory_order_seq_cst) &&
+           (mkey_cnt < g_mkey_cnt))
+        ;
+    // mkey_cnt now include incremented unique value
+    //
+    // SW managed ID that comes to reduce a chance were a wrong key is used due to
+    // mkey
+    // index reuse (SW reuses mkey)
+    DEVX_SET(mkc, p_mkeyc, mkey_7_0, mkey_cnt % 0xFF);
+
+    DEVX_SET(create_mkey_in, in, opcode, MLX5_CMD_OP_CREATE_MKEY);
+    status ret = obj::create(in, sizeof(in), out, outlen);
+    if (DPCP_OK != ret) {
+        return ret;
+    }
+    // 3 Bytes of the mkey index. Mkey index equals to 24 MSBs of the 32 bits
+    // mkey.
+    // The rest 8 LSB of the mkey are the variant part of the mkey, which is
+    // selected
+    // by the SW and set via Mkey Context.mkey_7_0
+    //
+    m_idx = DEVX_GET(create_mkey_out, out, mkey_index) << 8;
+    m_idx |= (mkey_cnt % 0xFF);
+    log_trace("mkey_cnt: %d mkey_idx: 0x%x\n", mkey_cnt, m_idx);
+    return ret;
+}
+
+status crypto_mkey::get_id(uint32_t& id)
+{
+    id = m_idx;
+    return DPCP_OK;
+}
+
+status crypto_mkey::get_address(void*& address)
+{
+    address = nullptr;
+    return DPCP_OK;
+}
+
+status crypto_mkey::get_length(size_t& len_)
+{
+    len_ = 0;
+    return DPCP_OK;
+}
+
+status crypto_mkey::get_flags(mkey_flags& flags)
+{
+    flags = MKEY_ZERO_BASED;
+    return DPCP_OK;
 }
 
 } // namespace dpcp
