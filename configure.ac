@@ -13,7 +13,7 @@ dnl===-----------------------------------------------------------------------===
 #
 define([prj_ver_major], 1)
 define([prj_ver_minor], 1)
-define([prj_ver_revision], 40)
+define([prj_ver_revision], 43)
 define([prj_ver_release], esyscmd([echo ${PRJ_RELEASE:=0}]))
 
 
@@ -72,6 +72,11 @@ AC_CONFIG_AUX_DIR(config/aux)
 # Place all our m4 macro into the config subdirectory.
 #
 AC_CONFIG_MACRO_DIR(config/m4)
+
+# Compute the canonical target-system type variable, target, and its three
+# individual parts target_cpu, target_vendor, and target_os.
+#
+AC_CANONICAL_TARGET
 
 # Init automake and libtool
 #
@@ -133,13 +138,29 @@ show_section_title "Setting compiler specific options"
 
 CFLAGS="-D_GNU_SOURCE -fPIC $CFLAGS"
 CXXFLAGS="-D_GNU_SOURCE -fPIC $CXXFLAGS"
+CFLAGS_SECURITY=""
+
+AC_MSG_CHECKING([for cpu])
+AC_MSG_RESULT([$target_cpu])
+case $target_cpu in
+    aarch64|arm64)
+        # harden compiler/linker flags for L4T builds
+        AX_APPEND_COMPILE_FLAGS(m4_flatten([
+            -Wl,-z,relro,-z,now
+            -fstack-protector-strong
+            -Wl,-z,noexecstack
+            -fstack-clash-protection 
+        ]), [CFLAGS_SECURITY])
+        CFLAGS_SECURITY="$CFLAGS_SECURITY -D_FORTIFY_SOURCE=2"
+        ;;
+esac
 
 AC_MSG_CHECKING([for compiler])
 case $CC in
     gcc*|g++*)
         AC_MSG_RESULT([gcc])
-        CFLAGS="$CFLAGS -Wall -Wextra -Werror -Wundef -ffunction-sections -fdata-sections -Wsequence-point -pipe -Winit-self -Wmissing-include-dirs"
-        CXXFLAGS="$CXXFLAGS -Wshadow -Wall -Wextra -Werror -Wundef -ffunction-sections -fdata-sections -Wsequence-point -pipe -Winit-self -Wmissing-include-dirs"
+        CFLAGS="$CFLAGS $CFLAGS_SECURITY -Wall -Wextra -Werror -Wundef -Wformat=2 -Wformat-security -ffunction-sections -fdata-sections -Wsequence-point -pipe -Winit-self -Wmissing-include-dirs"
+        CXXFLAGS="$CXXFLAGS $CFLAGS_SECURITY -Wshadow -Wall -Wextra -Werror -Wundef -Wformat=2 -Wformat-security -ffunction-sections -fdata-sections -Wsequence-point -pipe -Winit-self -Wmissing-include-dirs"
         ;;
     icc*|icpc*)
         AC_MSG_RESULT([icc])
@@ -148,8 +169,8 @@ case $CC in
         ;;
     clang*|clang++*)
         AC_MSG_RESULT([clang])
-        CFLAGS="$CFLAGS -Wall -Werror -Wno-format-security -Wno-self-assign"
-        CXXFLAGS="$CXXFLAGS -Wall -Werror -Wno-overloaded-virtual"
+        CFLAGS="$CFLAGS $CFLAGS_SECURITY -Wall -Werror -Wno-format-security -Wno-self-assign"
+        CXXFLAGS="$CXXFLAGS $CFLAGS_SECURITY -Wall -Werror -Wno-overloaded-virtual"
         ;;
     *)
         AC_MSG_RESULT([unknown])

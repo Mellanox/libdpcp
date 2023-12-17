@@ -64,3 +64,8 @@ debian/changelog
 
 # Tests
 tests/gtest/gtest
+
+# CMake artifacts
+CMakeFiles/
+**/cmake_install.cmake
+api/Makefile
