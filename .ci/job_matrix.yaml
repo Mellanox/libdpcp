@@ -50,7 +50,7 @@ runs_on_dockers:
   - {name: 'header-check', url: 'harbor.mellanox.com/toolbox/header_check:0.0.14', arch: 'x86_64', tag: '0.0.14', category: 'tool'}
 
 runs_on_agents:
-  - {nodeLabel: 'r-aa-fatty09', category: 'base'}
+  - {nodeLabel: 'beni09', category: 'base'}
 
 # Fail job if one of the steps fails or continue
 failFast: false
@@ -189,9 +189,9 @@ steps:
     containerSelector:
       - "{name: 'skip-container'}"
     agentSelector:
-      - "{nodeLabel: 'r-aa-fatty09'}"
+      - "{nodeLabel: 'beni09'}"
     archiveTap: |
-      jenkins/**/build-r-aa-fatty09.tap
+      jenkins/**/build-beni09.tap
 
   - name: Gtest
     run: |
@@ -208,7 +208,7 @@ steps:
     containerSelector:
       - "{name: 'skip-container'}"
     agentSelector:
-      - "{nodeLabel: 'r-aa-fatty09'}"
+      - "{nodeLabel: 'beni09'}"
     archiveTap: |
       jenkins/**/gtest-*.tap
     archiveJunit: |
@@ -290,7 +290,7 @@ steps:
     containerSelector:
       - "{name: 'skip-container'}"
     agentSelector:
-      - "{nodeLabel: 'r-aa-fatty09'}"
+      - "{nodeLabel: 'beni09'}"
     archiveArtifacts-onfail: 'jenkins/dpcp-${BUILD_ID}-*.tar.gz'
     archiveTap: |
       jenkins/**/cppcheck.tap
@@ -310,7 +310,7 @@ steps:
     containerSelector:
       - "{name: 'skip-container'}"
     agentSelector:
-      - "{nodeLabel: 'r-aa-fatty09'}"
+      - "{nodeLabel: 'beni09'}"
     archiveArtifacts-onfail: 'jenkins/dpcp-${BUILD_ID}-*.tar.gz'
     archiveTap: |
       jenkins/**/csbuild.tap
