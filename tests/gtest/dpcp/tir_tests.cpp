@@ -82,7 +82,7 @@ TEST_F(dpcp_tir, ti_02_create)
     ASSERT_EQ(DPCP_OK, ret);
 
     uint32_t tdn = adapter_obj->get_td();
-    ASSERT_NE(0, tdn);
+    ASSERT_NE(0U, tdn);
 
     striding_rq* srq_obj = open_str_rq(adapter_obj, m_rqp);
     ASSERT_NE(nullptr, srq_obj);
@@ -90,7 +90,7 @@ TEST_F(dpcp_tir, ti_02_create)
     uint32_t rqn = 0;
     ret = srq_obj->get_id(rqn);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(0, rqn);
+    ASSERT_NE(0U, rqn);
     log_trace("tdn: 0x%x rqn: 0x%x\n", tdn, rqn);
 
     tir tir_obj(adapter_obj->get_ctx());
@@ -121,7 +121,7 @@ TEST_F(dpcp_tir, ti_03_create)
     ASSERT_EQ(DPCP_OK, ret);
 
     uint32_t tdn = adapter_obj->get_td();
-    ASSERT_NE(0, tdn);
+    ASSERT_NE(0U, tdn);
 
     striding_rq* srq_obj = open_str_rq(adapter_obj, m_rqp);
     ASSERT_NE(nullptr, srq_obj);
@@ -129,7 +129,7 @@ TEST_F(dpcp_tir, ti_03_create)
     uint32_t rqn = 0;
     ret = srq_obj->get_id(rqn);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(0, rqn);
+    ASSERT_NE(0U, rqn);
     log_trace("tdn: 0x%x rqn: 0x%x\n", tdn, rqn);
 
     tir tir_obj(adapter_obj->get_ctx());
@@ -162,7 +162,7 @@ TEST_F(dpcp_tir, ti_04_create_twice)
     ASSERT_EQ(DPCP_OK, ret);
 
     uint32_t tdn = adapter_obj->get_td();
-    ASSERT_NE(0, tdn);
+    ASSERT_NE(0U, tdn);
 
     striding_rq* srq_obj = open_str_rq(adapter_obj, m_rqp);
     ASSERT_NE(nullptr, srq_obj);
@@ -170,7 +170,7 @@ TEST_F(dpcp_tir, ti_04_create_twice)
     uint32_t rqn = 0;
     ret = srq_obj->get_id(rqn);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(0, rqn);
+    ASSERT_NE(0U, rqn);
     log_trace("tdn: 0x%x rqn: 0x%x\n", tdn, rqn);
 
     tir tir_obj(adapter_obj->get_ctx());
@@ -236,7 +236,7 @@ TEST_F(dpcp_tir, ti_06_query)
     ASSERT_EQ(DPCP_OK, ret);
 
     uint32_t tdn = adapter_obj->get_td();
-    ASSERT_NE(0, tdn);
+    ASSERT_NE(0U, tdn);
 
     striding_rq* srq_obj = open_str_rq(adapter_obj, m_rqp);
     ASSERT_NE(nullptr, srq_obj);
@@ -244,7 +244,7 @@ TEST_F(dpcp_tir, ti_06_query)
     uint32_t rqn = 0;
     ret = srq_obj->get_id(rqn);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(0, rqn);
+    ASSERT_NE(0U, rqn);
     log_trace("tdn: 0x%x rqn: 0x%x\n", tdn, rqn);
 
     tir tir_obj(adapter_obj->get_ctx());
@@ -285,7 +285,7 @@ TEST_F(dpcp_tir, ti_07_modify)
     ASSERT_EQ(DPCP_OK, ret);
 
     uint32_t tdn = adapter_obj->get_td();
-    ASSERT_NE(0, tdn);
+    ASSERT_NE(0U, tdn);
 
     striding_rq* srq_obj = open_str_rq(adapter_obj, m_rqp);
     ASSERT_NE(nullptr, srq_obj);
@@ -293,7 +293,7 @@ TEST_F(dpcp_tir, ti_07_modify)
     uint32_t rqn = 0;
     ret = srq_obj->get_id(rqn);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(0, rqn);
+    ASSERT_NE(0U, rqn);
     log_trace("tdn: 0x%x rqn: 0x%x\n", tdn, rqn);
 
     tir tir_obj(adapter_obj->get_ctx());
@@ -348,7 +348,7 @@ TEST_F(dpcp_tir, ti_08_create_tls)
     ASSERT_EQ(DPCP_OK, ret);
 
     uint32_t tdn = adapter_obj->get_td();
-    ASSERT_NE(0, tdn);
+    ASSERT_NE(0U, tdn);
 
     std::unique_ptr<striding_rq> srq_obj(open_str_rq(adapter_obj.get(), m_rqp));
     ASSERT_NE(nullptr, srq_obj);
@@ -356,7 +356,7 @@ TEST_F(dpcp_tir, ti_08_create_tls)
     uint32_t rqn = 0;
     ret = srq_obj->get_id(rqn);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(0, rqn);
+    ASSERT_NE(0U, rqn);
     log_trace("tdn: 0x%x rqn: 0x%x\n", tdn, rqn);
 
     tir tir_obj(adapter_obj->get_ctx());
@@ -404,4 +404,90 @@ TEST_F(dpcp_tir, ti_08_create_tls)
         ASSERT_NE(enable_mask_original, tir_attr.lro.enable_mask);
         ASSERT_EQ(tir_attr.tls_en, 1);
     }
+}
+
+/**
+ * @test dpcp_tir.ti_09_create_nvmeotcp
+ * @brief
+ *    Check tir::create with nvmeotcp
+ * @details
+ *
+ */
+TEST_F(dpcp_tir, ti_09_create_nvmeotcp)
+{
+    std::unique_ptr<adapter> adapter_obj(OpenAdapter());
+    ASSERT_NE(nullptr, adapter_obj);
+
+    status ret = adapter_obj->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    adapter_hca_capabilities caps;
+    ret = adapter_obj->get_hca_capabilities(caps);
+    ASSERT_EQ(DPCP_OK, ret);
+    bool nvmeotcp_en = caps.nvmeotcp_caps.enabled;
+    bool crc_en = caps.nvmeotcp_caps.crc_rx;
+    bool zerocopy_en = caps.nvmeotcp_caps.zerocopy;
+    uint32_t buffer_size_cap = caps.nvmeotcp_caps.log_max_nvmeotcp_tag_buffer_size;
+    log_trace("NVMEoTCP %s\n", nvmeotcp_en ? "supported" : "not supported");
+    log_trace("crc_rx %s\n", crc_en ? "supported" : "not supported");
+    log_trace("zerocopy %s\n", zerocopy_en ? "supported" : "not supported");
+    if (!nvmeotcp_en) {
+        return;
+    }
+
+    uint32_t tdn = adapter_obj->get_td();
+    ASSERT_NE(0U, tdn);
+
+    std::unique_ptr<striding_rq> srq_obj(open_str_rq(adapter_obj.get(), m_rqp));
+    ASSERT_NE(nullptr, srq_obj);
+
+    uint32_t rqn = 0;
+    ret = srq_obj->get_id(rqn);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE(0U, rqn);
+    log_trace("tdn: 0x%x rqn: 0x%x\n", tdn, rqn);
+
+    tag_buffer_table_obj tag_buff(adapter_obj->get_ctx());
+    tir tir_obj(adapter_obj->get_ctx());
+    struct tir::attr tir_attr;
+    memset(&tir_attr, 0, sizeof(tir_attr));
+    tir_attr.flags = TIR_ATTR_INLINE_RQN | TIR_ATTR_TRANSPORT_DOMAIN;
+    tir_attr.inline_rqn = rqn;
+    tir_attr.transport_domain = tdn;
+
+    if (crc_en) {
+        tir_attr.flags |= TIR_ATTR_NVMEOTCP_CRC;
+        tir_attr.nvmeotcp.crc_en = 1U;
+    }
+
+    if (zerocopy_en) {
+        // Create tag buffer table object
+        struct tag_buffer_table_obj::attr tag_buff_attr = {};
+        tag_buff_attr.log_tag_buffer_table_size = buffer_size_cap;
+        ret = tag_buff.create(tag_buff_attr);
+        ASSERT_EQ(DPCP_OK, ret);
+
+        // Verify create
+        ret = tag_buff.query(tag_buff_attr);
+        ASSERT_EQ(DPCP_OK, ret);
+        ASSERT_EQ(buffer_size_cap, tag_buff_attr.log_tag_buffer_table_size);
+
+        log_trace("Tag Buffer Table (index=%d) attr:\n", tag_buff.get_key_id());
+        log_trace("          modify_field_select=0x%x\n", tag_buff_attr.modify_field_select);
+        log_trace("          log_tag_buffer_table_size=0x%x\n",
+                  tag_buff_attr.log_tag_buffer_table_size);
+
+        // Use tag buffer table object for TIR
+        tir_attr.flags |= TIR_ATTR_NVMEOTCP_ZERO_COPY;
+        tir_attr.nvmeotcp.zerocopy_en = 1U;
+        tir_attr.nvmeotcp.tag_buffer_table_id = tag_buff.get_key_id();
+    }
+
+    ret = tir_obj.create(tir_attr);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    ret = tir_obj.query(tir_attr);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(tir_attr.nvmeotcp.crc_en, crc_en ? 1U : 0U);
+    ASSERT_EQ(tir_attr.nvmeotcp.zerocopy_en, zerocopy_en ? 1U : 0U);
 }

@@ -676,11 +676,6 @@ TEST_F(dpcp_mkey, ti_rm02_create_range)
     ret = parent.get_id(parent_id);
     ASSERT_EQ(DPCP_OK, ret);
 
-    uint32_t id;
-    void* addr;
-    size_t len;
-    mkey_flags flags;
-
     // start is out of region
     ref_mkey ref_left(ad, buf - 1, length);
     ret = ref_left.create(&parent);
@@ -728,11 +723,6 @@ TEST_F(dpcp_mkey, ti_rm03_create_badarg)
     uint32_t parent_id;
     ret = parent.get_id(parent_id);
     ASSERT_EQ(DPCP_OK, ret);
-
-    uint32_t id;
-    void* addr;
-    size_t len;
-    mkey_flags flags;
 
     // null parent
     ref_mkey ref_null_parent(ad, buf, length);

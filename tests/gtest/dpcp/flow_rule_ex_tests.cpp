@@ -579,7 +579,7 @@ TEST_F(dpcp_flow_rule_ex, ti_05_add_flow_rule_kernel_fwd_tir)
     ASSERT_EQ(DPCP_OK, ret);
 
     uint32_t tdn = adapter_obj->get_td();
-    ASSERT_NE(0, tdn);
+    ASSERT_NE(0U, tdn);
 
     striding_rq* srq_obj = open_str_rq(adapter_obj, m_rqp);
     ASSERT_NE(nullptr, srq_obj);
@@ -587,7 +587,7 @@ TEST_F(dpcp_flow_rule_ex, ti_05_add_flow_rule_kernel_fwd_tir)
     uint32_t rqn = 0;
     ret = srq_obj->get_id(rqn);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(0, rqn);
+    ASSERT_NE(0U, rqn);
     log_trace("tdn: 0x%x rqn: 0x%x\n", tdn, rqn);
 
     tir tir_obj(adapter_obj->get_ctx());
@@ -659,7 +659,7 @@ TEST_F(dpcp_flow_rule_ex, ti_05_add_flow_rule_kernel_fwd_table_and_modify_header
 
     // Create receive queue:
     uint32_t tdn = adapter_obj->get_td();
-    ASSERT_NE(0, tdn);
+    ASSERT_NE(0U, tdn);
 
     striding_rq* srq_obj = open_str_rq(adapter_obj, m_rqp);
     ASSERT_NE(nullptr, srq_obj);
@@ -667,7 +667,7 @@ TEST_F(dpcp_flow_rule_ex, ti_05_add_flow_rule_kernel_fwd_table_and_modify_header
     uint32_t rqn = 0;
     ret = srq_obj->get_id(rqn);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(0, rqn);
+    ASSERT_NE(0U, rqn);
     log_trace("tdn: 0x%x rqn: 0x%x\n", tdn, rqn);
 
     tir tir_obj(adapter_obj->get_ctx());

@@ -42,7 +42,7 @@ static adapter* s_ad;
 static striding_rq* s_srq;
 static regular_rq*  s_rrq;
 static uint32_t s_rq_num;
-static uint32_t s_wqe_sz;
+static size_t s_wqe_sz;
 
 class dpcp_rq : /*public obj,*/ public dpcp_base {
 protected:
@@ -75,7 +75,7 @@ TEST_F(dpcp_rq, ti_01_create)
     cq_data cqd = {};
     ret = (status)create_cq(ad, &cqd);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(0, cqd.cqn);
+    ASSERT_NE(0U, cqd.cqn);
 
     s_rq_attr = {2048, 16384, 0, cqd.cqn};
     s_rq_num = 4;

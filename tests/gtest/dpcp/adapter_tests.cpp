@@ -97,7 +97,7 @@ TEST_F(dpcp_adapter, ti_03_set_get_pd)
     ASSERT_NE(nullptr, ad);
 
     uint32_t id = ad->get_pd();
-    ASSERT_EQ(0, id);
+    ASSERT_EQ(0U, id);
 
     status ret = ad->create_ibv_pd();
     ASSERT_EQ(DPCP_OK, ret);
@@ -110,14 +110,14 @@ TEST_F(dpcp_adapter, ti_03_set_get_pd)
     ASSERT_EQ(DPCP_OK, ret);
 
     id = ad->get_pd();
-    ASSERT_NE(0, id);
+    ASSERT_NE(0U, id);
     ASSERT_EQ(id, id1);
 
     ret = ad->open();
     ASSERT_EQ(DPCP_OK, ret);
 
     id = ad->get_pd();
-    ASSERT_NE(0, id);
+    ASSERT_NE(0U, id);
     ASSERT_EQ(id, id1);
 
     delete ad;
@@ -201,21 +201,21 @@ TEST_F(dpcp_adapter, ti_05_set_get_td)
     ASSERT_NE(nullptr, ad);
 
     uint32_t id = ad->get_td();
-    ASSERT_EQ(0, id);
+    ASSERT_EQ(0U, id);
 
     uint32_t id1 = 0xabba;
     status ret = ad->set_td(id1);
     ASSERT_EQ(DPCP_OK, ret);
 
     id = ad->get_td();
-    ASSERT_NE(0, id);
+    ASSERT_NE(0U, id);
     ASSERT_EQ(id, id1);
 
     ret = ad->open();
     ASSERT_EQ(DPCP_OK, ret);
 
     id = ad->get_td();
-    ASSERT_NE(0, id);
+    ASSERT_NE(0U, id);
     ASSERT_EQ(id, id1);
 
     delete ad;
@@ -252,7 +252,7 @@ TEST_F(dpcp_adapter, ti_06_create_direct_mkey)
     ret = mk->get_id(new_id);
     ASSERT_EQ(DPCP_OK, ret);
     log_trace("CDMK Mkey Id: 0x%x\n", new_id);
-    ASSERT_NE(new_id, 0);
+    ASSERT_NE(new_id, 0U);
 
     int32_t new_num;
     ret = mk->get_mkey_num(new_num);
@@ -293,7 +293,7 @@ TEST_F(dpcp_adapter, ti_07_mkey_zero_based)
     uint32_t new_id;
     ret = mk->get_id(new_id);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(0, new_id);
+    ASSERT_NE(0U, new_id);
 
     int32_t new_num;
     ret = mk->get_mkey_num(new_num);
@@ -362,7 +362,7 @@ TEST_F(dpcp_adapter, ti_09_create_striding_rq)
     cq_data cqd = {};
     ret = (status)create_cq(ad, &cqd);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(0, cqd.cqn);
+    ASSERT_NE(0U, cqd.cqn);
 
     rq_attr rqattr = {};
     rqattr.buf_stride_sz = 2048;
@@ -403,7 +403,7 @@ TEST_F(dpcp_adapter, ti_10_create_tir)
     cq_data cqd = {};
     ret = (status)create_cq(ad, &cqd);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(0, cqd.cqn);
+    ASSERT_NE(0U, cqd.cqn);
 
     rq_attr rqattr = {};
     rqattr.buf_stride_sz = 2048;
@@ -421,7 +421,7 @@ TEST_F(dpcp_adapter, ti_10_create_tir)
     uint32_t rqn = 0;
     ret = srq->get_id(rqn);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(0, rqn);
+    ASSERT_NE(0U, rqn);
 
     tir* t1 = nullptr;
     struct tir::attr tir_attr;
@@ -491,7 +491,7 @@ TEST_F(dpcp_adapter, ti_11_create_pattern_mkey)
     uint32_t new_id;
     ret = ptmk->get_id(new_id);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(0, new_id);
+    ASSERT_NE(0U, new_id);
 
     int32_t new_num;
     ret = ptmk->get_mkey_num(new_num);
@@ -523,7 +523,7 @@ TEST_F(dpcp_adapter, ti_12_create_ibq_rq)
     cq_data cqd = {};
     ret = (status)create_cq(ad, &cqd);
     ASSERT_EQ(ret, DPCP_OK);
-    ASSERT_NE(cqd.cqn, 0);
+    ASSERT_NE(cqd.cqn, 0U);
 
     rq_attr rqattr = {};
     rqattr.buf_stride_sz = 1500;
@@ -532,7 +532,7 @@ TEST_F(dpcp_adapter, ti_12_create_ibq_rq)
     rqattr.cqn = cqd.cqn;
 
     // create buffer and obtain mkey for it
-    int32_t buf_length = rqattr.buf_stride_sz * rqattr.buf_stride_num;
+    size_t buf_length = rqattr.buf_stride_sz * rqattr.buf_stride_num;
     void* buf = new (std::nothrow) uint8_t[buf_length];
     ASSERT_NE(buf, nullptr);
 
@@ -548,7 +548,7 @@ TEST_F(dpcp_adapter, ti_12_create_ibq_rq)
     uint32_t mk_id;
     ret = mk->get_id(mk_id);
     ASSERT_EQ(ret, DPCP_OK);
-    ASSERT_NE(mk_id, 0);
+    ASSERT_NE(mk_id, 0U);
 
     int32_t new_num;
     ret = mk->get_mkey_num(new_num);
@@ -593,7 +593,7 @@ TEST_F(dpcp_adapter, ti_13_get_hca_freq)
         delete ad;
         return;
     }
-    ASSERT_NE(freq, 0);
+    ASSERT_NE(freq, 0U);
 
     delete ad;
 }
@@ -630,7 +630,7 @@ TEST_F(dpcp_adapter, ti_14_get_real_time)
         (uint64_t)duration_cast<std::chrono::nanoseconds>(steady_clock::now().time_since_epoch())
             .count();
     ASSERT_EQ(ret, DPCP_OK);
-    ASSERT_NE(real_time, 0);
+    ASSERT_NE(real_time, 0U);
 
     std::this_thread::sleep_for(std::chrono::microseconds(10));
 
@@ -639,7 +639,7 @@ TEST_F(dpcp_adapter, ti_14_get_real_time)
         (uint64_t)duration_cast<std::chrono::nanoseconds>(steady_clock::now().time_since_epoch())
             .count();
     ASSERT_EQ(ret, DPCP_OK);
-    ASSERT_NE(real_time_after, 0);
+    ASSERT_NE(real_time_after, 0U);
 
     ASSERT_GT(real_time_after, real_time);
 
@@ -670,7 +670,7 @@ TEST_F(dpcp_adapter, ti_15_create_pp_sq)
     cq_data cqd = {};
     ret = (status)create_cq(ad, &cqd);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(0, cqd.cqn);
+    ASSERT_NE(0U, cqd.cqn);
 
     tis* s_tis;
     struct tis::attr tis_attr;
@@ -682,7 +682,7 @@ TEST_F(dpcp_adapter, ti_15_create_pp_sq)
     uint32_t tis_n = 0;
     ret = s_tis->get_tisn(tis_n);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(0, tis_n);
+    ASSERT_NE(0U, tis_n);
 
     sq_attr sqattr = {};
     qos_attributes qos_attr;
@@ -790,6 +790,15 @@ TEST_F(dpcp_adapter, ti_17_get_hca_capabilities)
     log_trace("Capability - sq_ts_format: %d\n", caps.sq_ts_format);
     log_trace("Capability - rq_ts_format: %d\n", caps.rq_ts_format);
     log_trace("Capability - lro_cap: %d\n", caps.lro_cap);
+    if (caps.nvmeotcp_caps.enabled) {
+        log_trace("Capability - nvmeotcp: 1, zerocopy:%d, crc_rx: %d, crc_tx: %d, version: %d, "
+                  "log_max_nvmeotcp_tag_buffer_table: %d, log_max_nvmeotcp_tag_buffer_size: %d\n",
+                  caps.nvmeotcp_caps.zerocopy, caps.nvmeotcp_caps.crc_rx, caps.nvmeotcp_caps.crc_tx,
+                  caps.nvmeotcp_caps.version, caps.nvmeotcp_caps.log_max_nvmeotcp_tag_buffer_table,
+                  caps.nvmeotcp_caps.log_max_nvmeotcp_tag_buffer_size);
+    } else {
+        log_trace("Capability - nvmeotcp: 0\n");
+    }
 
     delete ad;
 }
@@ -942,7 +951,7 @@ TEST_F(dpcp_adapter, ti_21_create_tir_by_attr)
     ASSERT_EQ(DPCP_OK, ret);
 
     uint32_t tdn = adapter_obj->get_td();
-    ASSERT_NE(0, tdn);
+    ASSERT_NE(0U, tdn);
 
     striding_rq* srq_obj = open_str_rq(adapter_obj, m_rqp);
     ASSERT_NE(nullptr, srq_obj);
@@ -950,7 +959,7 @@ TEST_F(dpcp_adapter, ti_21_create_tir_by_attr)
     uint32_t rqn = 0;
     ret = srq_obj->get_id(rqn);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(0, rqn);
+    ASSERT_NE(0U, rqn);
     log_trace("tdn: 0x%x rqn: 0x%x\n", tdn, rqn);
 
     tir* tir_obj = nullptr;
@@ -1159,10 +1168,10 @@ TEST_F(dpcp_adapter, DISABLED_perf_100k_dek_modify)
     }
 
     uint32_t tdn = ad->get_td();
-    ASSERT_NE(0, tdn);
+    ASSERT_NE(0U, tdn);
 
     uint32_t pdn = ad->get_pd();
-    ASSERT_NE(0, pdn);
+    ASSERT_NE(0U, pdn);
     log_trace("pdn: 0x%x\n", pdn);
 
     const size_t LOOP_COUNT = 500000U;

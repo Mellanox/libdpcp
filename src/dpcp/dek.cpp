@@ -98,6 +98,7 @@ status dek::create(const dek::attr& dek_attr)
         DEVX_SET(general_obj_in_cmd_hdr, in, opcode, MLX5_CMD_OP_CREATE_GENERAL_OBJECT);
         DEVX_SET(general_obj_in_cmd_hdr, in, obj_type, MLX5_GENERAL_OBJECT_TYPES_ENCRYPTION_KEY);
         DEVX_SET(encryption_key_obj, _obj, pd, dek_attr.pd_id);
+        DEVX_SET64(encryption_key_obj, _obj, opaque, dek_attr.opaque);
     }
 
     status ret = obj::create(in, sizeof(in), out, outlen);
@@ -152,16 +153,16 @@ status dek::modify(const dek::attr& dek_attr)
 
     if (dek_attr.flags & DEK_ATTR_TLS) {
         uint64_t modify_select = 0x1;
-
         memcpy(key_p, dek_attr.key, dek_attr.key_size_bytes);
         DEVX_SET64(encryption_key_obj, _obj, modify_field_select, modify_select);
         DEVX_SET(encryption_key_obj, _obj, key_size, general_obj_key_size);
         DEVX_SET(encryption_key_obj, _obj, key_type,
-                 MLX5_GENERAL_OBJECT_TYPE_ENCRYPTION_KEY_TYPE_TLS);
+                 MLX5_GENERAL_OBJECT_TYPE_ENCRYPTION_KEY_TYPE_TLS); // From PRM - can't be changed
         DEVX_SET(general_obj_in_cmd_hdr, in, opcode, MLX5_CMD_OP_MODIFY_GENERAL_OBJECT);
         DEVX_SET(general_obj_in_cmd_hdr, in, obj_type, MLX5_GENERAL_OBJECT_TYPES_ENCRYPTION_KEY);
         DEVX_SET(general_obj_in_cmd_hdr, in, obj_id, m_key_id);
-        DEVX_SET(encryption_key_obj, _obj, pd, dek_attr.pd_id);
+        DEVX_SET(encryption_key_obj, _obj, pd, dek_attr.pd_id); // From PRM - can't be changed
+        DEVX_SET64(encryption_key_obj, _obj, opaque, dek_attr.opaque);
     }
 
     ret = obj::modify(in, sizeof(in), out, outlen);
@@ -198,22 +199,16 @@ status dek::query(dek::attr& dek_attr)
     }
 
     dek_attr.flags |= DEK_ATTR_TLS;
-    dek_attr.key_size_bytes = DEVX_GET(encryption_key_obj, out, key_size);
-    dek_attr.pd_id = DEVX_GET(encryption_key_obj, out, pd);
-
-    if (dek_attr.key) {
-        void* key_p = DEVX_ADDR_OF(encryption_key_obj, out, key);
-        if (dek_attr.key_size_bytes == 128) {
-            key_p = static_cast<char*>(key_p) + dek_attr.key_size_bytes;
-        }
-        memcpy(dek_attr.key, key_p, dek_attr.key_size_bytes);
-    }
+    void* dek_ctx = DEVX_ADDR_OF(query_encryption_key_out, out, encryption_key_object);
+    dek_attr.key_size_bytes = DEVX_GET(encryption_key_obj, dek_ctx, key_size);
+    dek_attr.pd_id = DEVX_GET(encryption_key_obj, dek_ctx, pd);
+    dek_attr.opaque = DEVX_GET64(encryption_key_obj, dek_ctx, opaque);
+    // dek_attr.key returned is 0 by FW since it is encrypted
 
     log_trace("DEK attr:\n");
     log_trace("          key_size=0x%x\n", dek_attr.key_size_bytes);
     log_trace("          pd=0x%x\n", dek_attr.pd_id);
     log_trace("          key_type=0x%x\n", m_key_id);
-
     return DPCP_OK;
 }
 

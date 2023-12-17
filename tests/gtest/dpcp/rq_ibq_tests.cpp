@@ -76,12 +76,12 @@ TEST_F(dpcp_ibq_rq, ti_01_create)
     cq_data cqd = {};
     ret = (status)create_cq(s_ad, &cqd);
     ASSERT_EQ(ret, DPCP_OK);
-    ASSERT_NE(cqd.cqn, 0);
+    ASSERT_NE(cqd.cqn, 0U);
 
     s_ibq_rq_attr = {1500, 10000, 0, cqd.cqn};
 
     // create buffer and obtain mkey for it
-    int32_t buf_length = s_ibq_rq_attr.buf_stride_sz * s_ibq_rq_attr.buf_stride_num;
+    size_t buf_length = s_ibq_rq_attr.buf_stride_sz * s_ibq_rq_attr.buf_stride_num;
     void* buf = new (std::nothrow) uint8_t[buf_length];
     ASSERT_NE(buf, nullptr);
 
@@ -99,7 +99,7 @@ TEST_F(dpcp_ibq_rq, ti_01_create)
     uint32_t mk_id;
     ret = mk->get_id(mk_id);
     ASSERT_EQ(ret, DPCP_OK);
-    ASSERT_NE(mk_id, 0);
+    ASSERT_NE(mk_id, 0U);
 
     int32_t new_num;
     ret = mk->get_mkey_num(new_num);

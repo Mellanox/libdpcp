@@ -50,17 +50,17 @@ adapter* dpcp_base::OpenAdapter(uint32_t vendor_part_id)
 
     ret = pr->get_adapter_info_lst(nullptr, num);
 
-    adapter_info* p_ainfo = new (std::nothrow) adapter_info[num];
+    adapter_info* temp_p_ainfo = new (std::nothrow) adapter_info[num];
 
-    ret = pr->get_adapter_info_lst(p_ainfo, num);
+    ret = pr->get_adapter_info_lst(temp_p_ainfo, num);
     if (ret != DPCP_OK) {
         return nullptr;
     }
 
-    adapter_info* ai = p_ainfo;
+    adapter_info* ai = temp_p_ainfo;
     bool adapter_found = false;
     for (int i = 0; i < (int)num; i++) {
-        ai = p_ainfo + i;
+        ai = temp_p_ainfo + i;
 
         // Ignore unsupported devices
         if ((ai->vendor_id != VendorIdMellanox) && (ai->vendor_id != PCIVendorIdMellanox)) {
@@ -174,7 +174,7 @@ striding_rq* dpcp_base::open_str_rq(adapter* ad, rq_params& rqp)
     if (DPCP_OK != ret || (0 == cqd.cqn)) {
         return nullptr;
     }
-    log_trace("rq_num %d wqe_sz %d\n", rqp.rq_num, rqp.wqe_sz);
+    log_trace("rq_num %u wqe_sz %zu\n", rqp.rq_num, rqp.wqe_sz);
     rqp.rq_at.cqn = cqd.cqn;
     rqp.rq_at.wqe_num = rqp.rq_num;
     rqp.rq_at.wqe_sz = rqp.wqe_sz;

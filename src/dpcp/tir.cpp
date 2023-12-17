@@ -84,6 +84,18 @@ status tir::create(const tir::attr& tir_attr)
         DEVX_SET(tirc, tir_ctx, transport_domain, tir_attr.transport_domain);
     }
 
+    if (tir_attr.flags & TIR_ATTR_NVMEOTCP_ZERO_COPY) {
+        DEVX_SET(tirc, tir_ctx, self_lb_block, 3); // A must by PRM.
+        DEVX_SET(tirc, tir_ctx, nvmeotcp_zerocopy_en, tir_attr.nvmeotcp.zerocopy_en);
+        DEVX_SET(tirc, tir_ctx, nvmeotcp_tag_buffer_table_id,
+                 tir_attr.nvmeotcp.tag_buffer_table_id);
+    }
+
+    if (tir_attr.flags & TIR_ATTR_NVMEOTCP_CRC) {
+        DEVX_SET(tirc, tir_ctx, self_lb_block, 3); // A must by PRM.
+        DEVX_SET(tirc, tir_ctx, nvmeotcp_crc_en, tir_attr.nvmeotcp.crc_en);
+    }
+
     ret = obj::create(in, sizeof(in), out, outlen);
     if (DPCP_OK == ret) {
         ret = obj::get_id(m_tirn);
@@ -178,6 +190,11 @@ status tir::query(tir::attr& tir_attr)
     m_attr.inline_rqn = DEVX_GET(tirc, tir_ctx, inline_rqn);
     m_attr.flags |= TIR_ATTR_TRANSPORT_DOMAIN;
     m_attr.transport_domain = DEVX_GET(tirc, tir_ctx, transport_domain);
+    m_attr.flags |= TIR_ATTR_NVMEOTCP_ZERO_COPY;
+    m_attr.nvmeotcp.zerocopy_en = DEVX_GET(tirc, tir_ctx, nvmeotcp_zerocopy_en);
+    m_attr.nvmeotcp.tag_buffer_table_id = DEVX_GET(tirc, tir_ctx, nvmeotcp_tag_buffer_table_id);
+    m_attr.flags |= TIR_ATTR_NVMEOTCP_CRC;
+    m_attr.nvmeotcp.crc_en = DEVX_GET(tirc, tir_ctx, nvmeotcp_crc_en);
 
 out:
     memcpy(&tir_attr, &m_attr, sizeof(m_attr));
@@ -188,6 +205,9 @@ out:
     log_trace("          tls_en=0x%x\n", m_attr.tls_en);
     log_trace("          inline_rqn=0x%x\n", m_attr.inline_rqn);
     log_trace("          transport_domain=0x%x\n", m_attr.transport_domain);
+    log_trace("          zerocopy_en=0x%x\n", m_attr.nvmeotcp.zerocopy_en);
+    log_trace("          tag_buffer_table_id=0x%x\n", m_attr.nvmeotcp.tag_buffer_table_id);
+    log_trace("          crc_en=0x%x\n", m_attr.nvmeotcp.crc_en);
 
     return DPCP_OK;
 }

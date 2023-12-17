@@ -106,6 +106,7 @@ enum mlx5_cap_type {
     MLX5_CAP_DEV_EVENT = 0x14,
     MLX5_CAP_IPSEC = 0x15,
     MLX5_CAP_PARSE_GRAPH_NODE = 0x1C,
+    MLX5_CAP_NVMEOTCP = 0x19,
     MLX5_CAP_CRYPTO = 0x1A,
     MLX5_CAP_GENERAL_2 = 0x20,
     /* NUM OF CAP Types */
@@ -1028,7 +1029,9 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 
     u8 log_max_srq_sz[0x8];
     u8 log_max_qp_sz[0x8];
-    u8 reserved_at_90[0xb];
+    u8 reserved_at_90[0x6];
+    u8 nvmeotcp[0x1];
+    u8 reserved_at_97[0x4];
     u8 log_max_qp[0x5];
 
     u8 reserved_at_a0[0xb];
@@ -2776,6 +2779,21 @@ struct mlx5_ifc_crypto_cap_bits {
     u8 reserved_at_80[0x780];
 };
 
+struct mlx5_ifc_nvmeotcp_cap_bits {
+    u8 zerocopy[0x1];
+    u8 crc_rx[0x1];
+    u8 crc_tx[0x1];
+    u8 reserved_at_3[0x15];
+    u8 version[0x8];
+
+    u8 reserved_at_20[0x13];
+    u8 log_max_nvmeotcp_tag_buffer_table[0x5];
+    u8 reserved_at_38[0x3];
+    u8 log_max_nvmeotcp_tag_buffer_size[0x5];
+
+    u8 reserved_at_40[0x7c0];
+};
+
 struct mlx5_ifc_ibq_cap_bits {
     u8 ibq_wire_protocol[0x40];
 
@@ -2832,6 +2850,7 @@ union mlx5_ifc_hca_cap_union_bits {
     struct mlx5_ifc_ibq_cap_bits ibq_cap;
     struct mlx5_ifc_parse_graph_node_cap_bits parse_graph_node_cap;
     struct mlx5_ifc_crypto_cap_bits crypto_cap;
+    struct mlx5_ifc_nvmeotcp_cap_bits nvmeotcp_cap;
     u8 reserved_at_0[0x8000];
 };
 
@@ -2959,7 +2978,8 @@ struct mlx5_ifc_traffic_counter_bits {
 struct mlx5_ifc_tisc_bits {
     u8 strict_lag_tx_port_affinity[0x1];
     u8 tls_en[0x1];
-    u8 reserved_at_2[0x2];
+    u8 nvmeotcp_en[0x1];
+    u8 reserved_at_3[0x1];
     u8 lag_tx_port_affinity[0x04];
 
     u8 reserved_at_8[0x4];
@@ -3006,7 +3026,9 @@ struct mlx5_ifc_tirc_bits {
 
     u8 disp_type[0x4];
     u8 tls_en[0x1];
-    u8 reserved_at_25[0x1b];
+    u8 nvmeotcp_zerocopy_en[0x1];
+    u8 nvmeotcp_crc_en[0x1];
+    u8 reserved_at_27[0x19];
 
     u8 reserved_at_40[0x40];
 
@@ -3037,7 +3059,9 @@ struct mlx5_ifc_tirc_bits {
 
     struct mlx5_ifc_rx_hash_field_select_bits rx_hash_field_selector_inner;
 
-    u8 reserved_at_2c0[0x4c0];
+    u8 nvmeotcp_tag_buffer_table_id[0x20];
+
+    u8 reserved_at_2e0[0x4a0];
 };
 
 enum {
@@ -9871,7 +9895,12 @@ struct mlx5_ifc_encryption_key_obj_bits {
     u8 reserved_at_60[0x8];
     u8 pd[0x18];
 
-    u8 reserved_at_80[0x180];
+    u8 reserved_at_80[0x100];
+
+    u8 opaque[0x40];
+
+    u8 reserved_at_1c0[0x40];
+
     u8 key[8][0x20];
     u8 reserved_at_300[0x300];
     u8 sw_wrapped_dek[0x400];
@@ -9886,6 +9915,24 @@ struct mlx5_ifc_create_encryption_key_in_bits {
 struct mlx5_ifc_query_encryption_key_out_bits {
     struct mlx5_ifc_general_obj_out_cmd_hdr_bits general_obj_out_cmd_hdr;
     struct mlx5_ifc_encryption_key_obj_bits encryption_key_object;
+};
+
+struct mlx5_ifc_tag_buffer_table_obj_bits {
+    u8 modify_field_select[0x40];
+
+    u8 reserved_at_40[0x20];
+    u8 reserved_at_60[0x1b];
+    u8 log_tag_buffer_table_size[0x5];
+};
+
+struct mlx5_ifc_create_tag_buffer_table_obj_in_bits {
+    struct mlx5_ifc_general_obj_in_cmd_hdr_bits general_obj_in_cmd_hdr;
+    struct mlx5_ifc_tag_buffer_table_obj_bits tag_buffer_table_object;
+};
+
+struct mlx5_ifc_query_tag_buffer_table_obj_out_bits {
+    struct mlx5_ifc_general_obj_out_cmd_hdr_bits general_obj_out_cmd_hdr;
+    struct mlx5_ifc_tag_buffer_table_obj_bits tag_buffer_table_object;
 };
 
 enum {
@@ -9943,18 +9990,23 @@ struct mlx5_ifc_query_flow_table_out_bits {
     struct mlx5_ifc_flow_table_context_bits flow_table_context;
 };
 
-enum : unsigned long long {
-    MLX5_HCA_CAP_GENERAL_OBJECT_TYPES_ENCRYPTION_KEY = (1ULL << 0xc),
-    MLX5_HCA_CAP_GENERAL_OBJECT_TYPES_IPSEC = (1ULL << 0x13),
-    MLX5_HCA_CAP_GENERAL_OBJECT_TYPES_SAMPLER = (1ULL << 0x20),
-    MLX5_HCA_CAP_GENERAL_OBJECT_TYPES_PARSE_GRAPH_NODE = (1ULL << 0x22)
-};
-
 enum {
     MLX5_GENERAL_OBJECT_TYPES_ENCRYPTION_KEY = 0xc,
     MLX5_GENERAL_OBJECT_TYPES_IPSEC = 0x13,
     MLX5_GENERAL_OBJECT_TYPES_SAMPLER = 0x20,
+    MLX5_GENERAL_OBJECT_TYPES_NVMEOTCP_TAG_BUFFER_TABLE = 0x21,
     MLX5_GENERAL_OBJECT_TYPES_PARSE_GRAPH_NODE = 0x22
+};
+
+enum : unsigned long long {
+    MLX5_HCA_CAP_GENERAL_OBJECT_TYPES_ENCRYPTION_KEY =
+        (1ULL << MLX5_GENERAL_OBJECT_TYPES_ENCRYPTION_KEY),
+    MLX5_HCA_CAP_GENERAL_OBJECT_TYPES_IPSEC = (1ULL << MLX5_GENERAL_OBJECT_TYPES_IPSEC),
+    MLX5_HCA_CAP_GENERAL_OBJECT_TYPES_SAMPLER = (1ULL << MLX5_GENERAL_OBJECT_TYPES_SAMPLER),
+    MLX5_HCA_CAP_GENERAL_OBJECT_TYPES_NVMEOTCP_TAG_BUFFER_TABLE =
+        (1ULL << MLX5_GENERAL_OBJECT_TYPES_NVMEOTCP_TAG_BUFFER_TABLE),
+    MLX5_HCA_CAP_GENERAL_OBJECT_TYPES_PARSE_GRAPH_NODE =
+        (1ULL << MLX5_GENERAL_OBJECT_TYPES_PARSE_GRAPH_NODE)
 };
 
 struct mlx5_ifc_parse_graph_arc_bits {

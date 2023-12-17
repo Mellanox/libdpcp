@@ -33,6 +33,7 @@ libdpcp_la_SOURCES = \
 	dpcp/flow_rule_ex.cpp \
 	dpcp/flow_matcher.cpp \
 	dpcp/forwardable_obj.cpp \
+	dpcp/tag_buffer_table_obj.cpp \
 	\
 	dcmd/dcmd.h \
 	dcmd/prm.h \

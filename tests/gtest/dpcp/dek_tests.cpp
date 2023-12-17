@@ -186,6 +186,7 @@ TEST_F(dpcp_dek, ti_04_create)
 
     const uint32_t tls_cipher_aes_gcm_128_key_size = 16;
     uint32_t key_size_bytes = tls_cipher_aes_gcm_128_key_size;
+    uint32_t expected_key_size = MLX5_GENERAL_OBJECT_TYPE_ENCRYPTION_KEY_KEY_SIZE_128;
     void* key = new char[key_size_bytes];
 
     memcpy(key, "a6a7ee7abec9c4ce", key_size_bytes);  // Random key for the test.
@@ -202,6 +203,12 @@ TEST_F(dpcp_dek, ti_04_create)
 
     uint32_t key_id = _dek.get_key_id();
     log_trace("key_id: 0x%x\n", key_id);
+
+    memset(&dek_attr, 0, sizeof(dek_attr));
+    ret = _dek.query(dek_attr);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(ad->get_pd(), dek_attr.pd_id);
+    ASSERT_EQ(expected_key_size, dek_attr.key_size_bytes);
 }
 
 /**
@@ -244,7 +251,7 @@ TEST_F(dpcp_dek, ti_05_modify)
     dek_attr.flags = DEK_ATTR_TLS;
     dek_attr.key = key.get();
     dek_attr.key_size_bytes = key_size_128;
-    dek_attr.pd_id = ad->get_td();
+    dek_attr.pd_id = ad->get_pd();
     ret = ad->create_dek(dek_attr, _dek_ptr);
     _dek.reset(_dek_ptr);
     ASSERT_EQ(DPCP_OK, ret);
@@ -256,6 +263,8 @@ TEST_F(dpcp_dek, ti_05_modify)
     dek::attr attrs;
     attrs.key = key2.get();
     attrs.key_size_bytes = key_size_128;
+    attrs.flags = DEK_ATTR_TLS;
+    attrs.pd_id = ad->get_pd();
     ret = _dek->modify(attrs);
     ASSERT_EQ(DPCP_OK, ret);
 
@@ -277,13 +286,13 @@ TEST_F(dpcp_dek, ti_05_modify)
 }
 
 /**
- * @test dpcp_dek.ti_06_query
+ * @test dpcp_dek.ti_06_modify_query
  * @brief
  *    Check dek::query method
  * @details
  *
  */
-TEST_F(dpcp_dek, ti_06_query)
+TEST_F(dpcp_dek, ti_06_modify_query)
 {
     std::unique_ptr<adapter> ad(OpenAdapter());
     ASSERT_NE(nullptr, ad);
@@ -302,7 +311,9 @@ TEST_F(dpcp_dek, ti_06_query)
         return;
     }
 
+    uint64_t opaque = 0x1234567887654321;
     const uint32_t key_size_128 = 16;
+    uint32_t expected_key_size = MLX5_GENERAL_OBJECT_TYPE_ENCRYPTION_KEY_KEY_SIZE_128;
     std::unique_ptr<char[]> key(new char[key_size_128]);
     memcpy(key.get(), "a6a7ee7abec9c4ce", key_size_128);  // Random key for the test.
 
@@ -313,7 +324,8 @@ TEST_F(dpcp_dek, ti_06_query)
     dek_attr.flags = DEK_ATTR_TLS;
     dek_attr.key = key.get();
     dek_attr.key_size_bytes = key_size_128;
-    dek_attr.pd_id = ad->get_td();
+    dek_attr.pd_id = ad->get_pd();
+    dek_attr.opaque = opaque;
     ret = ad->create_dek(dek_attr, _dek_ptr);
     _dek.reset(_dek_ptr);
     ASSERT_EQ(DPCP_OK, ret);
@@ -321,17 +333,25 @@ TEST_F(dpcp_dek, ti_06_query)
     uint32_t key_id = _dek->get_key_id();
     log_trace("key_id: 0x%x\n", key_id);
 
-    // Modify to a key with the same size.
+    // Verify create params
     dek::attr attrs;
     ret = _dek->query(attrs);
     ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(ad->get_pd(), attrs.pd_id);
+    ASSERT_EQ(expected_key_size, attrs.key_size_bytes);
+    ASSERT_EQ(dek_attr.opaque, opaque);
 
-    std::unique_ptr<char[]> key_out(new char[attrs.key_size_bytes]);
-    memset(key_out.get(), 0, attrs.key_size_bytes);
-
-    attrs.key = key_out.get();
-    ret = _dek->query(attrs);
+    // Modify
+    dek_attr.key_size_bytes = 32;
+    dek_attr.opaque = opaque = 0x876543210abcdef;
+    expected_key_size = MLX5_GENERAL_OBJECT_TYPE_ENCRYPTION_KEY_KEY_SIZE_256;
+    ret = _dek->modify(dek_attr);
     ASSERT_EQ(DPCP_OK, ret);
 
-    ASSERT_EQ(0, memcmp(key_out.get(), key.get(), MIN(attrs.key_size_bytes, key_size_128)));
+    // Verify modify params
+    ret = _dek->query(attrs);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_EQ(ad->get_pd(), attrs.pd_id);
+    ASSERT_EQ(expected_key_size, attrs.key_size_bytes);
+    ASSERT_EQ(dek_attr.opaque, opaque);
 }

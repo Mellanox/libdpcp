@@ -83,7 +83,7 @@ TEST_F(dpcp_tis, ti_02_create)
     ASSERT_EQ(DPCP_OK, ret);
 
     uint32_t tdn = ad->get_td();
-    ASSERT_NE(0, tdn);
+    ASSERT_NE(0U, tdn);
 
     log_trace("tdn: 0x%x\n", tdn);
 
@@ -131,11 +131,11 @@ TEST_F(dpcp_tis, ti_03_create_tls_enabled)
     }
 
     uint32_t tdn = ad->get_td();
-    ASSERT_NE(0, tdn);
+    ASSERT_NE(0U, tdn);
     log_trace("tdn: 0x%x\n", tdn);
 
     uint32_t pdn = ad->get_pd();
-    ASSERT_NE(0, pdn);
+    ASSERT_NE(0U, pdn);
     log_trace("pdn: 0x%x\n", pdn);
 
     tis tis_obj(ad->get_ctx());
@@ -173,11 +173,11 @@ TEST_F(dpcp_tis, ti_04_destroy)
     ASSERT_EQ(DPCP_OK, ret);
 
     uint32_t tdn = ad->get_td();
-    ASSERT_NE(0, tdn);
+    ASSERT_NE(0U, tdn);
     log_trace("tdn: 0x%x\n", tdn);
 
     uint32_t pdn = ad->get_pd();
-    ASSERT_NE(0, pdn);
+    ASSERT_NE(0U, pdn);
     log_trace("pdn: 0x%x\n", pdn);
 
     tis tis_obj(ad->get_ctx());
@@ -224,10 +224,10 @@ TEST_F(dpcp_tis, ti_05_destroy_tls_enabled)
     }
 
     uint32_t tdn = ad->get_td();
-    ASSERT_NE(0, tdn);
+    ASSERT_NE(0U, tdn);
 
     uint32_t pdn = ad->get_pd();
-    ASSERT_NE(0, pdn);
+    ASSERT_NE(0U, pdn);
     log_trace("pdn: 0x%x\n", pdn);
 
     tis tis_obj(ad->get_ctx());
@@ -262,7 +262,7 @@ TEST_F(dpcp_tis, ti_06_get_tisn)
     ASSERT_EQ(DPCP_OK, ret);
 
     uint32_t tdn = ad->get_td();
-    ASSERT_NE(0, tdn);
+    ASSERT_NE(0U, tdn);
 
     log_trace("tdn: 0x%x\n", tdn);
 
@@ -282,4 +282,50 @@ TEST_F(dpcp_tis, ti_06_get_tisn)
     log_trace("tisn: 0x%x\n", tisn);
 
     delete ad;
+}
+
+/**
+* @test dpcp_tis.nvmeotcp_is_supported
+* @brief
+*    Check that the nvmeotcp exists and supported
+* @details
+*/
+TEST_F(dpcp_tis, nvmeotcp_is_supported)
+{
+    std::unique_ptr<adapter> ad(OpenAdapter());
+    ASSERT_NE(nullptr, ad);
+
+    status ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    adapter_hca_capabilities caps;
+    ret = ad->get_hca_capabilities(caps);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    if (!caps.nvmeotcp_caps.enabled) {
+        log_trace("nvmeotcp not supported\n");
+        return;
+    }
+
+    ASSERT_TRUE(caps.nvmeotcp_caps.crc_tx);
+
+    uint32_t tdn = ad->get_td();
+    ASSERT_NE(0, tdn);
+
+    uint32_t pdn = ad->get_pd();
+    ASSERT_NE(0, pdn);
+    log_trace("pdn: 0x%x\n", pdn);
+
+    tis tis_obj(ad->get_ctx());
+
+    struct tis::attr tis_attr;
+    memset(&tis_attr, 0, sizeof(tis_attr));
+    tis_attr.flags = TIS_ATTR_TRANSPORT_DOMAIN | TIS_ATTR_NVMEOTCP | TIS_ATTR_PD;
+    tis_attr.transport_domain = tdn;
+    tis_attr.nvmeotcp = true;
+    tis_attr.pd = pdn;
+    ret = tis_obj.create(tis_attr);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    tis_obj.destroy();
 }

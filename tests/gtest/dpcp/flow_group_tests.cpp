@@ -230,7 +230,7 @@ TEST_F(dpcp_flow_group, ti_03_get_group_id)
     uint32_t fg_id = 0;
     ret = fg_obj.lock()->get_id(fg_id);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(fg_id, 0);
+    ASSERT_NE(fg_id, 0U);
 
     delete adapter_obj;
 }

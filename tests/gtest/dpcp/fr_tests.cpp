@@ -121,10 +121,10 @@ TEST_F(dpcp_fr, ti_01_constructor)
  */
 TEST_F(dpcp_fr, ti_02_get_priority)
 {
-    uint16_t pr = 0;
-    status ret = s_fr3t->get_priority(pr);
+    uint16_t prior = 0;
+    status ret = s_fr3t->get_priority(prior);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_EQ(10, pr);
+    ASSERT_EQ(10, prior);
 }
 
 /**
@@ -218,7 +218,7 @@ TEST_F(dpcp_fr, ti_05_set_dest_tir)
     uint32_t rq_id = 0;
     ret = s_srq1->get_id(rq_id);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(0, rq_id);
+    ASSERT_NE(0U, rq_id);
 
     uint32_t nt = 0;
     ret = s_fr3t->get_num_tirs(nt);
@@ -245,7 +245,7 @@ TEST_F(dpcp_fr, ti_05_set_dest_tir)
     uint32_t rq2_id = 0;
     ret = s_srq2->get_id(rq2_id);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(0, rq2_id);
+    ASSERT_NE(0U, rq2_id);
 
     memset(&tir_attr, 0, sizeof(tir_attr));
     tir_attr.flags = TIR_ATTR_INLINE_RQN | TIR_ATTR_TRANSPORT_DOMAIN;

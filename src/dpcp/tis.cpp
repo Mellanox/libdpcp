@@ -76,6 +76,10 @@ status tis::create(const tis::attr& tis_attr)
         DEVX_SET(tisc, tis_ctx, pd, tis_attr.pd);
     }
 
+    if (tis_attr.flags & TIS_ATTR_NVMEOTCP) {
+        DEVX_SET(tisc, tis_ctx, nvmeotcp_en, tis_attr.nvmeotcp);
+    }
+
     status ret = obj::create(in, sizeof(in), out, outlen);
     if (DPCP_OK == ret) {
         ret = obj::get_id(m_tisn);

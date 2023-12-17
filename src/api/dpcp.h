@@ -52,7 +52,7 @@
 using std::function;
 using std::unordered_map;
 
-static const char* dpcp_version = "1.1.38";
+static const char* dpcp_version = "1.1.39";
 
 #if defined(__linux__)
 typedef void* LPOVERLAPPED;
@@ -1061,7 +1061,9 @@ enum {
     TIR_ATTR_LRO = (1 << 1),
     TIR_ATTR_INLINE_RQN = (1 << 2),
     TIR_ATTR_TRANSPORT_DOMAIN = (1 << 3),
-    TIR_ATTR_TLS = (1 << 4)
+    TIR_ATTR_TLS = (1 << 4),
+    TIR_ATTR_NVMEOTCP_ZERO_COPY = (1 << 5),
+    TIR_ATTR_NVMEOTCP_CRC = (1 << 6),
 };
 
 class tir : public forwardable_obj {
@@ -1076,6 +1078,11 @@ public:
         uint32_t inline_rqn : 24;
         uint32_t transport_domain : 24;
         uint32_t tls_en : 1;
+        struct {
+            uint32_t zerocopy_en : 1;
+            uint32_t crc_en : 1;
+            uint32_t tag_buffer_table_id;
+        } nvmeotcp;
     };
 
 public:
@@ -1125,7 +1132,8 @@ enum {
     TIS_ATTR_EXTEND = (1 << 0), /**< Special bit to extend flags field */
     TIS_ATTR_TRANSPORT_DOMAIN = (1 << 1),
     TIS_ATTR_TLS = (1 << 2),
-    TIS_ATTR_PD = (1 << 3)
+    TIS_ATTR_PD = (1 << 3),
+    TIS_ATTR_NVMEOTCP = (1 << 4)
 };
 
 class tis : public obj {
@@ -1133,6 +1141,7 @@ public:
     struct attr {
         uint32_t flags;
         uint32_t tls_en : 1;
+        uint32_t nvmeotcp : 1;
         uint32_t transport_domain : 24;
         uint32_t pd : 24;
     };
@@ -2005,6 +2014,7 @@ public:
         void* key;
         uint32_t key_size_bytes;
         uint32_t pd_id;
+        uint64_t opaque;
     };
 
 public:
@@ -2145,6 +2155,22 @@ struct flow_table_capabilities {
 };
 
 /*
+ * @breif NVMe/TCP capabilities
+ */
+struct nvmeotcp_capabilities {
+    bool enabled; /**< If set, NVMEoTCP offload is supported. */
+    bool zerocopy; /**< If set, zero copy is supported. */
+    bool crc_rx; /**< If set, CRC32 for received data is supported. */
+    bool crc_tx; /**< If set, CRC32 for transmitted data is supported. */
+    uint8_t version; /**< Bitmask indicates the supported NVMEoTCP vestions as reported in ICresp.
+                        Bit0: version_0 */
+    uint8_t log_max_nvmeotcp_tag_buffer_table; /**< Log(base 2) of the maximum support tag buffer
+                                                  tables */
+    uint8_t log_max_nvmeotcp_tag_buffer_size; /**< Log(base 2) of the maximum support tag buffer
+                                                 table size in granularity of 16B */
+};
+
+/*
  * @breif Represents HCA capabilities
  *
  * @note: The type of the fields shouldn't be changed.
@@ -2231,6 +2257,7 @@ typedef struct adapter_hca_capabilities {
                                                        are valid*/
     bool is_flow_table_caps_supported; /**< Capability to query flow table HCH.cap */
     flow_table_capabilities flow_table_caps; /**< Flow table from type receive capabilities */
+    nvmeotcp_capabilities nvmeotcp_caps; /**< NVMe/TCP capabilities flags */
 } adapter_hca_capabilities;
 
 typedef std::unordered_map<int, void*> caps_map_t;
@@ -2616,6 +2643,27 @@ public:
     virtual status get_id(uint32_t& id) override;
 };
 
+class tag_buffer_table_obj : public obj {
+public:
+    struct attr {
+        uint32_t modify_field_select;
+        uint32_t log_tag_buffer_table_size;
+    };
+
+public:
+    tag_buffer_table_obj(dcmd::ctx* ctx);
+    virtual ~tag_buffer_table_obj();
+    status create(const tag_buffer_table_obj::attr& tag_buffer_table_obj_attr);
+    status query(tag_buffer_table_obj::attr& tag_buffer_table_obj_attr);
+    inline uint32_t get_key_id() const
+    {
+        return m_key_id;
+    }
+
+private:
+    uint32_t m_key_id;
+};
+
 struct adapter_info {
     std::string name;
     std::string id;
@@ -2986,6 +3034,9 @@ public:
     {
         return m_flow_action_generator;
     }
+
+    status create_tag_buffer_table_obj(const tag_buffer_table_obj::attr& tag_buffer_table_obj_attr,
+                                       tag_buffer_table_obj*& tag_buffer_table_object);
 };
 
 class provider {

@@ -205,15 +205,14 @@ TEST_F(dpcp_uar, ti_04_get_uar_page)
     status ret = uac->get_uar_page(u1, ut1);
     log_trace("Id1: %u Page1: 0x%p BFReg2: 0x%p\n", ut1.m_page_id, ut1.m_page, ut1.m_bf_reg);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(0, ut1.m_page_id);
+    ASSERT_NE(0U, ut1.m_page_id);
     ASSERT_NE(nullptr, (void*)ut1.m_page);
     ASSERT_NE(nullptr, (void*)ut1.m_bf_reg);
 
     uar_t ut2 = {};
-    void* bf2 = nullptr;
     ret = uac->get_uar_page(u1, ut2);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(0, ut2.m_page_id);
+    ASSERT_NE(0U, ut2.m_page_id);
     ASSERT_NE(nullptr, (void*)ut2.m_page);
     ASSERT_NE(nullptr, (void*)ut2.m_bf_reg);
     ASSERT_EQ(ut1, ut2);
@@ -222,7 +221,7 @@ TEST_F(dpcp_uar, ti_04_get_uar_page)
     ret = uac->get_uar_page(u2, ut2);
     log_trace("Id2: %u Page2: 0x%p BFReg2: 0x%p\n", ut2.m_page_id, ut2.m_page, ut2.m_bf_reg);
     ASSERT_EQ(DPCP_ERR_INVALID_PARAM, ret);
-    ASSERT_NE(0, ut2.m_page_id);
+    ASSERT_NE(0U, ut2.m_page_id);
     ASSERT_NE(nullptr, (void*)ut2.m_page);
     ASSERT_NE(nullptr, (void*)ut2.m_bf_reg);
     ASSERT_EQ(ut1, ut2);

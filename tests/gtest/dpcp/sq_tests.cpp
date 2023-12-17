@@ -76,7 +76,7 @@ TEST_F(dpcp_sq, ti_01_create_with_pp)
 
     ret = (status)create_cq(ad, &s_cqd);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(0, s_cqd.cqn);
+    ASSERT_NE(0U, s_cqd.cqn);
 
     struct tis::attr tis_attr;
     memset(&tis_attr, 0, sizeof(tis_attr));
@@ -87,7 +87,7 @@ TEST_F(dpcp_sq, ti_01_create_with_pp)
     s_tis_n = 0;
     ret = s_tis->get_tisn(s_tis_n);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(0, s_tis_n);
+    ASSERT_NE(0U, s_tis_n);
 
     qos_attributes qos_attr;
     qos_attr.qos_type = QOS_TYPE::QOS_PACKET_PACING;

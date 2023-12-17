@@ -231,6 +231,7 @@
     <ClCompile Include="src\dpcp\sq.cpp" />
     <ClCompile Include="src\dpcp\tir.cpp" />
     <ClCompile Include="src\dpcp\tis.cpp" />
+    <ClCompile Include="src\dpcp\tag_buffer_table_obj.cpp" />
     <ClCompile Include="src\utils\windows\log.cpp" />
     <ClCompile Include="src\utils\windows\stdafx.cpp" />
     <ClCompile Include="src\utils\windows\utils.cpp" />

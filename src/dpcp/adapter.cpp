@@ -48,6 +48,7 @@ static const std::vector<int> s_supported_cap_types {MLX5_CAP_GENERAL,
                                                      MLX5_CAP_GENERAL_2,
                                                      MLX5_CAP_FLOW_TABLE,
                                                      MLX5_CAP_DPP,
+                                                     MLX5_CAP_NVMEOTCP,
                                                      MLX5_CAP_CRYPTO};
 
 static void store_hca_device_frequency_khz_caps(adapter_hca_capabilities* external_hca_caps,
@@ -577,6 +578,44 @@ static void store_hca_crypto_caps(adapter_hca_capabilities* external_hca_caps,
     log_trace("Capability - log_max_num_deks: %d\n", external_hca_caps->log_max_num_deks);
 }
 
+static void store_hca_nvmeotcp_caps(adapter_hca_capabilities* external_hca_caps,
+                                    const caps_map_t& caps_map)
+{
+    external_hca_caps->nvmeotcp_caps.enabled =
+        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+                 capability.cmd_hca_cap.nvmeotcp);
+
+    if (external_hca_caps->nvmeotcp_caps.enabled) {
+        external_hca_caps->nvmeotcp_caps.zerocopy =
+            DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_NVMEOTCP)->second,
+                     capability.nvmeotcp_cap.zerocopy);
+        external_hca_caps->nvmeotcp_caps.crc_rx =
+            DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_NVMEOTCP)->second,
+                     capability.nvmeotcp_cap.crc_rx);
+        external_hca_caps->nvmeotcp_caps.crc_tx =
+            DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_NVMEOTCP)->second,
+                     capability.nvmeotcp_cap.crc_tx);
+        external_hca_caps->nvmeotcp_caps.log_max_nvmeotcp_tag_buffer_table =
+            DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_NVMEOTCP)->second,
+                     capability.nvmeotcp_cap.log_max_nvmeotcp_tag_buffer_table);
+        external_hca_caps->nvmeotcp_caps.log_max_nvmeotcp_tag_buffer_size =
+            DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_NVMEOTCP)->second,
+                     capability.nvmeotcp_cap.log_max_nvmeotcp_tag_buffer_size);
+        log_trace(
+            "Capability - nvmeotcp: ENABLED - zerocopy:%d, crc_rx: %d, crc_tx: %d, version: %d, "
+            "log_max_nvmeotcp_tag_buffer_table: %d, log_max_nvmeotcp_tag_buffer_size: %d\n",
+            external_hca_caps->nvmeotcp_caps.zerocopy, external_hca_caps->nvmeotcp_caps.crc_rx,
+            external_hca_caps->nvmeotcp_caps.crc_tx, external_hca_caps->nvmeotcp_caps.version,
+            external_hca_caps->nvmeotcp_caps.log_max_nvmeotcp_tag_buffer_table,
+            external_hca_caps->nvmeotcp_caps.log_max_nvmeotcp_tag_buffer_size);
+    } else {
+        external_hca_caps->nvmeotcp_caps.zerocopy = false;
+        external_hca_caps->nvmeotcp_caps.crc_tx = false;
+        external_hca_caps->nvmeotcp_caps.crc_rx = false;
+        log_trace("Capability - nvmeotcp: DISABLED\n");
+    }
+}
+
 static const std::vector<cap_cb_fn> caps_callbacks = {
     store_hca_device_frequency_khz_caps,
     store_hca_tls_caps,
@@ -593,6 +632,7 @@ static const std::vector<cap_cb_fn> caps_callbacks = {
     store_hca_flow_table_caps,
     store_hca_flow_table_nic_receive_caps,
     store_hca_crypto_caps,
+    store_hca_nvmeotcp_caps,
 };
 
 status pd_devx::create()
@@ -1396,6 +1436,28 @@ status adapter::sync_crypto_tls()
     log_trace("CRYPTO_SYNC success: status: %u syndrome: %x\n",
               static_cast<unsigned int>(DEVX_GET(sync_crypto_out, out, status)),
               static_cast<unsigned int>(DEVX_GET(sync_crypto_out, out, syndrome)));
+
+    return DPCP_OK;
+}
+
+status adapter::create_tag_buffer_table_obj(const tag_buffer_table_obj::attr& tag_buffer_table_attr,
+                                            tag_buffer_table_obj*& tag_buffer_table_object)
+{
+    status ret = DPCP_OK;
+    tag_buffer_table_obj* tag_buf_obj = nullptr;
+
+    tag_buf_obj = new (std::nothrow) tag_buffer_table_obj(get_ctx());
+    if (nullptr == tag_buf_obj) {
+        return DPCP_ERR_NO_MEMORY;
+    }
+
+    ret = tag_buf_obj->create(tag_buffer_table_attr);
+    if (DPCP_OK != ret) {
+        delete tag_buf_obj;
+        return DPCP_ERR_CREATE;
+    }
+
+    tag_buffer_table_object = tag_buf_obj;
 
     return DPCP_OK;
 }

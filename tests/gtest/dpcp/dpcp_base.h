@@ -56,7 +56,7 @@ struct cq_data {
 struct rq_params {
     rq_attr rq_at;
     uint32_t rq_num;
-    uint32_t wqe_sz;
+    size_t wqe_sz;
 };
 
 /**

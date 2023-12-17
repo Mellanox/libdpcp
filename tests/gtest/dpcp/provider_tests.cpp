@@ -112,18 +112,18 @@ TEST_F(dpcp_provider, ti_3)
 
     size_t num = 0;
     ret = p->get_adapter_info_lst(nullptr, num);
-    adapter_info* p_ainfo = new (std::nothrow) adapter_info[num];
-    ret = p->get_adapter_info_lst(p_ainfo, num);
+    adapter_info* temp_p_ainfo = new (std::nothrow) adapter_info[num];
+    ret = p->get_adapter_info_lst(temp_p_ainfo, num);
     ASSERT_EQ(DPCP_OK, ret);
 
-    adapter_info* ai = p_ainfo;
+    adapter_info* ai = temp_p_ainfo;
 
     ret = p->open_adapter(ai->id, ad1);
     ASSERT_EQ(DPCP_OK, ret);
     log_trace("id: %s name: %s adapter: %p\n", ai->id.c_str(), ai->name.c_str(), ad1);
 
     if (num > 1) {
-        ai = p_ainfo + 1;
+        ai = temp_p_ainfo + 1;
         adapter* ad2 = nullptr;
         ret = p->open_adapter(ai->id, ad2);
         ASSERT_EQ(DPCP_OK, ret);
