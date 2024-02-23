@@ -48,24 +48,34 @@ provider::provider()
 
 status provider::get_instance(provider*& provider, const char* version)
 {
-    int self_version[3] = {0};
-    int user_version[3] = {0};
+    int self_ver[3] = {0};
+    int user_ver[3] = {0};
+    char extra_char;
 
     if (!version) {
         return DPCP_ERR_INVALID_PARAM;
     }
 
-    sscanf(dpcp_version, "%d.%d.%d", &self_version[0], &self_version[1], &self_version[2]);
-    sscanf(version, "%d.%d.%d", &user_version[0], &user_version[1], &user_version[2]);
-    if ((user_version[0] != self_version[0]) || (user_version[1] > self_version[1])) {
+    if (3 != sscanf(dpcp_version, "%d.%d.%d", &self_ver[0], &self_ver[1], &self_ver[2])) {
+        log_warn(
+            "Internal DPCP library version (%s) is incompatible with format MAJOR.MINOR.PATCH\n",
+            dpcp_version);
+        return DPCP_ERR_INVALID_PARAM;
+    }
+    if (3 != sscanf(version, "%d.%d.%d%c", &user_ver[0], &user_ver[1], &user_ver[2], &extra_char)) {
+        log_warn(
+            "Requested DPCP library version (%s) is incompatible with format MAJOR.MINOR.PATCH\n",
+            version);
+        return DPCP_ERR_INVALID_PARAM;
+    }
+
+    if ((user_ver[0] != self_ver[0]) || (user_ver[1] > self_ver[1])) {
         log_warn("DPCP library version (%d.%d.%d) is incompatible with requested (%d.%d.%d)\n",
-                 self_version[0], self_version[1], self_version[2], user_version[0],
-                 user_version[1], user_version[2]);
+                 self_ver[0], self_ver[1], self_ver[2], user_ver[0], user_ver[1], user_ver[2]);
         return DPCP_ERR_NO_SUPPORT;
     }
 
-    log_trace("DPCP library version: %d.%d.%d\n", self_version[0], self_version[1],
-              self_version[2]);
+    log_trace("DPCP library version: %d.%d.%d\n", self_ver[0], self_ver[1], self_ver[2]);
 
     static dpcp::provider self;
 

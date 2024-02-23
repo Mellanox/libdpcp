@@ -52,7 +52,7 @@
 using std::function;
 using std::unordered_map;
 
-static const char* dpcp_version = "1.1.46";
+static const char* dpcp_version = "1.1.48";
 
 #if defined(__linux__)
 typedef void* LPOVERLAPPED;
@@ -1286,6 +1286,7 @@ struct flow_table_attr {
         : flags(0)
         , log_size(0)
         , level(0)
+        , type(FT_END)
         , op_mod(flow_table_op_mod::FT_OP_MOD_NORMAL)
         , def_miss_action(flow_table_miss_action::FT_MISS_ACTION_DEF)
         , modify_field_select(0)

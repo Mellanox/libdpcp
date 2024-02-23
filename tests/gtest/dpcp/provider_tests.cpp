@@ -28,6 +28,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sstream>
+
 #include "common/def.h"
 #include "common/log.h"
 #include "common/sys.h"
@@ -130,4 +132,59 @@ TEST_F(dpcp_provider, ti_3)
         ASSERT_NE(ad1, ad2);
         log_trace("id: %s name: %s adapter: %p\n", ai->id.c_str(), ai->name.c_str(), ad2);
     }
+}
+
+/**
+ * @test dpcp_provider.ti_4
+ * @brief
+ *    Check get_instance version checks
+ * @details
+ */
+TEST_F(dpcp_provider, ti_4)
+{
+    provider* test_provider;
+
+    status ret = test_provider->get_instance(test_provider, nullptr);
+    ASSERT_EQ(DPCP_ERR_INVALID_PARAM, ret);
+
+    int current_major = 0;
+    int current_minor = 0;
+    int current_patch = 0;
+    const int scanned_count =
+        sscanf(dpcp_version, "%d.%d.%d", &current_major, &current_minor, &current_patch);
+    ASSERT_EQ(3, scanned_count);
+
+    ret = test_provider->get_instance(test_provider, dpcp_version);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    std::ostringstream bigger_major_version;
+    bigger_major_version << (current_major + 1) << "." << current_minor << "." << current_patch;
+    ret = test_provider->get_instance(test_provider, bigger_major_version.str().c_str());
+    ASSERT_EQ(DPCP_ERR_NO_SUPPORT, ret);
+
+    std::ostringstream smaller_major_version;
+    smaller_major_version << (current_major - 1) << "." << current_minor << "." << current_patch;
+    ret = test_provider->get_instance(test_provider, smaller_major_version.str().c_str());
+    ASSERT_EQ(DPCP_ERR_NO_SUPPORT, ret);
+
+    std::ostringstream bigger_minor_version;
+    bigger_minor_version << current_major << "." << (current_minor + 1) << "." << current_patch;
+    ret = test_provider->get_instance(test_provider, bigger_minor_version.str().c_str());
+    ASSERT_EQ(DPCP_ERR_NO_SUPPORT, ret);
+
+    if (current_minor > 0) {
+        std::ostringstream smaller_minor_version;
+        smaller_minor_version << current_major << "." << (current_minor - 1) << "."
+                              << current_patch;
+        ret = test_provider->get_instance(test_provider, smaller_minor_version.str().c_str());
+        ASSERT_EQ(DPCP_OK, ret);
+    }
+
+    const char* invalid_version_format_01 = "1";
+    ret = test_provider->get_instance(test_provider, invalid_version_format_01);
+    ASSERT_EQ(DPCP_ERR_INVALID_PARAM, ret);
+
+    const char* invalid_version_format_02 = "1.1.35bogus";
+    ret = test_provider->get_instance(test_provider, invalid_version_format_02);
+    ASSERT_EQ(DPCP_ERR_INVALID_PARAM, ret);
 }

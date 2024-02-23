@@ -80,7 +80,7 @@ otherinclude_HEADERS = \
 
 install-exec-hook:
 	rm -f $(DESTDIR)$(libdir)/libdpcp.la
-	rm -f $(DESTDIR)$(libdir)/libdpcp.a
 
 uninstall-hook:
 	rm -f $(DESTDIR)$(libdir)/libdpcp.so*
+	rm -f $(DESTDIR)$(libdir)/libdpcp.a

@@ -59,10 +59,14 @@ install(TARGETS ${PROJECT_NAME}
 )
 
 if (NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
-	install(FILES src/api/dpcp.h DESTINATION include/mellanox)
+    install(FILES src/api/dpcp.h DESTINATION include/mellanox)
 endif()
 
 add_subdirectory(src)
 if (${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_SOURCE_DIR})
-    add_subdirectory(tests)
+    if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        # tests/gtest doesn't compile properly for Clang since we have an old version
+        # of gtest
+        add_subdirectory(tests)
+    endif()
 endif()

@@ -31,6 +31,12 @@
 #ifndef SRC_DCMD_PRM_H_
 #define SRC_DCMD_PRM_H_
 
+#ifdef __cplusplus
+#include <cstdint>
+#else
+#include <stdint.h>
+#endif
+
 #define u8 uint8_t
 
 /*

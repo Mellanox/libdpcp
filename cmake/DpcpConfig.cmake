@@ -79,6 +79,37 @@ else()
         -Wno-overloaded-virtual
     )
     target_compile_definitions(dpcp_config INTERFACE _FORTIFY_SOURCE=2)
+
+    option(DPCP_IPO "Enable interprocedural optimization (IPO/LTO)." FALSE)
+    if (DPCP_IPO)
+        include(CheckIPOSupported)
+        check_ipo_supported(RESULT is_ipo_supported OUTPUT output_log)
+        if (is_ipo_supported)
+            set_property(TARGET dpcp_config PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+        else()
+            message(WARNING "IPO is not supported: ${output_log}")
+        endif()
+    endif()
+    set(DPCP_PGO_PROFILE_PATH "" CACHE PATH "PGO Profile directory. When specified, enables PGO Profile optimization.")
+    set(DPCP_GENERATE_PGO OFF CACHE BOOL "When PGO is enabled, if ON - generates a new profile, if OFF - uses the existing one. " FORCE)
+
+    if (DPCP_PGO_PROFILE_PATH)
+        if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+            list(APPEND DPCP_C_CXX_FLAGS
+                -fprofile-$<IF:$<BOOL:${DPCP_GENERATE_PGO}>,generate,use>
+                -fprofile-correction
+                -Wno-error=missing-profile
+                --coverage
+                -fprofile-dir=${DPCP_PGO_PROFILE_PATH}
+            )
+        elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+            list(APPEND DPCP_C_CXX_FLAGS
+                --coverage
+                -fprofile-$<IF:$<BOOL:${DPCP_GENERATE_PGO}>,generate,use>=${DPCP_PGO_PROFILE_PATH}
+            )
+        endif()
+        target_link_libraries(dpcp_config INTERFACE $<$<BOOL:${DPCP_GENERATE_PGO}>:gcov>)
+    endif()
 endif()
 target_compile_options(dpcp_config INTERFACE $<$<COMPILE_LANGUAGE:CXX,C>:${DPCP_C_CXX_FLAGS}>) 
 target_compile_options(dpcp_config INTERFACE $<$<COMPILE_LANGUAGE:CXX>:${DPCP_CXX_FLAGS}>)

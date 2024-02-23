@@ -13,7 +13,7 @@ dnl===-----------------------------------------------------------------------===
 #
 define([prj_ver_major], 1)
 define([prj_ver_minor], 1)
-define([prj_ver_revision], 46)
+define([prj_ver_revision], 48)
 define([prj_ver_release], esyscmd([echo ${PRJ_RELEASE:=0}]))
 
 
@@ -100,7 +100,6 @@ show_section_title "Configure build tools"
 #
 AC_PROG_CC
 AC_PROG_CXX
-AC_PROG_LIBTOOL
 
 # Check for pkg-config package
 #
@@ -127,6 +126,11 @@ case "$have_pkg_config" in
         ;;
 esac
 PKG_PROG_PKG_CONFIG()
+
+LT_INIT
+AC_SUBST([LIBTOOL_STATIC], [--enable-static])
+
+LINKING_OPTIMIZATION()
 
 
 dnl===-----------------------------------------------------------------------===
@@ -190,7 +194,7 @@ show_section_title "Configure project"
 #
 AC_MSG_CHECKING([for OFED path])
 AC_ARG_WITH(ofed,
-    AC_HELP_STRING([--with-ofed], [Path to OFED install]),
+    AS_HELP_STRING([--with-ofed], [Path to OFED install]),
     [ac_cv_ofed_path=$withval],
     [if test -e "/etc/infiniband/info" ; then
          ac_cv_ofed_path=`grep prefix /etc/infiniband/info | awk -F "=" '{print $2}'`
