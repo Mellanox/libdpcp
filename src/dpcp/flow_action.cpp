@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
+ * Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -517,7 +518,7 @@ const std::vector<forwardable_obj*>& flow_action_fwd::get_dest_objs()
 
 flow_action_fwd::flow_action_fwd(dcmd::ctx* ctx, std::vector<forwardable_obj*> dests)
     : flow_action(ctx)
-    , m_dests(dests)
+    , m_dests(std::move(dests))
     , m_root_action_fwd()
 {
 }
@@ -568,7 +569,8 @@ flow_action_generator::flow_action_generator(dcmd::ctx* ctx, const adapter_hca_c
 
 std::shared_ptr<flow_action> flow_action_generator::create_fwd(std::vector<forwardable_obj*> dests)
 {
-    return std::shared_ptr<flow_action>(new (std::nothrow) flow_action_fwd(m_ctx, dests));
+    return std::shared_ptr<flow_action>(new (std::nothrow)
+                                            flow_action_fwd(m_ctx, std::move(dests)));
 }
 
 std::shared_ptr<flow_action> flow_action_generator::create_tag(uint32_t id)

@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2020-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
+ * Copyright (c) 2020-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -69,7 +70,7 @@ status parser_graph_node::create()
     DEVX_SET(parse_graph_node, node, header_length_field_mask, m_attrs.header_length_field_mask);
 
     for (size_t index = 0; index < m_attrs.samples.size(); index++) {
-        auto _sample = m_attrs.samples[index];
+        const auto& _sample = m_attrs.samples[index];
         if (!_sample.enabled) {
             continue;
         }

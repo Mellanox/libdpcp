@@ -2,7 +2,7 @@
 #
 # Testing script: package
 #
-# Copyright (c) 2020-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2020-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # BSD-3-Clause
 #
 # See file LICENSE for terms.
@@ -94,6 +94,39 @@ if [ $opt_checkpkg -eq 1 ]; then
     test_exec="${WORKSPACE}/contrib/build_pkg.sh -b -s -i ${WORKSPACE} -o ${rpm_dir}/deb-dist-pkg"
     do_check_result "$test_exec" "$test_id" "checkpkg" "$rpm_tap" "${rpm_dir}/rpm-${test_id}"
     test_id=$((test_id+1))
+fi
+
+# check if we have email of indevidual users in the packages rpm/deb metadata Maintainer field
+if [ $opt_rpm -eq 1 ]; then
+    pacakges_location="$rpm_dir"/rpm-dist
+    email_log_file="$rpm_dir"/rpm-dist/email_scan.log
+    search_filter="*.rpm"
+    test_info_exec="rpm -qpi --changelog"
+else
+    pacakges_location="$rpm_dir"/deb-dist-pkg/packages
+    email_log_file="$rpm_dir"/deb-dist-pkg/packages/email_scan.log
+    search_filter="*.deb"
+    test_info_exec="apt info"
+fi
+
+# iterate on all packages and extarct the metadata to outout file
+touch "$email_log_file"
+find "$pacakges_location" -type f -name "$search_filter" -exec $test_info_exec {} \; | tee -a "$email_log_file"
+do_archive "$email_log_file"
+set +e
+# grep email strings exclude allowed email networking-support@nvidiacom
+test_output=$(grep -E -o "\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,6}\b" "$email_log_file" | grep -v "networking-support")
+test_rc=$?
+set -e
+# check rc - grep will return 0 if it found such mail and 1 if not
+if [[ $test_rc -eq 0 ]]; then
+    # if we found such mail we will get return code 0
+    echo "ERROR: found bad email address $test_output"
+    rc=$((rc + 1))
+elif [[ -n "$test_output" ]]; then
+    # if we got rc not 0 and we have output it means something else failed
+    echo "ERROR: could not find bad email but something else failed: $test_output"
+    rc=$((rc + 1))
 fi
 
 echo "[${0##*/}]..................exit code = $rc"

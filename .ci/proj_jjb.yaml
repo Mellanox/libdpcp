@@ -1,9 +1,10 @@
 - job-template:
     name: "{jjb_proj}"
     project-type: pipeline
+    folder: dpcp
     properties:
         - github:
-            url: "{jjb_git}"
+            url: "https://github.com/Mellanox/dpcp/"
         - build-discarder:
             days-to-keep: 50
             num-to-keep: 20
@@ -27,10 +28,25 @@
             name: "release_dir"
             default: "/auto/sw/release/sw_acceleration/dpcp"
             description: "(not enabled yet) Location to release rpm/deb packages"
+        - string:
+            name: "DOCA_VERSION"
+            default: "2.8.0"
+            description: "DOCA version - see https://developer.nvidia.com/doca-downloads?deployment_platform=Host-Server&deployment_package=DOCA-Host"
+        - choice:
+            name: DOCA_BRANCH
+            choices:
+                - latest
+                - stage
+                - dev
+            description: "On which DOCA branch to run?"
         - bool:
             name: "do_copyrights"
             default: true
             description: "Check copyrights in source headers"
+        - bool:
+            name: "do_secretscan"
+            default: true
+            description: "Check for secrets in source code"
         - bool:
             name: "do_coverity"
             default: true
@@ -64,12 +80,12 @@
             cron: 'H/5 * * * *'
             trigger-phrase: '.*\bbot:retest\b.*'
             status-context: "{jjb_proj}"
-            success-status: "[PASS}"
+            success-status: "[PASS]"
             failure-status: "[FAIL]"
             error-status:   "[FAIL]"
             status-add-test-results: true
             # swx-jenkins2 from GitHub Pull Request Builder
-            auth-id: 'cb48aefb-4f90-4d52-a9bc-63d92382e0be'
+            auth-id: 'swx-jenkins5_gh_token'
             org-list: ["Mellanox"]
             allow-whitelist-orgs-as-admins: true
             cancel-builds-on-update: true
@@ -78,7 +94,7 @@
             - git:
                 url: "{jjb_git}"
                 # swx-jenkins3 GH user/pass
-                credentials-id: '4a532b1d-81ff-4c06-8f20-ddfeede633e5'
+                credentials-id: 'swx-jenkins_ssh_key'
                 branches: ['$sha1']
                 shallow-clone: false
                 # depth: 10
@@ -90,11 +106,11 @@
         script-path: "$script"
 
 - project:
-    name: proj_name
-    jjb_email: 'vryabov@nvidia.com'
-    jjb_proj: 'dpcp-ci-demo'
-    jjb_git: 'https://github.com/Mellanox/dpcp'
-    jjb_owner: 'Vasily Ryabov'
+    name: dpcp
+    jjb_email: 'nwolfer@nvidia.com'
+    jjb_proj: 'dpcp-ci-linux'
+    jjb_git: 'git@github.com:Mellanox/dpcp.git'
+    jjb_owner: 'Nir Wolfer'
     jjb_jenkinsfile: '.ci/Jenkinsfile.shlib'
     jobs:
         - "{jjb_proj}"

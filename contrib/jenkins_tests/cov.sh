@@ -2,7 +2,7 @@
 #
 # Testing script: coverity
 #
-# Copyright (c) 2020-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2020-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # BSD-3-Clause
 #
 # See file LICENSE for terms.
@@ -12,7 +12,7 @@ source $(dirname $0)/globals.sh
 
 do_check_filter "Checking for coverity ..." "on"
 
-COVERITY_VERSION="2021.12"
+COVERITY_VERSION="2023.12"
 do_module "tools/cov-${COVERITY_VERSION}"
 
 cd $WORKSPACE

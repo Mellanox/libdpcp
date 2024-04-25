@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2019-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
+ * Copyright (c) 2019-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -52,7 +53,7 @@
 using std::function;
 using std::unordered_map;
 
-static const char* dpcp_version = "1.1.48";
+static const char* dpcp_version = "1.1.52";
 
 #if defined(__linux__)
 typedef void* LPOVERLAPPED;

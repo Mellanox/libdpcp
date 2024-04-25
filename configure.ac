@@ -13,14 +13,14 @@ dnl===-----------------------------------------------------------------------===
 #
 define([prj_ver_major], 1)
 define([prj_ver_minor], 1)
-define([prj_ver_revision], 48)
+define([prj_ver_revision], 52)
 define([prj_ver_release], esyscmd([echo ${PRJ_RELEASE:=0}]))
 
 
 # Initialize autoconf and define the package name, version number and
 # email address for reporting bugs.
 #
-AC_INIT(dpcp, [prj_ver_major.prj_ver_minor.prj_ver_revision], support@mellanox.com)
+AC_INIT(dpcp, [prj_ver_major.prj_ver_minor.prj_ver_revision], networking-support@nvidia.com)
 
 # Definitions will be placed in this file rather than
 # in the DEFS variable

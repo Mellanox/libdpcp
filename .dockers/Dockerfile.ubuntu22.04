@@ -1,5 +1,5 @@
 ARG ARCH=x86_64
-FROM harbor.mellanox.com/hpcx/x86_64/ubuntu22.04/base:latest
+FROM harbor.mellanox.com/hpcx/${ARCH}/ubuntu22.04/base:latest AS build
 ARG _UID=6213
 ARG _GID=11429
 ARG _LOGIN=swx-jenkins
@@ -34,32 +34,6 @@ RUN apt-get update && \
         lsb-release \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-
-# MOFED
-ARG MOFED_VERSION=23.07-0.5.1.2
-ARG UBUNTU_VERSION=22.04
-ARG MOFED_OS=ubuntu${UBUNTU_VERSION}
-ARG ARCH=x86_64
-ENV MOFED_DIR MLNX_OFED_LINUX-${MOFED_VERSION}-${MOFED_OS}-${ARCH}
-ENV MOFED_SITE_PLACE MLNX_OFED-${MOFED_VERSION}
-ENV MOFED_IMAGE ${MOFED_DIR}.tgz
-
-RUN wget --no-verbose http://content.mellanox.com/ofed/${MOFED_SITE_PLACE}/${MOFED_IMAGE} && \
-    tar -xzf ${MOFED_IMAGE}
-
-RUN ${MOFED_DIR}/mlnxofedinstall --all -q \
-	--force \
-	--upstream-libs \
-	--vma \
-	--user-space-only \
-	--without-fw-update \
-	--skip-unsupported-devices-check \
-	--without-libxlio \
-	--without-libxlio-utils \
-	--without-libxlio-dev \
-        --distro ${MOFED_OS} \
-    && rm -rf ${MOFED_DIR} && rm -rf *.tgz
-
 RUN echo "$_LOGIN ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
     mkdir -p $_HOME && \
     groupadd -f -g "$_GID" "$_LOGIN" && \
@@ -74,3 +48,13 @@ SHELL ["/bin/bash"]
 
 USER "$_LOGIN"
 ENTRYPOINT [ "/bin/bash", "--login", "--rcfile", "/etc/bashrc", "-c" ]
+
+ARG ARCH
+FROM harbor.mellanox.com/hpcx/${ARCH}/ubuntu22.04/base:latest AS toolbox
+RUN apt-get update && \
+    apt-get install -y \
+        sudo \
+        hostname \
+        clang \
+        clang-format \
+ && apt-get clean && rm -rf /var/lib/apt/lists/*

@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2019-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
+ * Copyright (c) 2019-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -54,56 +55,71 @@ static const std::vector<int> s_supported_cap_types {MLX5_CAP_GENERAL,
 static void store_hca_device_frequency_khz_caps(adapter_hca_capabilities* external_hca_caps,
                                                 const caps_map_t& caps_map)
 {
-    external_hca_caps->device_frequency_khz =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
-                 capability.cmd_hca_cap.device_frequency_khz);
+    auto general_cap = caps_map.find(MLX5_CAP_GENERAL);
+    if (general_cap == caps_map.end()) {
+        log_fatal("Incorrect caps_map object - couldn't find MLX5_CAP_GENERAL\n");
+        return;
+    }
+
+    external_hca_caps->device_frequency_khz = DEVX_GET(query_hca_cap_out, general_cap->second,
+                                                       capability.cmd_hca_cap.device_frequency_khz);
     log_trace("Capability - device_frequency_khz: %d\n", external_hca_caps->device_frequency_khz);
 }
 
 static void store_hca_tls_caps(adapter_hca_capabilities* external_hca_caps,
                                const caps_map_t& caps_map)
 {
-    external_hca_caps->tls_tx = DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
-                                         capability.cmd_hca_cap.tls_tx);
+    auto general_cap = caps_map.find(MLX5_CAP_GENERAL);
+    if (general_cap == caps_map.end()) {
+        log_fatal("Incorrect caps_map object - couldn't find MLX5_CAP_GENERAL\n");
+        return;
+    }
+
+    external_hca_caps->tls_tx =
+        DEVX_GET(query_hca_cap_out, general_cap->second, capability.cmd_hca_cap.tls_tx);
     log_trace("Capability - tls_tx: %d\n", external_hca_caps->tls_tx);
 
-    external_hca_caps->tls_rx = DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
-                                         capability.cmd_hca_cap.tls_rx);
+    external_hca_caps->tls_rx =
+        DEVX_GET(query_hca_cap_out, general_cap->second, capability.cmd_hca_cap.tls_rx);
     log_trace("Capability - tls_rx: %d\n", external_hca_caps->tls_rx);
 }
 
 static void store_hca_cap_crypto_enable(adapter_hca_capabilities* external_hca_caps,
                                         const caps_map_t& caps_map)
 {
-    external_hca_caps->crypto_enable = DEVX_GET(
-        query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second, capability.cmd_hca_cap.crypto);
+    auto general_cap = caps_map.find(MLX5_CAP_GENERAL);
+    if (general_cap == caps_map.end()) {
+        log_fatal("Incorrect caps_map object - couldn't find MLX5_CAP_GENERAL\n");
+        return;
+    }
+
+    external_hca_caps->crypto_enable =
+        DEVX_GET(query_hca_cap_out, general_cap->second, capability.cmd_hca_cap.crypto);
     log_trace("Capability - crypto: %d\n", external_hca_caps->crypto_enable);
 
     external_hca_caps->aes_xts_multi_block_le_tweak =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+        DEVX_GET(query_hca_cap_out, general_cap->second,
                  capability.cmd_hca_cap.aes_xts_multi_block_le_tweak);
     log_trace("Capability - aes_xts_multi_block_le_tweak: %d\n",
               external_hca_caps->aes_xts_multi_block_le_tweak);
 
-    external_hca_caps->aes_xts_tweak_inc_shift =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
-                 capability.cmd_hca_cap.aes_xts_tweak_inc_shift);
+    external_hca_caps->aes_xts_tweak_inc_shift = DEVX_GET(
+        query_hca_cap_out, general_cap->second, capability.cmd_hca_cap.aes_xts_tweak_inc_shift);
     log_trace("Capability - aes_xts_tweak_inc_shift: %d\n",
               external_hca_caps->aes_xts_tweak_inc_shift);
 
     external_hca_caps->aes_xts_single_block_le_tweak =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+        DEVX_GET(query_hca_cap_out, general_cap->second,
                  capability.cmd_hca_cap.aes_xts_single_block_le_tweak);
     log_trace("Capability - aes_xts_single_block_le_tweak: %d\n",
               external_hca_caps->aes_xts_single_block_le_tweak);
 
-    external_hca_caps->aes_xts_tweak_inc_64 =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
-                 capability.cmd_hca_cap.aes_xts_tweak_inc_64);
+    external_hca_caps->aes_xts_tweak_inc_64 = DEVX_GET(query_hca_cap_out, general_cap->second,
+                                                       capability.cmd_hca_cap.aes_xts_tweak_inc_64);
     log_trace("Capability - aes_xts_tweak_inc_64: %d\n", external_hca_caps->aes_xts_tweak_inc_64);
 
     external_hca_caps->aes_xts_multi_block_be_tweak =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+        DEVX_GET(query_hca_cap_out, general_cap->second,
                  capability.cmd_hca_cap.aes_xts_multi_block_be_tweak);
     log_trace("Capability - aes_xts_multi_block_be_tweak: %d\n",
               external_hca_caps->aes_xts_multi_block_be_tweak);
@@ -112,9 +128,14 @@ static void store_hca_cap_crypto_enable(adapter_hca_capabilities* external_hca_c
 static void store_hca_general_object_types_encryption_key_caps(
     adapter_hca_capabilities* external_hca_caps, const caps_map_t& caps_map)
 {
-    uint64_t general_obj_types =
-        DEVX_GET64(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
-                   capability.cmd_hca_cap.general_obj_types);
+    auto general_cap = caps_map.find(MLX5_CAP_GENERAL);
+    if (general_cap == caps_map.end()) {
+        log_fatal("Incorrect caps_map object - couldn't find MLX5_CAP_GENERAL\n");
+        return;
+    }
+
+    uint64_t general_obj_types = DEVX_GET64(query_hca_cap_out, general_cap->second,
+                                            capability.cmd_hca_cap.general_obj_types);
     if (general_obj_types & MLX5_HCA_CAP_GENERAL_OBJECT_TYPES_ENCRYPTION_KEY) {
         external_hca_caps->general_object_types_encryption_key = true;
     }
@@ -126,24 +147,33 @@ static void store_hca_general_object_types_encryption_key_caps(
 static void store_hca_log_max_dek_caps(adapter_hca_capabilities* external_hca_caps,
                                        const caps_map_t& caps_map)
 {
+    auto general_cap = caps_map.find(MLX5_CAP_GENERAL);
+    if (general_cap == caps_map.end()) {
+        log_fatal("Incorrect caps_map object - couldn't find MLX5_CAP_GENERAL\n");
+        return;
+    }
+
     external_hca_caps->log_max_dek =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
-                 capability.cmd_hca_cap.log_max_dek);
+        DEVX_GET(query_hca_cap_out, general_cap->second, capability.cmd_hca_cap.log_max_dek);
     log_trace("Capability - log_max_dek: %d\n", external_hca_caps->log_max_dek);
 }
 
 static void store_hca_tls_1_2_aes_gcm_caps(adapter_hca_capabilities* external_hca_caps,
                                            const caps_map_t& caps_map)
 {
+    auto tls_cap = caps_map.find(MLX5_CAP_TLS);
+    if (tls_cap == caps_map.end()) {
+        log_fatal("Incorrect caps_map object - couldn't find MLX5_CAP_TLSs\n");
+        return;
+    }
+
     external_hca_caps->tls_1_2_aes_gcm_128 =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_TLS)->second,
-                 capability.tls_cap.tls_1_2_aes_gcm_128);
+        DEVX_GET(query_hca_cap_out, tls_cap->second, capability.tls_cap.tls_1_2_aes_gcm_128);
     log_trace("Capability - tls_1_2_aes_gcm_128_caps: %d\n",
               external_hca_caps->tls_1_2_aes_gcm_128);
 
     external_hca_caps->tls_1_2_aes_gcm_256 =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_TLS)->second,
-                 capability.tls_cap.tls_1_2_aes_gcm_256);
+        DEVX_GET(query_hca_cap_out, tls_cap->second, capability.tls_cap.tls_1_2_aes_gcm_256);
     log_trace("Capability - tls_1_2_aes_gcm_256_caps: %d\n",
               external_hca_caps->tls_1_2_aes_gcm_256);
 }
@@ -151,34 +181,44 @@ static void store_hca_tls_1_2_aes_gcm_caps(adapter_hca_capabilities* external_hc
 static void store_hca_sq_ts_format_caps(adapter_hca_capabilities* external_hca_caps,
                                         const caps_map_t& caps_map)
 {
+    auto general_cap = caps_map.find(MLX5_CAP_GENERAL);
+    if (general_cap == caps_map.end()) {
+        log_fatal("Incorrect caps_map object - couldn't find MLX5_CAP_GENERAL\n");
+        return;
+    }
+
     external_hca_caps->sq_ts_format =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
-                 capability.cmd_hca_cap.sq_ts_format);
+        DEVX_GET(query_hca_cap_out, general_cap->second, capability.cmd_hca_cap.sq_ts_format);
     log_trace("Capability - sq_ts_format: %d\n", external_hca_caps->sq_ts_format);
 }
 
 static void store_hca_rq_ts_format_caps(adapter_hca_capabilities* external_hca_caps,
                                         const caps_map_t& caps_map)
 {
+    auto general_cap = caps_map.find(MLX5_CAP_GENERAL);
+    if (general_cap == caps_map.end()) {
+        log_fatal("Incorrect caps_map object - couldn't find MLX5_CAP_GENERAL\n");
+        return;
+    }
+
     external_hca_caps->rq_ts_format =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
-                 capability.cmd_hca_cap.rq_ts_format);
+        DEVX_GET(query_hca_cap_out, general_cap->second, capability.cmd_hca_cap.rq_ts_format);
     log_trace("Capability - rq_ts_format: %d\n", external_hca_caps->rq_ts_format);
 }
 
 static void store_hca_lro_caps(adapter_hca_capabilities* external_hca_caps,
                                const caps_map_t& caps_map)
 {
-    caps_map_t::const_iterator iter = caps_map.find(MLX5_CAP_ETHERNET_OFFLOADS);
-    void* hcattr;
-    int i;
-
-    if (iter == caps_map.end()) {
-        log_fatal("Incorrect caps_map object\n");
+    auto ethernet_offloads_cap = caps_map.find(MLX5_CAP_ETHERNET_OFFLOADS);
+    if (ethernet_offloads_cap == caps_map.end()) {
+        log_fatal("Incorrect caps_map object - couldn't find MLX5_CAP_ETHERNET_OFFLOADS\n");
         return;
     }
 
-    hcattr = DEVX_ADDR_OF(query_hca_cap_out, iter->second, capability);
+    void* hcattr;
+    int i;
+
+    hcattr = DEVX_ADDR_OF(query_hca_cap_out, ethernet_offloads_cap->second, capability);
 
     external_hca_caps->lro_cap = DEVX_GET(per_protocol_networking_offload_caps, hcattr, lro_cap);
     log_trace("Capability - lro_cap: %d\n", external_hca_caps->lro_cap);
@@ -227,19 +267,29 @@ static void store_hca_lro_caps(adapter_hca_capabilities* external_hca_caps,
 static void store_hca_ibq_caps(adapter_hca_capabilities* external_hca_caps,
                                const caps_map_t& caps_map)
 {
-    external_hca_caps->ibq = DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
-                                      capability.cmd_hca_cap.ibq);
+    auto general_cap = caps_map.find(MLX5_CAP_GENERAL);
+    if (general_cap == caps_map.end()) {
+        log_fatal("Incorrect caps_map object - couldn't find MLX5_CAP_GENERAL\n");
+        return;
+    }
+
+    auto dpp_cap = caps_map.find(MLX5_CAP_DPP);
+    if (dpp_cap == caps_map.end()) {
+        log_fatal("Incorrect caps_map object - couldn't find MLX5_CAP_DPP\n");
+        return;
+    }
+
+    external_hca_caps->ibq =
+        DEVX_GET(query_hca_cap_out, general_cap->second, capability.cmd_hca_cap.ibq);
     log_trace("Capability - ibq: %d\n", external_hca_caps->ibq);
 
     external_hca_caps->ibq_wire_protocol =
-        DEVX_GET64(query_hca_cap_out, caps_map.find(MLX5_CAP_DPP)->second,
-                   capability.ibq_cap.ibq_wire_protocol);
+        DEVX_GET64(query_hca_cap_out, dpp_cap->second, capability.ibq_cap.ibq_wire_protocol);
     log_trace("Capability - ibq_wire_protocol: 0x%llx\n",
               static_cast<unsigned long long>(external_hca_caps->ibq_wire_protocol));
 
     external_hca_caps->ibq_max_scatter_offset =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_DPP)->second,
-                 capability.ibq_cap.ibq_max_scatter_offset);
+        DEVX_GET(query_hca_cap_out, dpp_cap->second, capability.ibq_cap.ibq_max_scatter_offset);
     log_trace("Capability - ibq_max_scatter_offset: %d\n",
               external_hca_caps->ibq_max_scatter_offset);
 }
@@ -247,40 +297,51 @@ static void store_hca_ibq_caps(adapter_hca_capabilities* external_hca_caps,
 static void store_hca_parse_graph_node_caps(adapter_hca_capabilities* external_hca_caps,
                                             const caps_map_t& caps_map)
 {
-    auto* parse_graph_cap = caps_map.find(MLX5_CAP_PARSE_GRAPH_NODE)->second;
-    uint64_t general_obj_types =
-        DEVX_GET64(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
-                   capability.cmd_hca_cap.general_obj_types);
+    auto parse_graph_cap = caps_map.find(MLX5_CAP_PARSE_GRAPH_NODE);
+    if (parse_graph_cap == caps_map.end()) {
+        log_fatal("Incorrect caps_map object - couldn't find MLX5_CAP_PARSE_GRAPH_NODE\n");
+        return;
+    }
+
+    auto general_cap = caps_map.find(MLX5_CAP_GENERAL);
+    if (general_cap == caps_map.end()) {
+        log_fatal("Incorrect caps_map object - couldn't find MLX5_CAP_GENERAL\n");
+        return;
+    }
+
+    uint64_t general_obj_types = DEVX_GET64(query_hca_cap_out, general_cap->second,
+                                            capability.cmd_hca_cap.general_obj_types);
 
     if (general_obj_types & MLX5_HCA_CAP_GENERAL_OBJECT_TYPES_PARSE_GRAPH_NODE) {
         external_hca_caps->general_object_types_parse_graph_node = true;
     }
 
-    external_hca_caps->parse_graph_node_in = DEVX_GET(
-        query_hca_cap_out, parse_graph_cap, capability.parse_graph_node_cap.parse_graph_node_in);
+    external_hca_caps->parse_graph_node_in =
+        DEVX_GET(query_hca_cap_out, parse_graph_cap->second,
+                 capability.parse_graph_node_cap.parse_graph_node_in);
     external_hca_caps->parse_graph_header_length_mode =
-        DEVX_GET(query_hca_cap_out, parse_graph_cap,
+        DEVX_GET(query_hca_cap_out, parse_graph_cap->second,
                  capability.parse_graph_node_cap.parse_graph_header_length_mode);
     external_hca_caps->parse_graph_flow_match_sample_offset_mode =
-        DEVX_GET(query_hca_cap_out, parse_graph_cap,
+        DEVX_GET(query_hca_cap_out, parse_graph_cap->second,
                  capability.parse_graph_node_cap.parse_graph_flow_match_sample_offset_mode);
     external_hca_caps->max_num_parse_graph_arc_in =
-        DEVX_GET(query_hca_cap_out, parse_graph_cap,
+        DEVX_GET(query_hca_cap_out, parse_graph_cap->second,
                  capability.parse_graph_node_cap.max_num_parse_graph_arc_in);
     external_hca_caps->max_num_parse_graph_flow_match_sample =
-        DEVX_GET(query_hca_cap_out, parse_graph_cap,
+        DEVX_GET(query_hca_cap_out, parse_graph_cap->second,
                  capability.parse_graph_node_cap.max_num_parse_graph_flow_match_sample);
     external_hca_caps->parse_graph_flow_match_sample_id_in_out =
-        DEVX_GET(query_hca_cap_out, parse_graph_cap,
+        DEVX_GET(query_hca_cap_out, parse_graph_cap->second,
                  capability.parse_graph_node_cap.parse_graph_flow_match_sample_id_in_out);
     external_hca_caps->max_parse_graph_header_length_base_value =
-        DEVX_GET(query_hca_cap_out, parse_graph_cap,
+        DEVX_GET(query_hca_cap_out, parse_graph_cap->second,
                  capability.parse_graph_node_cap.max_parse_graph_header_length_base_value);
     external_hca_caps->max_parse_graph_flow_match_sample_field_base_offset_value = DEVX_GET(
-        query_hca_cap_out, parse_graph_cap,
+        query_hca_cap_out, parse_graph_cap->second,
         capability.parse_graph_node_cap.max_parse_graph_flow_match_sample_field_base_offset_value);
     external_hca_caps->parse_graph_header_length_field_mask_width =
-        DEVX_GET(query_hca_cap_out, parse_graph_cap,
+        DEVX_GET(query_hca_cap_out, parse_graph_cap->second,
                  capability.parse_graph_node_cap.parse_graph_header_length_field_mask_width);
 
     log_trace("Capability - general_object_types_parse_graph_node: %d\n",
@@ -307,8 +368,14 @@ static void store_hca_parse_graph_node_caps(adapter_hca_capabilities* external_h
 static void store_hca_2_reformat_caps(adapter_hca_capabilities* external_hca_caps,
                                       const caps_map_t& caps_map)
 {
+    auto general_2_cap = caps_map.find(MLX5_CAP_GENERAL_2);
+    if (general_2_cap == caps_map.end()) {
+        log_fatal("Incorrect caps_map object - couldn't find MLX5_CAP_GENERAL_2\n");
+        return;
+    }
+
     external_hca_caps->flow_table_caps.reformat_flow_action_caps.max_size_reformat_insert_buff =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL_2)->second,
+        DEVX_GET(query_hca_cap_out, general_2_cap->second,
                  capability.cmd_hca_cap_2.max_reformat_insert_size);
     log_trace(
         "Capability - flow_table_caps.reformat_flow_action_caps.max_size_reformat_insert_buff: "
@@ -316,16 +383,15 @@ static void store_hca_2_reformat_caps(adapter_hca_capabilities* external_hca_cap
         external_hca_caps->flow_table_caps.reformat_flow_action_caps.max_size_reformat_insert_buff);
 
     external_hca_caps->flow_table_caps.reformat_flow_action_caps.max_reformat_insert_offset =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL_2)->second,
+        DEVX_GET(query_hca_cap_out, general_2_cap->second,
                  capability.cmd_hca_cap_2.max_reformat_insert_offset);
     log_trace(
         "Capability - flow_table_receive.reformat_flow_action_caps.max_reformat_insert_offset: "
         "%d\n",
         external_hca_caps->flow_table_caps.reformat_flow_action_caps.max_reformat_insert_offset);
     external_hca_caps->flow_table_caps.receive
-        .is_flow_action_non_tunnel_reformat_and_fwd_to_flow_table =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL_2)->second,
-                 capability.cmd_hca_cap_2.non_tunnel_reformat);
+        .is_flow_action_non_tunnel_reformat_and_fwd_to_flow_table = DEVX_GET(
+        query_hca_cap_out, general_2_cap->second, capability.cmd_hca_cap_2.non_tunnel_reformat);
     log_trace("Capability - "
               "flow_table_caps.receive.is_flow_action_non_tunnel_reformat_and_fwd_to_flow_table: "
               "%d\n",
@@ -336,20 +402,30 @@ static void store_hca_2_reformat_caps(adapter_hca_capabilities* external_hca_cap
 static void store_hca_flow_table_caps(adapter_hca_capabilities* external_hca_caps,
                                       const caps_map_t& caps_map)
 {
+    auto general_cap = caps_map.find(MLX5_CAP_GENERAL);
+    if (general_cap == caps_map.end()) {
+        log_fatal("Incorrect caps_map object - couldn't find MLX5_CAP_GENERAL\n");
+        return;
+    }
+    auto flow_table_cap = caps_map.find(MLX5_CAP_FLOW_TABLE);
+    if (flow_table_cap == caps_map.end()) {
+        log_fatal("Incorrect caps_map object - couldn't find MLX5_CAP_FLOW_TABLE\n");
+        return;
+    }
+
     external_hca_caps->is_flow_table_caps_supported =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
-                 capability.cmd_hca_cap.nic_flow_table);
+        DEVX_GET(query_hca_cap_out, general_cap->second, capability.cmd_hca_cap.nic_flow_table);
     log_trace("Capability - is_flow_table_caps_supported: %d\n",
               external_hca_caps->is_flow_table_caps_supported);
 
     external_hca_caps->flow_table_caps.receive.max_steering_depth =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                  capability.flow_table_nic_cap.nic_receive_max_steering_depth);
     log_trace("Capability - flow_table_caps.receive.max_steering_depth: %d\n",
               external_hca_caps->flow_table_caps.receive.max_steering_depth);
 
     external_hca_caps->flow_table_caps.reformat_flow_action_caps.max_log_num_of_packet_reformat =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                  capability.flow_table_nic_cap.log_max_packet_reformat_context);
     log_trace("Capability - "
               "flow_table_caps.reformat_flow_action_caps.max_log_num_of_packet_reformat: %d\n",
@@ -360,33 +436,44 @@ static void store_hca_flow_table_caps(adapter_hca_capabilities* external_hca_cap
 static void store_hca_flow_table_nic_receive_caps(adapter_hca_capabilities* external_hca_caps,
                                                   const caps_map_t& caps_map)
 {
+    auto flow_table_cap = caps_map.find(MLX5_CAP_FLOW_TABLE);
+    if (flow_table_cap == caps_map.end()) {
+        log_fatal("Incorrect caps_map object - couldn't find MLX5_CAP_FLOW_TABLE\n");
+        return;
+    }
+    auto general_cap = caps_map.find(MLX5_CAP_GENERAL);
+    if (general_cap == caps_map.end()) {
+        log_fatal("Incorrect caps_map object - couldn't find MLX5_CAP_GENERAL\n");
+        return;
+    }
+
     external_hca_caps->flow_table_caps.receive.is_flow_table_supported =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                  capability.flow_table_nic_cap.flow_table_properties_nic_receive.ft_support);
     log_trace("Capability - flow_table_caps.receive.is_flow_table_supported: %d\n",
               external_hca_caps->flow_table_caps.receive.is_flow_table_supported);
 
     external_hca_caps->flow_table_caps.receive.is_flow_action_tag_supported =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                  capability.flow_table_nic_cap.flow_table_properties_nic_receive.flow_tag);
     log_trace("Capability - flow_table_caps.receive.is_flow_action_tag_supported: %d\n",
               external_hca_caps->flow_table_caps.receive.is_flow_action_tag_supported);
 
     external_hca_caps->flow_table_caps.receive.is_flow_action_modify_supported =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                  capability.flow_table_nic_cap.flow_table_properties_nic_receive.flow_modify_en);
     log_trace("Capability - flow_table_caps.receive.is_flow_action_modify_supported: %d\n",
               external_hca_caps->flow_table_caps.receive.is_flow_action_modify_supported);
 
     external_hca_caps->flow_table_caps.receive.is_flow_action_reformat_supported =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                  capability.flow_table_nic_cap.flow_table_properties_nic_receive.reformat);
     log_trace("Capability - flow_table_caps.receive.is_flow_action_reformat_supported: %d\n",
               external_hca_caps->flow_table_caps.receive.is_flow_action_reformat_supported);
 
     external_hca_caps->flow_table_caps.receive
         .is_flow_action_reformat_and_modify_supported = DEVX_GET(
-        query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        query_hca_cap_out, flow_table_cap->second,
         capability.flow_table_nic_cap.flow_table_properties_nic_receive.reformat_and_modify_action);
     log_trace(
         "Capability - flow_table_caps.receive.is_flow_action_reformat_and_modify_supported: %d\n",
@@ -394,27 +481,27 @@ static void store_hca_flow_table_nic_receive_caps(adapter_hca_capabilities* exte
 
     external_hca_caps->flow_table_caps.receive
         .is_flow_action_reformat_and_fwd_to_flow_table = DEVX_GET(
-        query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        query_hca_cap_out, flow_table_cap->second,
         capability.flow_table_nic_cap.flow_table_properties_nic_receive.reformat_and_fwd_to_table);
     log_trace(
         "Capability - flow_table_caps.receive.is_flow_action_reformat_and_fwd_to_flow_table: %d\n",
         external_hca_caps->flow_table_caps.receive.is_flow_action_reformat_and_fwd_to_flow_table);
 
     external_hca_caps->flow_table_caps.receive.max_log_size_flow_table =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                  capability.flow_table_nic_cap.flow_table_properties_nic_receive.log_max_ft_size);
     log_trace("Capability - flow_table_caps.receive.max_log_size_flow_table: %d\n",
               external_hca_caps->flow_table_caps.receive.max_log_size_flow_table);
 
     external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.max_obj_log_num =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                  capability.flow_table_nic_cap.flow_table_properties_nic_receive
                      .log_max_modify_header_context);
     log_trace("Capability - flow_table_caps.receive.modify_flow_action_caps.max_obj_log_num: %d\n",
               external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.max_obj_log_num);
 
     external_hca_caps->flow_table_caps.receive.ft_field_support.outer_udp_dport =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                  capability.flow_table_nic_cap.flow_table_properties_nic_receive.ft_field_support
                      .outer_udp_dport);
     log_trace("Capability - "
@@ -422,7 +509,7 @@ static void store_hca_flow_table_nic_receive_caps(adapter_hca_capabilities* exte
               external_hca_caps->flow_table_caps.receive.ft_field_support.outer_udp_dport);
 
     external_hca_caps->flow_table_caps.receive.ft_field_support.prog_sample_field =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                  capability.flow_table_nic_cap.flow_table_properties_nic_receive.ft_field_support
                      .prog_sample_field);
     log_trace("Capability - "
@@ -430,7 +517,7 @@ static void store_hca_flow_table_nic_receive_caps(adapter_hca_capabilities* exte
               external_hca_caps->flow_table_caps.receive.ft_field_support.prog_sample_field);
 
     external_hca_caps->flow_table_caps.receive.ft_field_support.metadata_reg_c_0 =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                  capability.flow_table_nic_cap.flow_table_properties_nic_receive.ft_field_support
                      .metadata_reg_c_0);
     log_trace("Capability - "
@@ -438,7 +525,7 @@ static void store_hca_flow_table_nic_receive_caps(adapter_hca_capabilities* exte
               external_hca_caps->flow_table_caps.receive.ft_field_support.metadata_reg_c_0);
 
     external_hca_caps->flow_table_caps.receive.ft_field_support.metadata_reg_c_1 =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                  capability.flow_table_nic_cap.flow_table_properties_nic_receive.ft_field_support
                      .metadata_reg_c_1);
     log_trace("Capability - "
@@ -447,7 +534,7 @@ static void store_hca_flow_table_nic_receive_caps(adapter_hca_capabilities* exte
 
     external_hca_caps->flow_table_caps.receive.modify_flow_action_caps
         .max_obj_in_flow_rule = DEVX_GET(
-        query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        query_hca_cap_out, flow_table_cap->second,
         capability.flow_table_nic_cap.flow_table_properties_nic_receive.max_modify_header_actions);
     log_trace(
         "Capability - flow_table_caps.receive.modify_flow_action_caps.max_obj_in_flow_rule: %d\n",
@@ -455,7 +542,7 @@ static void store_hca_flow_table_nic_receive_caps(adapter_hca_capabilities* exte
 
     external_hca_caps->flow_table_caps.receive.modify_flow_action_caps
         .log_max_num_header_modify_argument =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+        DEVX_GET(query_hca_cap_out, general_cap->second,
                  capability.cmd_hca_cap.log_max_num_header_modify_argument);
     log_trace(
         "Capability - "
@@ -465,7 +552,7 @@ static void store_hca_flow_table_nic_receive_caps(adapter_hca_capabilities* exte
 
     external_hca_caps->flow_table_caps.receive.modify_flow_action_caps
         .log_header_modify_argument_granularity =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+        DEVX_GET(query_hca_cap_out, general_cap->second,
                  capability.cmd_hca_cap.log_header_modify_argument_granularity);
     log_trace("Capability - "
               "flow_table_caps.receive.modify_flow_action_caps.log_header_modify_argument_"
@@ -475,7 +562,7 @@ static void store_hca_flow_table_nic_receive_caps(adapter_hca_capabilities* exte
 
     external_hca_caps->flow_table_caps.receive.modify_flow_action_caps
         .log_header_modify_argument_max_alloc =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
+        DEVX_GET(query_hca_cap_out, general_cap->second,
                  capability.cmd_hca_cap.log_header_modify_argument_max_alloc);
     log_trace("Capability - "
               "flow_table_caps.receive.modify_flow_action_caps.log_header_modify_argument_max_"
@@ -484,13 +571,13 @@ static void store_hca_flow_table_nic_receive_caps(adapter_hca_capabilities* exte
                   .log_header_modify_argument_max_alloc);
 
     external_hca_caps->flow_table_caps.receive.max_flow_table_level =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                  capability.flow_table_nic_cap.flow_table_properties_nic_receive.max_ft_level);
     log_trace("Capability - flow_table_caps.receive.max_flow_table_level: %d\n",
               external_hca_caps->flow_table_caps.receive.max_flow_table_level);
 
     external_hca_caps->flow_table_caps.receive.is_flow_action_reformat_from_type_insert_supported =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                  capability.flow_table_nic_cap.flow_table_properties_nic_receive.reformat_insert);
     log_trace("Capability - "
               "flow_table_caps.receive.is_flow_action_reformat_from_type_insert_supported: %d\n",
@@ -498,32 +585,32 @@ static void store_hca_flow_table_nic_receive_caps(adapter_hca_capabilities* exte
                   .is_flow_action_reformat_from_type_insert_supported);
 
     external_hca_caps->flow_table_caps.receive.max_log_num_of_flow_table =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                  capability.flow_table_nic_cap.flow_table_properties_nic_receive.log_max_ft_num);
     log_trace("Capability - flow_table_caps.receive.max_log_num_of_flow_table: %d\n",
               external_hca_caps->flow_table_caps.receive.max_log_num_of_flow_table);
 
     external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.max_obj_log_num =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                  capability.flow_table_nic_cap.flow_table_properties_nic_receive
                      .log_max_modify_header_context);
     log_trace("Capability - flow_table_caps.receive.modify_flow_action_caps.max_obj_log_num: %d\n",
               external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.max_obj_log_num);
 
     external_hca_caps->flow_table_caps.receive.max_log_num_of_flow_rule =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                  capability.flow_table_nic_cap.flow_table_properties_nic_receive.log_max_flow);
     log_trace("Capability - flow_table_caps.receive.max_log_num_of_flow_rule: %d\n",
               external_hca_caps->flow_table_caps.receive.max_log_num_of_flow_rule);
 
     external_hca_caps->flow_table_caps.receive.is_flow_action_reparse_supported =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                  capability.flow_table_nic_cap.flow_table_properties_nic_receive.reparse);
     log_trace("Capability - flow_table_caps.receive.is_flow_action_reparse_supported: %d\n",
               external_hca_caps->flow_table_caps.receive.is_flow_action_reparse_supported);
 
     external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.set_fields_support
-        .outer_ethertype = DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        .outer_ethertype = DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                                     capability.flow_table_nic_cap.header_modify_nic_receive
                                         .set_action_field_support.outer_ether_type);
     log_trace(
@@ -533,7 +620,7 @@ static void store_hca_flow_table_nic_receive_caps(adapter_hca_capabilities* exte
             .outer_ethertype);
 
     external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.set_fields_support
-        .outer_udp_dport = DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        .outer_udp_dport = DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                                     capability.flow_table_nic_cap.header_modify_nic_receive
                                         .set_action_field_support.outer_udp_dport);
     log_trace(
@@ -543,7 +630,7 @@ static void store_hca_flow_table_nic_receive_caps(adapter_hca_capabilities* exte
             .outer_udp_dport);
 
     external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.set_fields_support
-        .metadata_reg_c_0 = DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        .metadata_reg_c_0 = DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                                      capability.flow_table_nic_cap.header_modify_nic_receive
                                          .set_action_field_support.metadata_reg_c_0);
     log_trace(
@@ -553,7 +640,7 @@ static void store_hca_flow_table_nic_receive_caps(adapter_hca_capabilities* exte
             .metadata_reg_c_0);
 
     external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.set_fields_support
-        .metadata_reg_c_1 = DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        .metadata_reg_c_1 = DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                                      capability.flow_table_nic_cap.header_modify_nic_receive
                                          .set_action_field_support.metadata_reg_c_1);
     log_trace(
@@ -563,7 +650,7 @@ static void store_hca_flow_table_nic_receive_caps(adapter_hca_capabilities* exte
             .metadata_reg_c_1);
 
     external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.copy_fields_support
-        .outer_udp_dport = DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        .outer_udp_dport = DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                                     capability.flow_table_nic_cap.header_modify_nic_receive
                                         .copy_action_field_support.outer_udp_dport);
     log_trace(
@@ -573,7 +660,7 @@ static void store_hca_flow_table_nic_receive_caps(adapter_hca_capabilities* exte
             .outer_udp_dport);
 
     external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.copy_fields_support
-        .metadata_reg_c_0 = DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        .metadata_reg_c_0 = DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                                      capability.flow_table_nic_cap.header_modify_nic_receive
                                          .copy_action_field_support.metadata_reg_c_0);
     log_trace("Capability - "
@@ -583,7 +670,7 @@ static void store_hca_flow_table_nic_receive_caps(adapter_hca_capabilities* exte
                   .metadata_reg_c_0);
 
     external_hca_caps->flow_table_caps.receive.modify_flow_action_caps.copy_fields_support
-        .metadata_reg_c_1 = DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_FLOW_TABLE)->second,
+        .metadata_reg_c_1 = DEVX_GET(query_hca_cap_out, flow_table_cap->second,
                                      capability.flow_table_nic_cap.header_modify_nic_receive
                                          .copy_action_field_support.metadata_reg_c_1);
     log_trace("Capability - "
@@ -596,39 +683,51 @@ static void store_hca_flow_table_nic_receive_caps(adapter_hca_capabilities* exte
 static void store_hca_crypto_caps(adapter_hca_capabilities* external_hca_caps,
                                   const caps_map_t& caps_map)
 {
+    auto crypto_cap = caps_map.find(MLX5_CAP_CRYPTO);
+    if (crypto_cap == caps_map.end()) {
+        log_fatal("Incorrect caps_map object - couldn't find MLX5_CAP_CRYPTO\n");
+        return;
+    }
+
     external_hca_caps->synchronize_dek =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_CRYPTO)->second,
-                 capability.crypto_cap.synchronize_dek);
+        DEVX_GET(query_hca_cap_out, crypto_cap->second, capability.crypto_cap.synchronize_dek);
     log_trace("Capability - synchronize_dek: %d\n", external_hca_caps->synchronize_dek);
 
     external_hca_caps->log_max_num_deks =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_CRYPTO)->second,
-                 capability.crypto_cap.log_max_num_deks);
+        DEVX_GET(query_hca_cap_out, crypto_cap->second, capability.crypto_cap.log_max_num_deks);
     log_trace("Capability - log_max_num_deks: %d\n", external_hca_caps->log_max_num_deks);
 }
 
 static void store_hca_nvmeotcp_caps(adapter_hca_capabilities* external_hca_caps,
                                     const caps_map_t& caps_map)
 {
+    auto general_cap = caps_map.find(MLX5_CAP_GENERAL);
+    if (general_cap == caps_map.end()) {
+        log_fatal("Incorrect caps_map object - couldn't find MLX5_CAP_GENERAL\n");
+        return;
+    }
+
+    auto nvmeotcp_cap = caps_map.find(MLX5_CAP_NVMEOTCP);
+    if (nvmeotcp_cap == caps_map.end()) {
+        log_fatal("Incorrect caps_map object - couldn't find MLX5_CAP_NVMEOTCP\n");
+        return;
+    }
+
     external_hca_caps->nvmeotcp_caps.enabled =
-        DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_GENERAL)->second,
-                 capability.cmd_hca_cap.nvmeotcp);
+        DEVX_GET(query_hca_cap_out, general_cap->second, capability.cmd_hca_cap.nvmeotcp);
 
     if (external_hca_caps->nvmeotcp_caps.enabled) {
         external_hca_caps->nvmeotcp_caps.zerocopy =
-            DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_NVMEOTCP)->second,
-                     capability.nvmeotcp_cap.zerocopy);
+            DEVX_GET(query_hca_cap_out, nvmeotcp_cap->second, capability.nvmeotcp_cap.zerocopy);
         external_hca_caps->nvmeotcp_caps.crc_rx =
-            DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_NVMEOTCP)->second,
-                     capability.nvmeotcp_cap.crc_rx);
+            DEVX_GET(query_hca_cap_out, nvmeotcp_cap->second, capability.nvmeotcp_cap.crc_rx);
         external_hca_caps->nvmeotcp_caps.crc_tx =
-            DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_NVMEOTCP)->second,
-                     capability.nvmeotcp_cap.crc_tx);
+            DEVX_GET(query_hca_cap_out, nvmeotcp_cap->second, capability.nvmeotcp_cap.crc_tx);
         external_hca_caps->nvmeotcp_caps.log_max_nvmeotcp_tag_buffer_table =
-            DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_NVMEOTCP)->second,
+            DEVX_GET(query_hca_cap_out, nvmeotcp_cap->second,
                      capability.nvmeotcp_cap.log_max_nvmeotcp_tag_buffer_table);
         external_hca_caps->nvmeotcp_caps.log_max_nvmeotcp_tag_buffer_size =
-            DEVX_GET(query_hca_cap_out, caps_map.find(MLX5_CAP_NVMEOTCP)->second,
+            DEVX_GET(query_hca_cap_out, nvmeotcp_cap->second,
                      capability.nvmeotcp_cap.log_max_nvmeotcp_tag_buffer_size);
         log_trace(
             "Capability - nvmeotcp: ENABLED - zerocopy:%d, crc_rx: %d, crc_tx: %d, version: %d, "

@@ -1,8 +1,10 @@
-FROM harbor.mellanox.com/rivermax/dpcp/x86_64/rhel8.6/core:8.6
+ARG ARCH=x86_64
+FROM harbor.mellanox.com/hpcx/${ARCH}/rhel8.6/core:latest
 ARG _UID=6213
 ARG _GID=101
 ARG _LOGIN=swx-jenkins
 ARG _HOME=/var/home/$_LOGIN
+ARG ARCH
 
 RUN dnf module disable -y perl* && \
     dnf remove perl-IO-Socket-SSL && \
@@ -15,7 +17,7 @@ RUN  sed -i 's/enabled=1/enabled=0/g' /etc/yum/pluginconf.d/subscription-manager
 RUN sed -i 's/mirrorlist/#mirrorlist/;s!#baseurl=http://mirror.centos.org!baseurl=http://vault.centos.org!' /etc/yum.repos.d/* && \
     echo "[mlnx-opt]" > /etc/yum.repos.d/mlnx-opt.repo && \
     echo "name=RHEL 8.6 mirror" >> /etc/yum.repos.d/mlnx-opt.repo && \
-    echo "baseurl=http://webrepo.mtr.labs.mlnx/RH/8.6/x86_64/BaseOS/" >> /etc/yum.repos.d/mlnx-opt.repo && \
+    echo "baseurl=http://webrepo.mtr.labs.mlnx/RH/8.6/${ARCH}/BaseOS/" >> /etc/yum.repos.d/mlnx-opt.repo && \
     echo "enabled=1" >> /etc/yum.repos.d/mlnx-opt.repo && \
     echo "gpgcheck=0" >> /etc/yum.repos.d/mlnx-opt.repo && \
     yum makecache
@@ -34,7 +36,6 @@ RUN yum install --allowerasing -y \
     gtk2 \
     kernel-modules-extra \
     libmnl \
-    libnl3 \
     libnl3-devel \
     libtool \
     libusbx \
@@ -55,9 +56,10 @@ RUN yum install --allowerasing -y \
     graphviz
 
 # MOFED
+RUN export ARCH=$(uname -m)
 ARG MOFED_OS=rhel8.6
 ARG MOFED_VERSION=23.07-0.5.1.2
-ENV MOFED_DIR MLNX_OFED_LINUX-${MOFED_VERSION}-${MOFED_OS}-x86_64
+ENV MOFED_DIR MLNX_OFED_LINUX-${MOFED_VERSION}-${MOFED_OS}-${ARCH}
 ENV MOFED_SITE_PLACE MLNX_OFED-${MOFED_VERSION}
 ENV MOFED_IMAGE ${MOFED_DIR}.tgz
 

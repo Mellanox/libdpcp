@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2019-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
+ * Copyright (c) 2019-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,7 +41,7 @@
 #define u8 uint8_t
 
 /*
- * Copyright (C) Mellanox Technologies Ltd, 2001-2024. ALL RIGHTS RESERVED.
+ * Copyright (C) Mellanox Technologies Ltd, 2001-2025. ALL RIGHTS RESERVED.
  *
  * See file LICENSE for terms.
  */

@@ -1,12 +1,14 @@
-#!/bin/bash -xeEl
+#!/bin/bash
 #
 # Testing script: copyright
 #
-# Copyright (c) 2020-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2020-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # BSD-3-Clause
 #
 # See file LICENSE for terms.
 #
+
+set -xvEe -o pipefail
 
 source $(dirname $0)/globals.sh
 
@@ -17,6 +19,11 @@ fi
 
 if [ ! -d "$WORKSPACE" ]; then
     echo "ERROR: $WORKSPACE does not exist"
+    exit 1
+fi
+
+if [[ -z $GITHUB_TOKEN ]]; then
+    echo "ERROR: GITHUB_TOKEN variable is empty"
     exit 1
 fi
 

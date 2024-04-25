@@ -1,11 +1,15 @@
 ARG ARCH=x86_64
-FROM harbor.mellanox.com/rivermax/dpcp/$ARCH/oel8.7/core:8.7
+FROM harbor.mellanox.com/rivermax/dpcp/${ARCH}/oel8.7/core:8.7
 ARG _UID=6213
 ARG _GID=101
 ARG _LOGIN=swx-jenkins
 ARG _HOME=/var/home/$_LOGIN
 
-RUN yum install --allowerasing -y \
+RUN yum-config-manager --add-repo http://webrepo.mtr.labs.mlnx/OEL/8.7/x86_64/BaseOS/ && \
+    yum-config-manager --add-repo http://webrepo.mtr.labs.mlnx/OEL/8.7/x86_64/AppStream/ && \
+    yum-config-manager --set-disabled "*" && \
+    yum-config-manager --set-enabled "webrepo.mtr.labs.mlnx_OEL_8.7_x86_64_BaseOS_,webrepo.mtr.labs.mlnx_OEL_8.7_x86_64_AppStream_" && \
+    yum install --nogpgcheck --allowerasing -y \
     atk \
     autoconf \
     automake \
@@ -29,29 +33,6 @@ RUN yum install --allowerasing -y \
     numactl-libs libmnl \
     ethtool \
     python36
-
-# MOFED
-ARG MOFED_OS=ol8.7
-ARG MOFED_VERSION=23.07-0.5.1.2
-ENV MOFED_DIR MLNX_OFED_LINUX-${MOFED_VERSION}-${MOFED_OS}-x86_64
-ENV MOFED_SITE_PLACE MLNX_OFED-${MOFED_VERSION}
-ENV MOFED_IMAGE ${MOFED_DIR}.tgz
-
-RUN wget --no-verbose http://content.mellanox.com/ofed/${MOFED_SITE_PLACE}/${MOFED_IMAGE} && \
-    tar -xzf ${MOFED_IMAGE} && \
-    ${MOFED_DIR}/mlnxofedinstall --all -q \
-	--force \
-	--upstream-libs \
-	--vma \
-	--user-space-only \
-	--without-fw-update \
-	--skip-unsupported-devices-check \
-	--without-libxlio \
-	--without-libxlio-utils \
-	--without-libxlio-dev \
-        --distro ${MOFED_OS} \
-    && rm -rf ${MOFED_DIR} && rm -rf *.tgz
-
 
 RUN echo "${_LOGIN} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
     echo "root ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \

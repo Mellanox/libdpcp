@@ -1,5 +1,5 @@
 ARG ARCH=x86_64
-FROM harbor.mellanox.com/swx-infra/$ARCH/ubuntu20.04/core:latest
+FROM harbor.mellanox.com/hpcx/${ARCH}/ubuntu20.04/base:latest
 ARG _UID=6213
 ARG _GID=11429
 ARG _LOGIN=swx-jenkins
@@ -28,36 +28,11 @@ RUN apt-get update && \
         environment-modules \
         libibverbs-dev \
         libfile-fcntllock-perl \
-        chrpath flex gfortran graphviz dpatch libgfortran4 tcl bison tk swig \
-        libnl-route-3-dev libnl-3-dev kmod python lsof pciutils ethtool libmnl0 pkg-config \
-        lsb-release \
+        chrpath flex gfortran graphviz dpatch libgfortran5 tcl bison tk swig \
+        libnl-route-3-dev libnl-3-dev kmod python3 lsof pciutils ethtool libmnl0 pkg-config \
 	libusb-1.0-0 libfuse2 \
+        lsb-release \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# MOFED
-ARG MOFED_VERSION=23.07-0.5.1.2
-ARG UBUNTU_VERSION=20.04
-ARG MOFED_OS=ubuntu${UBUNTU_VERSION}
-ARG ARCH=x86_64
-ENV MOFED_DIR MLNX_OFED_LINUX-${MOFED_VERSION}-${MOFED_OS}-${ARCH}
-ENV MOFED_SITE_PLACE MLNX_OFED-${MOFED_VERSION}
-ENV MOFED_IMAGE ${MOFED_DIR}.tgz
-
-RUN wget --no-verbose http://content.mellanox.com/ofed/${MOFED_SITE_PLACE}/${MOFED_IMAGE} && \
-    tar -xzf ${MOFED_IMAGE}
-
-RUN ${MOFED_DIR}/mlnxofedinstall --all -q \
-	--force \
-	--upstream-libs \
-	--vma \
-	--user-space-only \
-	--without-fw-update \
-	--skip-unsupported-devices-check \
-	--without-libxlio \
-	--without-libxlio-utils \
-	--without-libxlio-dev \
-        --distro ${MOFED_OS} \
-    && rm -rf ${MOFED_DIR} && rm -rf *.tgz
 
 RUN echo "$_LOGIN ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
     mkdir -p $_HOME && \

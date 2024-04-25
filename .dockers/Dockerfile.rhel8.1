@@ -1,5 +1,5 @@
 ARG ARCH=x86_64
-FROM harbor.mellanox.com/hpcx/$ARCH/rhel8.1/core:latest
+FROM harbor.mellanox.com/hpcx/${ARCH}/rhel8.1/core:latest
 ARG _UID=6213
 ARG _GID=101
 ARG _LOGIN=swx-jenkins
@@ -12,10 +12,12 @@ RUN dnf module disable -y freeradius && \
     dnf install -y perl-IO-Socket-SSL && \
     dnf install -y perl-libwww-perl
 
+RUN  sed -i 's/enabled=1/enabled=0/g' /etc/yum/pluginconf.d/subscription-manager.conf
+
 RUN sed -i 's/mirrorlist/#mirrorlist/;s!#baseurl=http://mirror.centos.org!baseurl=http://vault.centos.org!' /etc/yum.repos.d/* && \
     echo "[mlnx-opt]" > /etc/yum.repos.d/mlnx-opt.repo && \
-    echo "name=RHEL 8.3 mirror" >> /etc/yum.repos.d/mlnx-opt.repo && \
-    echo "baseurl=http://webrepo.mtr.labs.mlnx/RH/optional/8.3/x86_64/" >> /etc/yum.repos.d/mlnx-opt.repo && \
+    echo "name=RHEL 8.1 mirror" >> /etc/yum.repos.d/mlnx-opt.repo && \
+    echo "baseurl=http://webrepo.mtr.labs.mlnx/RH/optional/8.1/x86_64/" >> /etc/yum.repos.d/mlnx-opt.repo && \
     echo "enabled=1" >> /etc/yum.repos.d/mlnx-opt.repo && \
     echo "gpgcheck=0" >> /etc/yum.repos.d/mlnx-opt.repo && \
     yum makecache
@@ -34,7 +36,6 @@ RUN yum install --allowerasing -y \
     gtk2 \
     kernel-modules-extra \
     libmnl \
-    libnl3 \
     libnl3-devel \
     libtool \
     libusbx \
@@ -46,36 +47,13 @@ RUN yum install --allowerasing -y \
     rpm-build \
     sudo \
     tcl \
-    tcsh \
     tk \
     wget \
+    pkgconfig \
+    python38 \
     environment-modules \
     python3-pip \
-    avahi-compat-libdns_sd-devel \
-    dbus-devel \
-    doxygen graphviz
-
-# MOFED
-ARG MOFED_OS=rhel8.1
-ARG MOFED_VERSION=23.07-0.5.1.2
-ENV MOFED_DIR MLNX_OFED_LINUX-${MOFED_VERSION}-${MOFED_OS}-x86_64
-ENV MOFED_SITE_PLACE MLNX_OFED-${MOFED_VERSION}
-ENV MOFED_IMAGE ${MOFED_DIR}.tgz
-
-RUN wget --no-verbose http://content.mellanox.com/ofed/${MOFED_SITE_PLACE}/${MOFED_IMAGE} && \
-    tar -xzf ${MOFED_IMAGE} && \
-    ${MOFED_DIR}/mlnxofedinstall --all -q \
-	--force \
-	--upstream-libs \
-	--vma \
-	--user-space-only \
-	--without-fw-update \
-	--skip-unsupported-devices-check \
-	--without-libxlio \
-	--without-libxlio-utils \
-	--without-libxlio-dev \
-        --distro ${MOFED_OS} \
-    && rm -rf ${MOFED_DIR} && rm -rf *.tgz
+    graphviz
 
 RUN echo "${_LOGIN} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
     echo "root ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
@@ -92,3 +70,4 @@ SHELL ["/bin/bash"]
 
 USER "$_LOGIN"
 ENTRYPOINT [ "/bin/bash", "--login", "--rcfile", "/etc/bashrc", "-c" ]
+

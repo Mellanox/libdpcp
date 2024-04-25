@@ -1,0 +1,77 @@
+- job-template:
+    name: "{jjb_proj}"
+    project-type: freestyle
+    node: r-aa-fatty27
+    folder: dpcp
+    properties:
+        - github:
+            url: "https://github.com/Mellanox/dpcp/"
+        - build-discarder:
+            days-to-keep: 50
+            num-to-keep: 20
+        - inject:
+            keep-system-variables: true
+            properties-content: |
+              jjb_proj={jjb_proj}
+    description: Do NOT edit this job through the Web GUI !
+    parameters:
+        - string:
+            name: "sha1"
+            default: "master"
+            description: "Commit to be checked, usualy controlled by PR"
+        - string:
+            name: "DEBUG"
+            default: 0
+            description: "Enable debug prints and traces, valid values are 0-9"
+
+    triggers:
+        - github-pull-request:
+            cron: 'H/5 * * * *'
+            trigger-phrase: '.*\bbot:(?:win:)?retest\b.*'
+            status-context: "{jjb_proj}"
+            success-status: "Build passed."
+            failure-status: "Build failed."
+            error-status:   "Build failed."
+            status-add-test-results: true
+            # swx-jenkins2 from GitHub Pull Request Builder
+            auth-id: 'swx-jenkins5_gh_token'
+            org-list: ["Mellanox", "mellanox-hpc"]
+            allow-whitelist-orgs-as-admins: true
+            cancel-builds-on-update: true
+
+    wrappers:
+        - workspace-cleanup
+        - credentials-binding:
+            - username-password-separated:
+                username: NFS_USER
+                password: NFS_PASSWORD
+                credential-id: windevqa_svc
+
+    builders:
+        - batch: |
+            call %WORKSPACE%\.ci\windows\build_and_prepare_all.cmd
+  
+    scm:
+        - git:
+            url: "{jjb_git}"
+            # swx-jenkins3 GH user/pass
+            credentials-id: 'swx-jenkins_ssh_key'
+            branches: ['$sha1']
+            shallow-clone: true
+            depth: 10
+            do-not-fetch-tags: false
+            # honor-refspec: true
+            refspec: "+refs/heads/*:refs/remotes/origin/* +refs/pull/*:refs/remotes/origin/pr/*"
+            browser: githubweb
+            browser-url: "{jjb_git}"
+    script-path: "$script"
+
+- project:
+    name: dpcp
+    jjb_email: 'nwolfer@nvidia.com'
+    jjb_proj: 'dpcp-ci-windows'
+    jjb_git: 'git@github.com:Mellanox/dpcp.git'
+    jjb_owner: 'Nir Wolfer'
+    jjb_jenkinsfile: '.ci/Jenkinsfile.shlib'
+    jobs:
+        - "{jjb_proj}"

@@ -1,6 +1,6 @@
 # verbs.m4 - Parsing verbs capabilities
 #
-# Copyright (c) 2019-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2019-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # BSD-3-Clause
 #
 

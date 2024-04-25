@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
+ * Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -78,10 +79,10 @@ flow_rule_ex::flow_rule_ex(dcmd::ctx* ctx, const flow_rule_attr_ex& attr,
     : obj(ctx)
     , m_match_value(attr.match_value)
     , m_is_initialized()
-    , m_table(table)
-    , m_group(group)
+    , m_table(std::move(table))
+    , m_group(std::move(group))
     , m_is_valid_actions(false)
-    , m_matcher(matcher)
+    , m_matcher(std::move(matcher))
 {
     m_is_valid_actions = verify_flow_actions(attr.actions);
 }
@@ -100,7 +101,7 @@ flow_rule_ex_prm::flow_rule_ex_prm(dcmd::ctx* ctx, const flow_rule_attr_ex& attr
                                    std::weak_ptr<const flow_table> table,
                                    std::weak_ptr<const flow_group> group,
                                    std::shared_ptr<const flow_matcher> matcher)
-    : flow_rule_ex(ctx, attr, table, group, matcher)
+    : flow_rule_ex(ctx, attr, std::move(table), std::move(group), std::move(matcher))
     , m_flow_index(attr.flow_index)
 {
 }
@@ -206,7 +207,7 @@ status flow_rule_ex_prm::create()
     }
 
     // Apply flow actions.
-    for (auto action : m_actions) {
+    for (const auto& action : m_actions) {
         ret = action.second->apply(in);
         if (ret != DPCP_OK) {
             log_error("Flow rule failed to apply actions\n");
@@ -237,7 +238,7 @@ flow_rule_ex_kernel::flow_rule_ex_kernel(dcmd::ctx* ctx, const flow_rule_attr_ex
                                          std::weak_ptr<const flow_table> table,
                                          std::weak_ptr<const flow_group> group,
                                          std::shared_ptr<const flow_matcher> matcher)
-    : flow_rule_ex(ctx, attr, table, group, matcher)
+    : flow_rule_ex(ctx, attr, std::move(table), std::move(group), std::move(matcher))
     , m_priority(attr.priority)
     , m_flow(nullptr)
 {
@@ -303,7 +304,7 @@ status flow_rule_ex_kernel::create()
     }
 
     // Set Flow Rule actions.
-    for (auto action : m_actions) {
+    for (const auto& action : m_actions) {
         ret = action.second->apply(dcmd_flow);
         if (ret != DPCP_OK) {
             log_error("Flow Rule failed to apply Flow Action, ret %d\n", ret);

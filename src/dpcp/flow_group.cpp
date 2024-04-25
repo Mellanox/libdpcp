@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
+ * Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,7 +44,7 @@ flow_group::flow_group(dcmd::ctx* ctx, const flow_group_attr& attr,
                        std::weak_ptr<const flow_table> table)
     : obj(ctx)
     , m_attr(attr)
-    , m_table(table)
+    , m_table(std::move(table))
     , m_is_initialized(false)
 {
 }
@@ -131,7 +132,7 @@ status flow_group::create_flow_rule_ex(const flow_rule_attr_ex& attr,
 
 flow_group_prm::flow_group_prm(dcmd::ctx* ctx, const flow_group_attr& attr,
                                std::weak_ptr<const flow_table> table)
-    : flow_group(ctx, attr, table)
+    : flow_group(ctx, attr, std::move(table))
     , m_group_id()
 {
 }
@@ -224,7 +225,7 @@ status flow_group_prm::add_flow_rule(const flow_rule_attr_ex& attr,
 
 flow_group_kernel::flow_group_kernel(dcmd::ctx* ctx, const flow_group_attr& attr,
                                      std::weak_ptr<const flow_table> table)
-    : flow_group(ctx, attr, table)
+    : flow_group(ctx, attr, std::move(table))
 {
 }
 

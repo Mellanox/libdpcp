@@ -1,7 +1,7 @@
 Source: dpcp
 Section: libs
 Priority: optional
-Maintainer: Ilan Smith <ilansm@nvidia.com>
+Maintainer: NVIDIA CORPORATION <networking-support@nvidia.com>
 Build-Depends: debhelper (>= 7),
  pkg-config,
  autoconf,
