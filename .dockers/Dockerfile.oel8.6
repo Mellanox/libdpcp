@@ -30,29 +30,6 @@ RUN yum install --allowerasing -y \
     ethtool \
     python36
 
-# MOFED
-ARG MOFED_OS=ol8.6
-ARG MOFED_VERSION=23.07-0.5.1.2
-ENV MOFED_DIR MLNX_OFED_LINUX-${MOFED_VERSION}-${MOFED_OS}-x86_64
-ENV MOFED_SITE_PLACE MLNX_OFED-${MOFED_VERSION}
-ENV MOFED_IMAGE ${MOFED_DIR}.tgz
-
-RUN wget --no-verbose http://content.mellanox.com/ofed/${MOFED_SITE_PLACE}/${MOFED_IMAGE} && \
-    tar -xzf ${MOFED_IMAGE} && \
-    ${MOFED_DIR}/mlnxofedinstall --all -q \
-	--force \
-	--upstream-libs \
-	--vma \
-	--user-space-only \
-	--without-fw-update \
-	--skip-unsupported-devices-check \
-	--without-libxlio \
-	--without-libxlio-utils \
-	--without-libxlio-dev \
-        --distro ${MOFED_OS} \
-    && rm -rf ${MOFED_DIR} && rm -rf *.tgz
-
-
 RUN echo "${_LOGIN} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
     echo "root ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
     mkdir -p ${_HOME} && \
