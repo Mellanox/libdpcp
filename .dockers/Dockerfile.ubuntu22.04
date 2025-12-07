@@ -1,5 +1,13 @@
 ARG ARCH=x86_64
-FROM harbor.mellanox.com/hpcx/${ARCH}/ubuntu22.04/base:latest AS build
+FROM harbor.mellanox.com/hpcx/${ARCH}/ubuntu22.04/base:latest AS base
+
+# Install DOCA
+COPY .ci/scripts/doca_install.sh /tmp/doca_install.sh
+RUN chmod +x /tmp/doca_install.sh && \
+    /tmp/doca_install.sh && \
+    rm -f /tmp/doca_install.sh /tmp/GPG-KEY-Mellanox.pub
+
+FROM base AS build
 ARG _UID=6213
 ARG _GID=11429
 ARG _LOGIN=swx-jenkins
@@ -50,7 +58,8 @@ USER "$_LOGIN"
 ENTRYPOINT [ "/bin/bash", "--login", "--rcfile", "/etc/bashrc", "-c" ]
 
 ARG ARCH
-FROM harbor.mellanox.com/hpcx/${ARCH}/ubuntu22.04/base:latest AS toolbox
+FROM base AS toolbox
+
 RUN apt-get update && \
     apt-get install -y \
         sudo \

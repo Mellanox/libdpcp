@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
- * Copyright (c) 2020-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * Copyright (c) 2020-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -308,13 +308,13 @@ TEST_F(dpcp_adapter, ti_07_mkey_zero_based)
 /**
  * @test dpcp_adapter.ti_08_create_cq
  * @brief
- *    Check adapter::create_create_cq method
+ *    Check adapter::create_cq method
  * @details
  *
  */
 TEST_F(dpcp_adapter, ti_08_create_cq)
 {
-    adapter* ad = OpenAdapter();
+    std::unique_ptr<adapter> ad(OpenAdapter());
     ASSERT_NE(nullptr, ad);
 
     status ret = ad->open();
@@ -333,13 +333,148 @@ TEST_F(dpcp_adapter, ti_08_create_cq)
     cq_attr attr = {cqe_num, eqn, {0, 0}};
     attr.flags = flags;
     attr.cq_attr_use = cq_attr_use;
-    cq* pcq = nullptr;
-    ret = ad->create_cq(attr, pcq);
+    cq* ppcq = nullptr;
+    ret = ad->create_cq(attr, ppcq);
+    std::unique_ptr<cq> pcq(ppcq);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(nullptr, pcq);
+    ASSERT_NE(nullptr, pcq.get());
+}
 
-    delete pcq;
-    delete ad;
+/**
+ * @test dpcp_adapter.ti_08_create_cq_ext_mem
+ * @brief
+ *    Check adapter::create_cq method with externally-allocated memory for CQE buffer and doorbell
+ * @details
+ *
+ */
+TEST_F(dpcp_adapter, ti_08_create_cq_ext_mem)
+{
+    uint32_t cqe_num = 16384;
+    std::unique_ptr<void, decltype(&aligned_free)> ext_buf(nullptr, &aligned_free);
+    uint32_t ext_db[16];
+
+    std::unique_ptr<adapter> ad(OpenAdapter());
+    ASSERT_NE(nullptr, ad);
+
+    status ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    uint32_t eqn = 0;
+    ret = ad->query_eqn(eqn);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    std::bitset<ATTR_CQ_MAX_CNT_FLAG> flags;
+    flags.set(ATTR_CQ_NONE_FLAG);
+    std::bitset<CQ_ATTR_MAX_CNT> cq_attr_use;
+    cq_attr_use.set(CQ_SIZE);
+    cq_attr_use.set(CQ_EQ_NUM);
+    cq_attr_use.set(CQ_BUF_ADDR);
+    cq_attr_use.set(CQ_DB_ADDR);
+    cq_attr attr = {cqe_num, eqn, {0, 0}};
+    attr.flags = flags;
+    attr.cq_attr_use = cq_attr_use;
+
+    size_t cq_buf_sz = 0;
+    size_t db_rec_sz = 0;
+    ad->query_cq_buffer_sizes(attr.cq_sz, cq_buf_sz, db_rec_sz);
+    EXPECT_EQ(cq_buf_sz, cqe_num * 64);
+    EXPECT_EQ(db_rec_sz, 64);
+    ext_buf.reset(aligned_alloc(4096, cq_buf_sz));
+
+    attr.cq_buf_addr = ext_buf.get();
+    attr.db_addr = ext_db;
+
+    cq* ppcq = nullptr;
+    ret = ad->create_cq(attr, ppcq);
+    std::unique_ptr<cq> pcq(ppcq);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE(nullptr, pcq.get());
+}
+
+/**
+ * @test dpcp_adapter.ti_08_create_cq_ext_mem_misaligned_buf
+ * @brief
+ *    Check adapter::create_cq method error case: misaligned externally-allocated memory for CQE buffer
+ * @details
+ *
+ */
+TEST_F(dpcp_adapter, ti_08_create_cq_ext_mem_misaligned_buf)
+{
+    uint32_t cqe_num = 16384;
+    std::unique_ptr<void, decltype(&aligned_free)> ext_buf(nullptr, &aligned_free);
+
+    std::unique_ptr<adapter> ad(OpenAdapter());
+    ASSERT_NE(nullptr, ad);
+
+    status ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    uint32_t eqn = 0;
+    ret = ad->query_eqn(eqn);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    std::bitset<ATTR_CQ_MAX_CNT_FLAG> flags;
+    flags.set(ATTR_CQ_NONE_FLAG);
+    std::bitset<CQ_ATTR_MAX_CNT> cq_attr_use;
+    cq_attr_use.set(CQ_SIZE);
+    cq_attr_use.set(CQ_EQ_NUM);
+    cq_attr_use.set(CQ_BUF_ADDR);
+    cq_attr attr = {cqe_num, eqn, {0, 0}};
+    attr.flags = flags;
+    attr.cq_attr_use = cq_attr_use;
+
+    size_t cq_buf_sz = 0;
+    size_t db_rec_sz = 0;
+    ad->query_cq_buffer_sizes(attr.cq_sz, cq_buf_sz, db_rec_sz);
+
+    ext_buf.reset(aligned_alloc(4096, cq_buf_sz * 2));
+    // 1 byte offset to make it misaligned
+    attr.cq_buf_addr = reinterpret_cast<uint8_t*>(ext_buf.get()) + 1;
+
+    cq* ppcq = nullptr;
+    ret = ad->create_cq(attr, ppcq);
+    std::unique_ptr<cq> pcq(ppcq);
+    ASSERT_EQ(DPCP_ERR_CREATE, ret);
+}
+
+/**
+ * @test dpcp_adapter.ti_08_create_cq_ext_mem_misaligned_db
+ * @brief
+ *    Check adapter::create_cq method error case: misaligned externally-allocated memory for doorbell
+ * @details
+ *
+ */
+TEST_F(dpcp_adapter, ti_08_create_cq_ext_mem_misaligned_db)
+{
+    uint32_t cqe_num = 16384;
+    uint32_t ext_db[17];
+
+    std::unique_ptr<adapter> ad(OpenAdapter());
+    ASSERT_NE(nullptr, ad);
+
+    status ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    uint32_t eqn = 0;
+    ret = ad->query_eqn(eqn);
+    ASSERT_EQ(DPCP_OK, ret);
+
+    std::bitset<ATTR_CQ_MAX_CNT_FLAG> flags;
+    flags.set(ATTR_CQ_NONE_FLAG);
+    std::bitset<CQ_ATTR_MAX_CNT> cq_attr_use;
+    cq_attr_use.set(CQ_SIZE);
+    cq_attr_use.set(CQ_EQ_NUM);
+    cq_attr_use.set(CQ_DB_ADDR);
+    cq_attr attr = {cqe_num, eqn, {0, 0}};
+    attr.flags = flags;
+    attr.cq_attr_use = cq_attr_use;
+    // 1 byte offset to make it misaligned
+    attr.db_addr = reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(ext_db) + 1);
+
+    cq* ppcq = nullptr;
+    ret = ad->create_cq(attr, ppcq);
+    std::unique_ptr<cq> pcq(ppcq);
+    ASSERT_EQ(DPCP_ERR_CREATE, ret);
 }
 
 /**
@@ -351,17 +486,14 @@ TEST_F(dpcp_adapter, ti_08_create_cq)
  */
 TEST_F(dpcp_adapter, ti_09_create_striding_rq)
 {
-    adapter* ad = OpenAdapter();
+    std::unique_ptr<adapter> ad(OpenAdapter());
     ASSERT_NE(nullptr, ad);
 
     status ret = ad->open();
     ASSERT_EQ(DPCP_OK, ret);
-    int32_t length = 4096;
-    void* buf = new (std::nothrow) uint8_t[length];
-    ASSERT_NE(nullptr, buf);
 
     cq_data cqd = {};
-    ret = (status)create_cq(ad, &cqd);
+    ret = (status)create_cq(ad.get(), &cqd);
     ASSERT_EQ(DPCP_OK, ret);
     ASSERT_NE(0U, cqd.cqn);
 
@@ -373,14 +505,143 @@ TEST_F(dpcp_adapter, ti_09_create_striding_rq)
     rqattr.wqe_num = 4;
     rqattr.wqe_sz = rqattr.buf_stride_num * rqattr.buf_stride_sz / 16; // in DS (16B)
 
-    striding_rq* srq = nullptr;
-    ret = ad->create_striding_rq(rqattr, srq);
+    striding_rq* psrq = nullptr;
+    ret = ad->create_striding_rq(rqattr, psrq);
+    std::unique_ptr<striding_rq> srq(psrq);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(nullptr, srq);
+    ASSERT_NE(nullptr, srq.get());
+}
 
-    // s_srq = srq;
-    delete srq;
-    delete ad;
+/**
+ * @test dpcp_adapter.ti_09_create_striding_rq_ext_mem
+ * @brief
+ *    Check adapter::create_striding_rq method with externally-allocated memory for WQE buffer and doorbell
+ * @details
+ *
+ */
+TEST_F(dpcp_adapter, ti_09_create_striding_rq_ext_mem)
+{
+    std::unique_ptr<void, decltype(&aligned_free)> ext_buf(nullptr, &aligned_free);
+    uint32_t ext_db[16];
+
+    std::unique_ptr<adapter> ad(OpenAdapter());
+    ASSERT_NE(nullptr, ad);
+
+    status ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    cq_data cqd = {};
+    ret = (status)create_cq(ad.get(), &cqd);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE(0U, cqd.cqn);
+
+    rq_attr rqattr = {};
+    rqattr.buf_stride_sz = 2048;
+    rqattr.buf_stride_num = 16384;
+    rqattr.user_index = 0;
+    rqattr.cqn = cqd.cqn;
+    rqattr.wqe_num = 4;
+    rqattr.wqe_sz = rqattr.buf_stride_num * rqattr.buf_stride_sz / 16; // in DS (16B)
+
+    size_t wq_buf_sz = 0;
+    size_t db_rec_sz = 0;
+    ad->query_rq_buffer_sizes(rqattr.wqe_sz, rqattr.wqe_num, wq_buf_sz, db_rec_sz);
+    EXPECT_EQ(wq_buf_sz, 16 * rqattr.wqe_sz * rqattr.wqe_num);
+    EXPECT_EQ(db_rec_sz, 64);
+    ext_buf.reset(aligned_alloc(4096, wq_buf_sz));
+    rqattr.wq_buf_addr = ext_buf.get();
+    rqattr.db_addr = ext_db;
+
+    striding_rq* psrq = nullptr;
+    ret = ad->create_striding_rq(rqattr, psrq);
+    std::unique_ptr<striding_rq> srq(psrq);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE(nullptr, srq.get());
+}
+
+/**
+ * @test dpcp_adapter.ti_09_create_striding_rq_ext_mem_misaligned_buf
+ * @brief
+ *    Check adapter::create_striding_rq method error case: misaligned externally-allocated memory for WQE buffer
+ * @details
+ *
+ */
+TEST_F(dpcp_adapter, ti_09_create_striding_rq_ext_mem_misaligned_buf)
+{
+    std::unique_ptr<void, decltype(&aligned_free)> ext_buf(nullptr, &aligned_free);
+    uint32_t ext_db[16];
+
+    std::unique_ptr<adapter> ad(OpenAdapter());
+    ASSERT_NE(nullptr, ad);
+
+    status ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    cq_data cqd = {};
+    ret = (status)create_cq(ad.get(), &cqd);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE(0U, cqd.cqn);
+
+    rq_attr rqattr = {};
+    rqattr.buf_stride_sz = 2048;
+    rqattr.buf_stride_num = 16384;
+    rqattr.user_index = 0;
+    rqattr.cqn = cqd.cqn;
+    rqattr.wqe_num = 4;
+    rqattr.wqe_sz = rqattr.buf_stride_num * rqattr.buf_stride_sz / 16; // in DS (16B)
+
+    size_t wq_buf_sz = 0;
+    size_t db_rec_sz = 0;
+    ad->query_rq_buffer_sizes(rqattr.wqe_sz, rqattr.wqe_num, wq_buf_sz, db_rec_sz);
+
+    ext_buf.reset(aligned_alloc(4096, wq_buf_sz * 2));
+    // 1 byte offset to make it misaligned
+    rqattr.wq_buf_addr = reinterpret_cast<uint8_t*>(ext_buf.get()) + 1;
+    rqattr.db_addr = ext_db;
+
+    striding_rq* psrq = nullptr;
+    ret = ad->create_striding_rq(rqattr, psrq);
+    std::unique_ptr<striding_rq> srq(psrq);
+    ASSERT_EQ(DPCP_ERR_CREATE, ret);
+}
+
+/**
+ * @test dpcp_adapter.ti_09_create_striding_rq_ext_mem_misaligned_db
+ * @brief
+ *    Check adapter::create_striding_rq method error case: misaligned externally-allocated memory for doorbell
+ * @details
+ *
+ */
+TEST_F(dpcp_adapter, ti_09_create_striding_rq_ext_mem_misaligned_db)
+{
+    uint32_t ext_db[17];
+
+    std::unique_ptr<adapter> ad(OpenAdapter());
+    ASSERT_NE(nullptr, ad);
+
+    status ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    cq_data cqd = {};
+    ret = (status)create_cq(ad.get(), &cqd);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE(0U, cqd.cqn);
+
+    rq_attr rqattr = {};
+    rqattr.buf_stride_sz = 2048;
+    rqattr.buf_stride_num = 16384;
+    rqattr.user_index = 0;
+    rqattr.cqn = cqd.cqn;
+    rqattr.wqe_num = 4;
+    rqattr.wqe_sz = rqattr.buf_stride_num * rqattr.buf_stride_sz / 16; // in DS (16B)
+    rqattr.wq_buf_addr = nullptr;
+    // 1 byte offset to make it misaligned
+    rqattr.db_addr = reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(ext_db) + 1);
+
+    striding_rq* psrq = nullptr;
+    ret = ad->create_striding_rq(rqattr, psrq);
+    std::unique_ptr<striding_rq> srq(psrq);
+    ASSERT_EQ(DPCP_ERR_CREATE, ret);
 }
 
 /**
@@ -659,29 +920,27 @@ TEST_F(dpcp_adapter, ti_14_get_real_time)
  */
 TEST_F(dpcp_adapter, ti_15_create_pp_sq)
 {
-    adapter* ad = OpenAdapter();
+    std::unique_ptr<adapter> ad(OpenAdapter());
     ASSERT_NE(nullptr, ad);
 
     status ret = ad->open();
     ASSERT_EQ(DPCP_OK, ret);
-    int32_t length = 4096;
-    void* buf = new (std::nothrow) uint8_t[length];
-    ASSERT_NE(nullptr, buf);
 
     cq_data cqd = {};
-    ret = (status)create_cq(ad, &cqd);
+    ret = (status)create_cq(ad.get(), &cqd);
     ASSERT_EQ(DPCP_OK, ret);
     ASSERT_NE(0U, cqd.cqn);
 
-    tis* s_tis;
+    tis* p_tis;
     struct tis::attr tis_attr;
     memset(&tis_attr, 0, sizeof(tis_attr));
     tis_attr.flags = TIS_ATTR_TRANSPORT_DOMAIN;
     tis_attr.transport_domain = ad->get_td();
-    ret = ad->create_tis(tis_attr, s_tis);
+    ret = ad->create_tis(tis_attr, p_tis);
     ASSERT_EQ(DPCP_OK, ret);
+    std::unique_ptr<tis> tis(p_tis);
     uint32_t tis_n = 0;
-    ret = s_tis->get_tisn(tis_n);
+    ret = tis->get_tisn(tis_n);
     ASSERT_EQ(DPCP_OK, ret);
     ASSERT_NE(0U, tis_n);
 
@@ -700,13 +959,202 @@ TEST_F(dpcp_adapter, ti_15_create_pp_sq)
     sqattr.cqn = cqd.cqn;
     sqattr.tis_num = tis_n;
 
-    pp_sq* ppsq = nullptr;
-    ret = ad->create_pp_sq(sqattr, ppsq);
+    pp_sq* psq = nullptr;
+    ret = ad->create_pp_sq(sqattr, psq);
+    std::unique_ptr<pp_sq> ppsq(psq);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(nullptr, ppsq);
+    ASSERT_NE(nullptr, ppsq.get());
+}
 
-    delete ppsq;
-    delete ad;
+/*
+ * @test dpcp_adapter.ti_15_create_pp_sq_ext_mem
+ * @brief
+ *    Check adapter::create_pp_sq method with externally-allocated memory for WQE buffer and doorbell
+ * @details
+ *
+ */
+TEST_F(dpcp_adapter, ti_15_create_pp_sq_ext_mem)
+{
+    std::unique_ptr<void, decltype(&aligned_free)> ext_buf(nullptr, &aligned_free);
+    uint32_t ext_db[16];
+
+    std::unique_ptr<adapter> ad(OpenAdapter());
+    ASSERT_NE(nullptr, ad);
+
+    status ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    cq_data cqd = {};
+    ret = (status)create_cq(ad.get(), &cqd);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE(0U, cqd.cqn);
+
+    tis* p_tis;
+    struct tis::attr tis_attr;
+    memset(&tis_attr, 0, sizeof(tis_attr));
+    tis_attr.flags = TIS_ATTR_TRANSPORT_DOMAIN;
+    tis_attr.transport_domain = ad->get_td();
+    ret = ad->create_tis(tis_attr, p_tis);
+    ASSERT_EQ(DPCP_OK, ret);
+    std::unique_ptr<tis> tis(p_tis);
+    uint32_t tis_n = 0;
+    ret = tis->get_tisn(tis_n);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE(0U, tis_n);
+
+    sq_attr sqattr = {};
+    qos_attributes qos_attr;
+    qos_attr.qos_type = QOS_TYPE::QOS_PACKET_PACING;
+    qos_attr.qos_attr.packet_pacing_attr.burst_sz = 1;
+    qos_attr.qos_attr.packet_pacing_attr.packet_sz = 1200;
+    qos_attr.qos_attr.packet_pacing_attr.sustained_rate = 1200000;
+    sqattr.qos_attrs_sz = 1;
+    sqattr.qos_attrs = &qos_attr;
+    sqattr.user_index = 0;
+    sqattr.wqe_num = 32768;
+    sqattr.wqe_sz = 64;
+
+    sqattr.cqn = cqd.cqn;
+    sqattr.tis_num = tis_n;
+
+    size_t wq_buf_sz = 0;
+    size_t db_rec_sz = 0;
+    ad->query_pp_sq_buffer_sizes(sqattr.wqe_sz, sqattr.wqe_num, wq_buf_sz, db_rec_sz);
+    EXPECT_EQ(wq_buf_sz, sqattr.wqe_num * sqattr.wqe_sz);
+    EXPECT_EQ(db_rec_sz, 64);
+    ext_buf.reset(aligned_alloc(4096, wq_buf_sz));
+    sqattr.wq_buf_addr = ext_buf.get();
+    sqattr.db_addr = ext_db;
+
+    pp_sq* psq = nullptr;
+    ret = ad->create_pp_sq(sqattr, psq);
+    std::unique_ptr<pp_sq> ppsq(psq);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE(nullptr, ppsq.get());
+}
+
+/*
+ * @test dpcp_adapter.ti_15_create_pp_sq_ext_mem_misaligned_buf
+ * @brief
+ *    Check adapter::create_pp_sq method error case: misaligned externally-allocated memory for WQE buffer
+ * @details
+ *
+ */
+TEST_F(dpcp_adapter, ti_15_create_pp_sq_ext_mem_misaligned_buf)
+{
+    std::unique_ptr<void, decltype(&aligned_free)> ext_buf(nullptr, &aligned_free);
+
+    std::unique_ptr<adapter> ad(OpenAdapter());
+    ASSERT_NE(nullptr, ad);
+
+    status ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    cq_data cqd = {};
+    ret = (status)create_cq(ad.get(), &cqd);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE(0U, cqd.cqn);
+
+    tis* p_tis;
+    struct tis::attr tis_attr;
+    memset(&tis_attr, 0, sizeof(tis_attr));
+    tis_attr.flags = TIS_ATTR_TRANSPORT_DOMAIN;
+    tis_attr.transport_domain = ad->get_td();
+    ret = ad->create_tis(tis_attr, p_tis);
+    ASSERT_EQ(DPCP_OK, ret);
+    std::unique_ptr<tis> tis(p_tis);
+    uint32_t tis_n = 0;
+    ret = tis->get_tisn(tis_n);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE(0U, tis_n);
+
+    sq_attr sqattr = {};
+    qos_attributes qos_attr;
+    qos_attr.qos_type = QOS_TYPE::QOS_PACKET_PACING;
+    qos_attr.qos_attr.packet_pacing_attr.burst_sz = 1;
+    qos_attr.qos_attr.packet_pacing_attr.packet_sz = 1200;
+    qos_attr.qos_attr.packet_pacing_attr.sustained_rate = 1200000;
+    sqattr.qos_attrs_sz = 1;
+    sqattr.qos_attrs = &qos_attr;
+    sqattr.user_index = 0;
+    sqattr.wqe_num = 32768;
+    sqattr.wqe_sz = 64;
+
+    sqattr.cqn = cqd.cqn;
+    sqattr.tis_num = tis_n;
+
+    size_t wq_buf_sz = 0;
+    size_t db_rec_sz = 0;
+    ad->query_pp_sq_buffer_sizes(sqattr.wqe_sz, sqattr.wqe_num, wq_buf_sz, db_rec_sz);
+    EXPECT_EQ(wq_buf_sz, sqattr.wqe_num * sqattr.wqe_sz);
+    EXPECT_EQ(db_rec_sz, 64);
+    ext_buf.reset(aligned_alloc(4096, wq_buf_sz * 2));
+    // 1 byte offset to make it misaligned
+    sqattr.wq_buf_addr = reinterpret_cast<uint8_t*>(ext_buf.get()) + 1;
+
+    pp_sq* psq = nullptr;
+    ret = ad->create_pp_sq(sqattr, psq);
+    std::unique_ptr<pp_sq> ppsq(psq);
+    ASSERT_EQ(DPCP_ERR_CREATE, ret);
+}
+
+/*
+ * @test dpcp_adapter.ti_15_create_pp_sq_ext_mem_misaligned_db
+ * @brief
+ *    Check adapter::create_pp_sq method error case: misaligned externally-allocated memory for doorbell
+ * @details
+ *
+ */
+TEST_F(dpcp_adapter, ti_15_create_pp_sq_ext_mem_misaligned_db)
+{
+    uint32_t ext_db[17];
+
+    std::unique_ptr<adapter> ad(OpenAdapter());
+    ASSERT_NE(nullptr, ad);
+
+    status ret = ad->open();
+    ASSERT_EQ(DPCP_OK, ret);
+
+    cq_data cqd = {};
+    ret = (status)create_cq(ad.get(), &cqd);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE(0U, cqd.cqn);
+
+    tis* p_tis;
+    struct tis::attr tis_attr;
+    memset(&tis_attr, 0, sizeof(tis_attr));
+    tis_attr.flags = TIS_ATTR_TRANSPORT_DOMAIN;
+    tis_attr.transport_domain = ad->get_td();
+    ret = ad->create_tis(tis_attr, p_tis);
+    ASSERT_EQ(DPCP_OK, ret);
+    std::unique_ptr<tis> tis(p_tis);
+    uint32_t tis_n = 0;
+    ret = tis->get_tisn(tis_n);
+    ASSERT_EQ(DPCP_OK, ret);
+    ASSERT_NE(0U, tis_n);
+
+    sq_attr sqattr = {};
+    qos_attributes qos_attr;
+    qos_attr.qos_type = QOS_TYPE::QOS_PACKET_PACING;
+    qos_attr.qos_attr.packet_pacing_attr.burst_sz = 1;
+    qos_attr.qos_attr.packet_pacing_attr.packet_sz = 1200;
+    qos_attr.qos_attr.packet_pacing_attr.sustained_rate = 1200000;
+    sqattr.qos_attrs_sz = 1;
+    sqattr.qos_attrs = &qos_attr;
+    sqattr.user_index = 0;
+    sqattr.wqe_num = 32768;
+    sqattr.wqe_sz = 64;
+
+    sqattr.cqn = cqd.cqn;
+    sqattr.tis_num = tis_n;
+
+    // 1 byte offset to make it misaligned
+    sqattr.db_addr = reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(ext_db) + 1);
+
+    pp_sq* psq = nullptr;
+    ret = ad->create_pp_sq(sqattr, psq);
+    std::unique_ptr<pp_sq> ppsq(psq);
+    ASSERT_EQ(DPCP_ERR_CREATE, ret);
 }
 
 #if defined(__linux__)
@@ -844,15 +1292,16 @@ TEST_F(dpcp_adapter, ti_18_create_tis)
     tis_attr.flags = TIS_ATTR_TRANSPORT_DOMAIN;
     tis_attr.transport_domain = ad->get_td();
     ret = ad->create_tis(tis_attr, _tis);
+    std::unique_ptr<tis> tis(_tis);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(nullptr, _tis);
+    ASSERT_NE(nullptr, tis.get());
 
     uint32_t tisn = 0;
-    ret = _tis->get_tisn(tisn);
+    ret = tis->get_tisn(tisn);
     ASSERT_EQ(DPCP_OK, ret);
     log_trace("tisn: 0x%x\n", tisn);
 
-    delete _tis;
+    tis.reset();
     delete ad;
 }
 
@@ -893,14 +1342,15 @@ TEST_F(dpcp_adapter, ti_19_create_tls_tis)
     tis_attr.pd = ad->get_pd();
     ret = ad->create_tis(tis_attr, _tis);
     ASSERT_EQ(DPCP_OK, ret);
-    ASSERT_NE(nullptr, _tis);
+    std::unique_ptr<tis> tis(_tis);
+    ASSERT_NE(nullptr, tis.get());
 
     uint32_t tisn = 0;
-    ret = _tis->get_tisn(tisn);
+    ret = tis->get_tisn(tisn);
     ASSERT_EQ(DPCP_OK, ret);
     log_trace("tisn: 0x%x\n", tisn);
 
-    delete _tis;
+    tis.reset();
     delete ad;
 }
 

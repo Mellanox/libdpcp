@@ -43,6 +43,12 @@ RUN echo "$_LOGIN ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
 # W/A for libvma installation issue under docker environment
 RUN touch /etc/init.d/vma && chmod +x /etc/init.d/vma
 
+# Install DOCA
+COPY .ci/scripts/doca_install.sh /tmp/doca_install.sh
+RUN chmod +x /tmp/doca_install.sh && \
+    /tmp/doca_install.sh && \
+    rm -f /tmp/doca_install.sh /tmp/GPG-KEY-Mellanox.pub
+
 ENV MODULEPATH /hpc/local/etc/modulefiles
 SHELL ["/bin/bash"]
 

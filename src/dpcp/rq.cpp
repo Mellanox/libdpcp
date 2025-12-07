@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
- * Copyright (c) 2019-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * Copyright (c) 2019-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -41,6 +41,12 @@
 #include "dpcp/internal.h"
 
 namespace dpcp {
+
+/* static */
+size_t basic_rq::get_wq_buf_sz(size_t wqe_sz, size_t wqe_num)
+{
+    return 16 * wqe_sz * wqe_num;
+}
 
 rq::rq(dcmd::ctx* ctx, const rq_attr& attr)
     : obj(ctx)
@@ -140,18 +146,19 @@ basic_rq::basic_rq(const adapter* ad, const rq_attr& attr)
     : rq(ad->get_ctx(), attr)
     , m_uar(nullptr)
     , m_adapter(ad)
+    , m_is_external_wq_buf(false)
     , m_wq_buf(nullptr)
     , m_wq_buf_umem(nullptr)
+    , m_is_external_db_rec(false)
     , m_db_rec(nullptr)
     , m_db_rec_umem(nullptr)
     , m_wq_buf_umem_id(0)
     , m_db_rec_umem_id(0)
     , m_mem_type(MEMORY_RQ_INLINE)
 {
-    m_wq_buf_sz_bytes = (uint32_t)(16 * m_attr.wqe_sz * m_attr.wqe_num);
 }
 
-ibq_rq::ibq_rq(adapter* ad, rq_attr& attr)
+ibq_rq::ibq_rq(adapter* ad, const rq_attr& attr)
     : rq(ad->get_ctx(), attr)
     , m_adapter(ad)
     , m_protocol(DPCP_IBQ_NOT_INITIALIZED)
@@ -177,14 +184,14 @@ status basic_rq::destroy()
         m_db_rec_umem = nullptr;
     }
     // Deallocated WQ buffer and DoorBell record
-    if (m_wq_buf) {
+    if (!m_is_external_wq_buf) {
         ::aligned_free((void*)m_wq_buf);
-        m_wq_buf = nullptr;
     }
-    if (m_db_rec) {
+    m_wq_buf = nullptr;
+    if (!m_is_external_db_rec) {
         ::aligned_free((void*)m_db_rec);
-        m_db_rec = nullptr;
     }
+    m_db_rec = nullptr;
     return ret;
 }
 
@@ -220,25 +227,38 @@ status basic_rq::allocate_wq_buf(void*& wq_buf, size_t sz)
     if (nullptr == wq_buf) {
         return DPCP_ERR_NO_MEMORY;
     }
-    log_trace("Allocated WQ Buf %zd -> %p\n", sz, wq_buf);
+    log_trace("Allocated RQ Buf %zd -> %p\n", sz, wq_buf);
     m_wq_buf = wq_buf;
-    m_wq_buf_sz_bytes = (uint32_t)sz;
     return DPCP_OK;
+}
+
+void basic_rq::set_wq_buf(void* wq_buf)
+{
+    log_trace("Set externally allocated RQ Buf %p\n", wq_buf);
+    m_wq_buf = wq_buf;
+    m_is_external_wq_buf = true;
 }
 
 status basic_rq::allocate_db_rec(uint32_t*& db_rec, size_t& sz)
 {
     // Allocate BD record
-    sz = 64;
+    sz = get_db_rec_sz();
     // Latter, this memory is going to be registerd. It causes memory corruptions
     // when registering a portion of an allocated spaces that is not a multiple of PAGESIZE.
     db_rec = (uint32_t*)::aligned_alloc(get_page_size(), get_page_size());
     if (nullptr == db_rec) {
         return DPCP_ERR_NO_MEMORY;
     }
-    log_trace("Allocated DBRec %zd -> %p\n", sz, db_rec);
+    log_trace("Allocated RQ DBRec %zd -> %p\n", sz, db_rec);
     m_db_rec = db_rec;
     return DPCP_OK;
+}
+
+void basic_rq::set_db_rec(uint32_t* db_rec)
+{
+    log_trace("Set externally allocated RQ DBRec %p\n", db_rec);
+    m_db_rec = db_rec;
+    m_is_external_db_rec = true;
 }
 
 status basic_rq::get_wq_buf(void*& buf_addr)

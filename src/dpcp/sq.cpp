@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
- * Copyright (c) 2020-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * Copyright (c) 2020-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,7 +43,7 @@
 
 namespace dpcp {
 
-sq::sq(dcmd::ctx* ctx, sq_attr& attr)
+sq::sq(dcmd::ctx* ctx, const sq_attr& attr)
     : obj(ctx)
     , m_attr(attr)
     , m_state(SQ_RST)
@@ -142,23 +142,28 @@ status sq::get_cqn(uint32_t& cqn)
     return DPCP_OK;
 }
 
-pp_sq::pp_sq(adapter* ad, sq_attr& attr)
+/* static */
+size_t pp_sq::get_wq_buf_sz(size_t wqe_sz, size_t wqe_num)
+{
+    return wqe_sz * wqe_num;
+}
+
+pp_sq::pp_sq(adapter* ad, const sq_attr& attr)
     : sq(ad->get_ctx(), attr)
     , m_uar(nullptr)
     , m_adapter(ad)
+    , m_is_external_wq_buf(false)
     , m_wq_buf(nullptr)
     , m_wq_buf_umem(nullptr)
+    , m_is_external_db_rec(false)
     , m_db_rec(nullptr)
     , m_db_rec_umem(nullptr)
     , m_pp(nullptr)
-    , m_wqe_num(attr.wqe_num)
-    , m_wqe_sz(attr.wqe_sz)
     , m_wq_buf_umem_id(0)
     , m_db_rec_umem_id(0)
     , m_pp_idx(0)
     , m_wq_type(WQ_CYCLIC)
 {
-    m_wq_buf_sz_bytes = (uint32_t)(16 * m_wqe_sz * m_wqe_num);
 }
 
 status pp_sq::destroy()
@@ -179,14 +184,14 @@ status pp_sq::destroy()
         m_db_rec_umem = nullptr;
     }
     // Deallocated WQ buffer and DoorBell record
-    if (m_wq_buf) {
+    if (!m_is_external_wq_buf) {
         ::aligned_free((void*)m_wq_buf);
-        m_wq_buf = nullptr;
     }
-    if (m_db_rec) {
+    m_wq_buf = nullptr;
+    if (!m_is_external_db_rec) {
         ::aligned_free((void*)m_db_rec);
-        m_db_rec = nullptr;
     }
+    m_db_rec = nullptr;
     return ret;
 }
 
@@ -207,8 +212,14 @@ status pp_sq::allocate_wq_buf(void*& wq_buf, size_t sz)
     memset(wq_buf, 0, sz);
     log_trace("Allocated SQ Buf %zd -> %p\n", sz, wq_buf);
     m_wq_buf = wq_buf;
-    m_wq_buf_sz_bytes = (uint32_t)sz;
     return DPCP_OK;
+}
+
+void pp_sq::set_wq_buf(void* buf)
+{
+    log_trace("Set externally allocated SQ Buf %p\n", buf);
+    m_wq_buf = buf;
+    m_is_external_wq_buf = true;
 }
 
 status pp_sq::allocate_db_rec(uint32_t*& db_rec, size_t& sz)
@@ -224,6 +235,13 @@ status pp_sq::allocate_db_rec(uint32_t*& db_rec, size_t& sz)
     log_trace("Allocated SQ DBRec %zd -> %p\n", sz, db_rec);
     m_db_rec = db_rec;
     return DPCP_OK;
+}
+
+void pp_sq::set_db_rec(uint32_t* db_rec)
+{
+    log_trace("Set externally allocated SQ DBRec %p\n", db_rec);
+    m_db_rec = db_rec;
+    m_is_external_db_rec = true;
 }
 
 status pp_sq::get_wq_buf(void*& buf_addr)
@@ -392,7 +410,7 @@ status pp_sq::get_bf_reg(uint64_t*& bf_reg, size_t offset)
     return DPCP_ERR_NO_SUPPORT;
 }
 
-status pp_sq::modify(sq_attr& attr)
+status pp_sq::modify(const sq_attr& attr)
 {
     /* Setting Packet Pacing */
     if ((attr.qos_attrs_sz != 1) || (attr.qos_attrs == nullptr) ||

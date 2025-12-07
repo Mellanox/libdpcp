@@ -86,6 +86,12 @@ RUN echo "${_LOGIN} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
 # W/A for RHEL/CentOS 7+ to allow sudo (by commenting out "session required pam_limits.so")
 RUN for FILE in sudo-i sudo system-auth; do sed -i 's/session.*required.*pam_limits.so/#&/' /etc/pam.d/$FILE; done
 
+# Install DOCA
+COPY .ci/scripts/doca_install.sh /tmp/doca_install.sh
+RUN chmod +x /tmp/doca_install.sh && \
+    /tmp/doca_install.sh && \
+    rm -f /tmp/doca_install.sh /tmp/GPG-KEY-Mellanox.pub
+
 ENV MODULEPATH /hpc/local/etc/modulefiles
 SHELL ["/bin/bash"]
 

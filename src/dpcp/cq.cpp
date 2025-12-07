@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
- * Copyright (c) 2020-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * Copyright (c) 2020-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -73,13 +73,21 @@ struct mlx5_cqe64 {
 
 const uint32_t MAX_CQ_SZ = 1 << 22; /* in CQE number */
 
+/* static */
+size_t cq::get_cq_buf_sz(size_t cqe_num)
+{
+    return cqe_num * CQE_SIZE;
+}
+
 cq::cq(adapter* ad, const cq_attr& attrs)
     : obj(ad->get_ctx())
     , m_user_attr(attrs)
     , m_uar(nullptr)
     , m_adapter(ad)
+    , m_is_external_cq_buf(false)
     , m_cq_buf(nullptr)
     , m_cq_buf_umem(nullptr)
+    , m_is_external_db_rec(false)
     , m_db_rec(nullptr)
     , m_arm_db(nullptr)
     , m_db_rec_umem(nullptr)
@@ -91,7 +99,6 @@ cq::cq(adapter* ad, const cq_attr& attrs)
 {
     // cq_sz is mandatory so confirmed to exist
     m_cqe_num = m_user_attr.cq_sz;
-    m_cq_buf_sz_bytes = (uint32_t)(get_cqe_sz() * m_cqe_num);
 }
 
 status cq::destroy()
@@ -137,13 +144,21 @@ status cq::allocate_cq_buf(void*& cq_buf, size_t sz)
     }
     log_trace("Allocated CQ Buf %zd -> %p\n", sz, cq_buf);
     m_cq_buf = cq_buf;
-    m_cq_buf_sz_bytes = (uint32_t)sz;
     return DPCP_OK;
+}
+
+void cq::set_cq_buf(void* cq_buf)
+{
+    log_trace("Set externally allocated CQ Buf %p\n", cq_buf);
+    m_cq_buf = cq_buf;
+    m_is_external_cq_buf = true;
 }
 
 status cq::release_cq_buf(void* buf)
 {
-    ::aligned_free(buf);
+    if (!m_is_external_cq_buf) {
+        ::aligned_free(buf);
+    }
     return DPCP_OK;
 }
 
@@ -151,7 +166,7 @@ status cq::allocate_db_rec(uint32_t*& db_rec, size_t& sz)
 {
     // Allocate BD record
     size_t cacheline_sz = get_cacheline_size();
-    sz = 64;
+    sz = get_db_rec_sz();
     db_rec = (uint32_t*)::aligned_alloc(cacheline_sz, sz);
     if (nullptr == db_rec) {
         return DPCP_ERR_NO_MEMORY;
@@ -161,9 +176,18 @@ status cq::allocate_db_rec(uint32_t*& db_rec, size_t& sz)
     return DPCP_OK;
 }
 
+void cq::set_db_rec(uint32_t* db_rec)
+{
+    log_trace("Set externally allocated CQ DBRec %p\n", db_rec);
+    m_db_rec = db_rec;
+    m_is_external_db_rec = true;
+}
+
 status cq::release_db_rec(uint32_t* db_rec)
 {
-    ::aligned_free(db_rec);
+    if (!m_is_external_db_rec) {
+        ::aligned_free(db_rec);
+    }
     return DPCP_OK;
 }
 

@@ -53,7 +53,7 @@
 using std::function;
 using std::unordered_map;
 
-static const char* dpcp_version = "1.1.59";
+static const char* dpcp_version = "1.1.61";
 
 #if defined(__linux__)
 typedef void* LPOVERLAPPED;
@@ -668,18 +668,6 @@ public:
 };
 
 /**
- * @brief enum cq_attr_use - set name for attributes which are valid and to be
- * used or modified
- *
- */
-enum event_type {
-    EVENT_TYPE_CQE = 0, /**< CQ ARM Completion */
-    EVENT_TYPE_CQ, /**< CQ Events/errors */
-    EVENT_TYPE_QP, /**< QP Events/errors */
-    EVENT_TYPE_GEN /**< Generic Events/errors */
-};
-
-/**
  * @brief struct eq_context - provides storage for event queue data shared
  *                            between DPCP/DCMD internals and caller
  *
@@ -773,6 +761,8 @@ enum cq_attr_use {
     CQ_EQ_NUM, /**< HW EventQueue Id num, mandatory for create */
     CQ_MODERATION, /**< Sets CQ moderations attributes*/
     CQ_FLAGS, /**< Sets CQ context flags */
+    CQ_BUF_ADDR, /**< Sets externally allocated CQE buffer address */
+    CQ_DB_ADDR, /**< Sets externally allocated doorbell address */
     CQ_ATTR_MAX_CNT
 };
 
@@ -822,6 +812,8 @@ struct cq_attr {
     std::bitset<ATTR_CQ_MAX_CNT_FLAG> flags; /**< CQ flags */
     std::bitset<CQ_ATTR_MAX_CNT> cq_attr_use; /**< OR'd mask of attribute types
                                  which should be applied and use */
+    void* cq_buf_addr; /**< Externally allocated CQ buffer address */
+    uint32_t* db_addr; /**< Externally allocated doorbell address */
 };
 
 #if !defined(__linux__)
@@ -840,6 +832,8 @@ struct cq_attr {
 #endif
 #define CQE_SIZE 64
 
+#define DB_REC_SIZE 64
+
 /**
  * @brief class cq - Handles CompletionQueue
  *
@@ -850,15 +844,16 @@ class cq : public obj {
     uar_t* m_uar;
     adapter* m_adapter;
 
+    bool m_is_external_cq_buf;
     void* m_cq_buf;
     dcmd::umem* m_cq_buf_umem;
 
+    bool m_is_external_db_rec;
     uint32_t* m_db_rec;
     uint32_t* m_arm_db;
     dcmd::umem* m_db_rec_umem;
 
     size_t m_cqe_num; // Number of CQEs in CQ, must be power of 2
-    uint32_t m_cq_buf_sz_bytes; // CQ size in bytes, must be power of 2
     uint32_t m_cq_buf_umem_id;
     uint32_t m_db_rec_umem_id;
     uint32_t m_cqn;
@@ -869,8 +864,10 @@ class cq : public obj {
     status create();
     status init(const uar_t* cq_uar);
     status allocate_cq_buf(void*& buf, size_t sz);
+    void set_cq_buf(void* buf);
     status release_cq_buf(void* buf);
     status allocate_db_rec(uint32_t*& db_rec, size_t& sz);
+    void set_db_rec(uint32_t* db_rec);
     status release_db_rec(uint32_t* db_rec);
 
 public:
@@ -915,11 +912,23 @@ public:
     /**
      * @brief Returns CQ buffer size in bytes
      *
+     * @param [in] cqe_num      Number of CQEs
+     *
      * @retval Returns buffer size.
      */
+    static size_t get_cq_buf_sz(size_t cqe_num);
     inline size_t get_cq_buf_sz() const
     {
-        return m_cq_buf_sz_bytes;
+        return get_cq_buf_sz(m_cqe_num);
+    }
+    /**
+     * @brief Returns DB record size in bytes
+     *
+     * @retval Returns DB record size.
+     */
+    inline static size_t get_db_rec_sz()
+    {
+        return DB_REC_SIZE;
     }
 
     virtual status destroy();
@@ -959,6 +968,8 @@ struct rq_attr {
     size_t wqe_sz; // WQE size, i.e. number of DS (16B) in each RQ WQE, must be power of 2
     uint8_t ts_format;
     uint8_t ibq_scatter_offset;
+    void* wq_buf_addr; /**< Externally allocated WQ buffer address */
+    uint32_t* db_addr; /**< Externally allocated doorbell address */
 };
 
 enum {
@@ -998,20 +1009,23 @@ protected:
     uar_t* m_uar;
     const adapter* m_adapter;
 
+    bool m_is_external_wq_buf;
     void* m_wq_buf;
     dcmd::umem* m_wq_buf_umem;
 
+    bool m_is_external_db_rec;
     uint32_t* m_db_rec;
     dcmd::umem* m_db_rec_umem;
 
-    uint32_t m_wq_buf_sz_bytes;
     uint32_t m_wq_buf_umem_id;
     uint32_t m_db_rec_umem_id;
     rq_mem_type m_mem_type;
 
     basic_rq(const adapter* ad, const rq_attr& attr);
     status allocate_wq_buf(void*& buf, size_t sz);
+    void set_wq_buf(void* buf);
     status allocate_db_rec(uint32_t*& db_rec, size_t& sz);
+    void set_db_rec(uint32_t* db_rec);
     status init(const uar_t* rq_uar);
 
     virtual status create() = 0;
@@ -1052,12 +1066,28 @@ public:
      * @retval Returns DPCP_OK on success.
      */
     status get_wq_stride_sz(uint32_t& wq_stride_sz);
-
+    /**
+     * @brief Returns RQ WQ buffer size in bytes
+     *
+     * @param [in] wqe_sz       WQE size in bytes
+     * @param [in] wqe_num      Number of WQEs
+     *
+     * @retval Returns WQ buffer size.
+     */
+    static size_t get_wq_buf_sz(size_t wqe_sz, size_t wqe_num);
     inline size_t get_wq_buf_sz() const
     {
-        return m_wq_buf_sz_bytes;
+        return get_wq_buf_sz(m_attr.wqe_sz, m_attr.wqe_num);
     }
-
+    /**
+     * @brief Returns DB record size in bytes
+     *
+     * @retval Returns DB record size.
+     */
+    inline static size_t get_db_rec_sz()
+    {
+        return DB_REC_SIZE;
+    }
     virtual status destroy();
 
     virtual ~basic_rq();
@@ -1106,7 +1136,7 @@ class ibq_rq : public rq {
     dpcp_ibq_protocol m_protocol;
     uint32_t m_mkey;
 
-    ibq_rq(adapter* ad, rq_attr& attr);
+    ibq_rq(adapter* ad, const rq_attr& attr);
 
     status create();
     status init(dpcp_ibq_protocol protocol, uint32_t mkey);
@@ -2459,17 +2489,20 @@ struct sq_attr {
     uint32_t wqe_num; // Number of WQEs in SQ, must be power of 2
     uint32_t wqe_sz; // WQE size, in bytes
     uint32_t user_index;
+    void* wq_buf_addr; /**< Externally allocated WQ buffer address */
+    uint32_t* db_addr; /**< Externally allocated doorbell address */
 };
 
 class sq : public obj {
 protected:
     sq_attr m_attr;
     sq_state m_state;
-    uint32_t m_wqe_num; // should be **2
-    uint32_t m_wqe_sz; // should be 64 bytes
+    size_t m_wqe_num; // Number of WQEs in SQ, must be power of 2
+    size_t m_wqe_sz; // WQE size in bytes, must be a multiple of 16 (WQE
+                     // segment size) and a power of 2
 
 public:
-    sq(dcmd::ctx* ctx, sq_attr& attr);
+    sq(dcmd::ctx* ctx, const sq_attr& attr);
     /**
      * @brief Changes state of RQ
      *
@@ -2506,29 +2539,29 @@ private:
     uar_t* m_uar;
     adapter* m_adapter;
 
+    bool m_is_external_wq_buf;
     void* m_wq_buf;
     dcmd::umem* m_wq_buf_umem;
 
+    bool m_is_external_db_rec;
     uint32_t* m_db_rec;
     dcmd::umem* m_db_rec_umem;
 
     void* m_pp;
 
-    size_t m_wqe_num; // Number of WQEs in SQ, must be power of 2
-    size_t m_wqe_sz; // WQE size, i.e. number of DS (16B) in each SQ WQE, must be
-                     // power of 2
-    uint32_t m_wq_buf_sz_bytes;
     uint32_t m_wq_buf_umem_id;
     uint32_t m_db_rec_umem_id;
     uint32_t m_pp_idx; // Packet Pacing index
     wq_type m_wq_type;
 
-    pp_sq(adapter* ad, sq_attr& attr);
+    pp_sq(adapter* ad, const sq_attr& attr);
 
     status create();
     status init(const uar_t* sq_uar);
     status allocate_wq_buf(void*& buf, size_t sz);
+    void set_wq_buf(void* buf);
     status allocate_db_rec(uint32_t*& db_rec, size_t& sz);
+    void set_db_rec(uint32_t* db_rec);
 
 public:
     virtual ~pp_sq();
@@ -2564,11 +2597,24 @@ public:
     /**
      * @brief Returns Send Queue WQ buffer size in bytes
      *
-     * @retval WQ buffer size.
+     * @param [in] wqe_sz       WQE size in bytes
+     * @param [in] wqe_num      Number of WQEs
+     *
+     * @retval WQ buffer size in bytes.
      */
+    static size_t get_wq_buf_sz(size_t wqe_sz, size_t wqe_num);
     inline size_t get_wq_buf_sz() const
     {
-        return m_wq_buf_sz_bytes;
+        return get_wq_buf_sz(m_wqe_sz, m_wqe_num);
+    }
+    /**
+     * @brief Returns DB record size in bytes
+     *
+     * @retval Returns DB record size.
+     */
+    inline static size_t get_db_rec_sz()
+    {
+        return DB_REC_SIZE;
     }
     /**
      * @brief Modifies Send Queue for new Packet Pacing rate
@@ -2576,7 +2622,7 @@ public:
      *
      * @retval Returns DPCP_OK on success.
      */
-    status modify(sq_attr& attr);
+    status modify(const sq_attr& attr);
     virtual status destroy();
 };
 
@@ -2867,7 +2913,7 @@ private:
     bool m_opened;
     flow_action_generator m_flow_action_generator;
     std::shared_ptr<flow_table> m_root_table_arr[flow_table_type::FT_END];
-    status prepare_basic_rq(basic_rq& srq);
+    status prepare_basic_rq(const rq_attr& rq_attr, basic_rq& srq);
     status verify_flow_table_receive_attr(const flow_table_attr& attr);
 
 public:
@@ -3019,6 +3065,15 @@ public:
     status create_crypto_mkey(crypto_mkey*& mkey, uint32_t max_sge);
 
     /**
+     * @brief Returns CQ buffer and DB record sizes
+     *
+     * @param [in]  cq_sz           CQ size in CQE numbers
+     * @param [out] cq_buf_sz       CQ buffer size
+     * @param [out] db_rec_sz       DB record size
+     */
+    static void query_cq_buffer_sizes(uint32_t cq_sz, size_t& cq_buf_sz, size_t& db_rec_sz);
+
+    /**
      * @brief Creates and returns CQ
      *
      * @param [in]  attr            CQ attributes for create
@@ -3027,6 +3082,17 @@ public:
      * @retval      Returns DPCP_OK on success
      */
     status create_cq(const cq_attr& attr, cq*& cq);
+
+    /**
+     * @brief Returns RQ WQE buffer and DB record sizes. For both striding and regular RQ.
+     *
+     * @param [in]  wqe_sz          WQE size in bytes
+     * @param [in]  wqe_num         Number of WQEs in RQ
+     * @param [out] wq_buf_sz       WQE buffer size
+     * @param [out] db_rec_sz       DB record size
+     */
+    static void query_rq_buffer_sizes(uint32_t wqe_sz, uint32_t wqe_num, size_t& wq_buf_sz,
+                                      size_t& db_rec_sz);
 
     /**
      * @brief Creates and returns striding_rq
@@ -3059,7 +3125,7 @@ public:
      *
      * @retval      Returns DPCP_OK on success
      */
-    status create_ibq_rq(rq_attr& rq_attr, dpcp_ibq_protocol ibq_protocol, uint32_t mkey,
+    status create_ibq_rq(const rq_attr& rq_attr, dpcp_ibq_protocol ibq_protocol, uint32_t mkey,
                          ibq_rq*& rq);
 
     /**
@@ -3126,6 +3192,17 @@ public:
     status get_hca_caps_frequency_khz(uint32_t& freq); // TODO: Deprecate.
 
     /**
+     * @brief Returns WQE buffer and DB record sizes for Packet Pacing SQ
+     *
+     * @param [in]  wqe_sz          WQE size in bytes
+     * @param [in]  wqe_num         Number of WQEs in SQ
+     * @param [out] wq_buf_sz       WQE buffer size
+     * @param [out] db_rec_sz       DB record size
+     */
+    static void query_pp_sq_buffer_sizes(uint32_t wqe_sz, uint32_t wqe_num, size_t& wq_buf_sz,
+                                         size_t& db_rec_sz);
+
+    /**
      * @brief Creates and returns pp_sq (PacketPacing SendQueue)
      *
      * @param [in]  sq_attr         SQ attributes
@@ -3133,7 +3210,7 @@ public:
      *
      * @retval      Returns DPCP_OK on success
      */
-    status create_pp_sq(sq_attr& sq_attr, pp_sq*& sq);
+    status create_pp_sq(const sq_attr& sq_attr, pp_sq*& sq);
 
     /**
      * @brief Get general HCA capabilities

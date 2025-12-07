@@ -1193,6 +1193,13 @@ status adapter::create_crypto_mkey(crypto_mkey*& cmk, const uint32_t max_sge)
     return DPCP_OK;
 }
 
+/* static */
+void adapter::query_cq_buffer_sizes(uint32_t cq_sz, size_t& cq_buf_sz, size_t& db_rec_sz)
+{
+    cq_buf_sz = cq::get_cq_buf_sz(cq_sz);
+    db_rec_sz = cq::get_db_rec_sz();
+}
+
 status adapter::create_cq(const cq_attr& attrs, cq*& out_cq)
 {
     // CQ_SIZE is mandatory
@@ -1201,6 +1208,14 @@ status adapter::create_cq(const cq_attr& attrs, cq*& out_cq)
     }
     // EventQueue Id number is also mandatory
     if (!attrs.cq_attr_use.test(CQ_EQ_NUM)) {
+        return DPCP_ERR_INVALID_PARAM;
+    }
+    // cq_buf_addr must be valid if the flag is set
+    if (attrs.cq_attr_use.test(CQ_BUF_ADDR) && !attrs.cq_buf_addr) {
+        return DPCP_ERR_INVALID_PARAM;
+    }
+    // db_addr must be valid if the flag is set
+    if (attrs.cq_attr_use.test(CQ_DB_ADDR) && !attrs.db_addr) {
         return DPCP_ERR_INVALID_PARAM;
     }
 
@@ -1215,7 +1230,7 @@ status adapter::create_cq(const cq_attr& attrs, cq*& out_cq)
     if (nullptr == cq64) {
         return DPCP_ERR_NO_MEMORY;
     }
-    // Obrain UAR for new CQ
+    // Obtain UAR for new CQ
     uar cq_uar = m_uarpool->get_uar(cq64.get());
     if (nullptr == cq_uar) {
         return DPCP_ERR_ALLOC_UAR;
@@ -1225,12 +1240,19 @@ status adapter::create_cq(const cq_attr& attrs, cq*& out_cq)
     if (DPCP_OK != ret) {
         return ret;
     }
-    // Allocate CQ Buf
+    // Allocate or set CQ Buf
     void* cq_buf = nullptr;
     size_t cq_buf_sz = cq64->get_cq_buf_sz();
-    ret = cq64->allocate_cq_buf(cq_buf, cq_buf_sz);
-    if (DPCP_OK != ret) {
-        return ret;
+    if (attrs.cq_attr_use.test(CQ_BUF_ADDR)) {
+        cq_buf = attrs.cq_buf_addr;
+    }
+    if (cq_buf) {
+        cq64->set_cq_buf(cq_buf);
+    } else {
+        ret = cq64->allocate_cq_buf(cq_buf, cq_buf_sz);
+        if (DPCP_OK != ret) {
+            return ret;
+        }
     }
     // Register UMEM for CQ Buffer
     ret = reg_mem(get_ctx(), (void*)cq_buf, cq_buf_sz, cq64->m_cq_buf_umem, cq64->m_cq_buf_umem_id);
@@ -1239,13 +1261,19 @@ status adapter::create_cq(const cq_attr& attrs, cq*& out_cq)
     }
     log_trace("create_cq Buf: 0x%p sz: 0x%x umem_id: %x\n", cq_buf, (uint32_t)cq_buf_sz,
               cq64->m_cq_buf_umem_id);
-    //
-    // Allocated DB
+    // Allocate or set DB record
     uint32_t* db_rec = nullptr;
-    size_t db_rec_sz = 0;
-    ret = cq64->allocate_db_rec(db_rec, db_rec_sz);
-    if (DPCP_OK != ret) {
-        return ret;
+    size_t db_rec_sz = cq::get_db_rec_sz();
+    if (attrs.cq_attr_use.test(CQ_DB_ADDR)) {
+        db_rec = attrs.db_addr;
+    }
+    if (db_rec) {
+        cq64->set_db_rec(db_rec);
+    } else {
+        ret = cq64->allocate_db_rec(db_rec, db_rec_sz);
+        if (DPCP_OK != ret) {
+            return ret;
+        }
     }
     // Register UMEM for DoorBell record
     ret = reg_mem(get_ctx(), (void*)db_rec, db_rec_sz, cq64->m_db_rec_umem, cq64->m_db_rec_umem_id);
@@ -1262,7 +1290,7 @@ status adapter::create_cq(const cq_attr& attrs, cq*& out_cq)
     return ret;
 }
 
-status adapter::prepare_basic_rq(basic_rq& srq)
+status adapter::prepare_basic_rq(const rq_attr& rq_attr, basic_rq& srq)
 {
     // Obtain UAR for new RQ
     uar rq_uar = m_uarpool->get_uar(&srq);
@@ -1274,12 +1302,16 @@ status adapter::prepare_basic_rq(basic_rq& srq)
     if (DPCP_OK != ret) {
         return ret;
     }
-    // Allocate WQ Buf
-    void* wq_buf = nullptr;
+    // Allocate or set WQ Buf
+    void* wq_buf = rq_attr.wq_buf_addr;
     size_t wq_buf_sz = srq.get_wq_buf_sz();
-    ret = srq.allocate_wq_buf(wq_buf, wq_buf_sz);
-    if (DPCP_OK != ret) {
-        return ret;
+    if (wq_buf) {
+        srq.set_wq_buf(wq_buf);
+    } else {
+        ret = srq.allocate_wq_buf(wq_buf, wq_buf_sz);
+        if (DPCP_OK != ret) {
+            return ret;
+        }
     }
     // Register UMEM for WQ Buffer
     ret = reg_mem(get_ctx(), (void*)wq_buf, wq_buf_sz, srq.m_wq_buf_umem, srq.m_wq_buf_umem_id);
@@ -1288,13 +1320,16 @@ status adapter::prepare_basic_rq(basic_rq& srq)
     }
     log_trace("prepare_basic_rq Buf: 0x%p sz: 0x%x umem_id: %x\n", wq_buf, (uint32_t)wq_buf_sz,
               srq.m_wq_buf_umem_id);
-    //
-    // Allocated DB
-    uint32_t* db_rec = nullptr;
-    size_t db_rec_sz = 0;
-    ret = srq.allocate_db_rec(db_rec, db_rec_sz);
-    if (DPCP_OK != ret) {
-        return ret;
+    // Allocate or set DB record
+    uint32_t* db_rec = rq_attr.db_addr;
+    size_t db_rec_sz = basic_rq::get_db_rec_sz();
+    if (db_rec) {
+        srq.set_db_rec(db_rec);
+    } else {
+        ret = srq.allocate_db_rec(db_rec, db_rec_sz);
+        if (DPCP_OK != ret) {
+            return ret;
+        }
     }
     // Register UMEM for DoorBell record
     ret = reg_mem(get_ctx(), (void*)db_rec, db_rec_sz, srq.m_db_rec_umem, srq.m_db_rec_umem_id);
@@ -1305,6 +1340,14 @@ status adapter::prepare_basic_rq(basic_rq& srq)
               srq.m_db_rec_umem_id);
 
     return srq.init(&uar_p);
+}
+
+/* static */
+void adapter::query_rq_buffer_sizes(uint32_t wqe_sz, uint32_t wqe_num, size_t& wq_buf_sz,
+                                    size_t& db_rec_sz)
+{
+    wq_buf_sz = basic_rq::get_wq_buf_sz(wqe_sz, wqe_num);
+    db_rec_sz = basic_rq::get_db_rec_sz();
 }
 
 status adapter::create_striding_rq(const rq_attr& rq_attr, striding_rq*& str_rq)
@@ -1320,7 +1363,7 @@ status adapter::create_striding_rq(const rq_attr& rq_attr, striding_rq*& str_rq)
     if (!srq)
         return DPCP_ERR_NO_MEMORY;
 
-    status ret = prepare_basic_rq(*srq);
+    status ret = prepare_basic_rq(rq_attr, *srq);
     if (DPCP_OK == ret)
         str_rq = srq.release();
 
@@ -1340,14 +1383,14 @@ status adapter::create_regular_rq(const rq_attr& rq_attr, regular_rq*& reg_rq)
     if (!srq)
         return DPCP_ERR_NO_MEMORY;
 
-    status ret = prepare_basic_rq(*srq);
+    status ret = prepare_basic_rq(rq_attr, *srq);
     if (DPCP_OK == ret)
         reg_rq = srq.release();
 
     return ret;
 }
 
-status adapter::create_ibq_rq(rq_attr& rq_attr, dpcp_ibq_protocol ibq_protocol, uint32_t mkey,
+status adapter::create_ibq_rq(const rq_attr& rq_attr, dpcp_ibq_protocol ibq_protocol, uint32_t mkey,
                               ibq_rq*& d_rq)
 {
     ibq_rq* drq = new (std::nothrow) ibq_rq(this, rq_attr);
@@ -1476,7 +1519,15 @@ status adapter::query_eqn(uint32_t& eqn, uint32_t cpu_vector)
     return DPCP_ERR_QUERY;
 }
 
-status adapter::create_pp_sq(sq_attr& sq_attr, pp_sq*& packet_pacing_sq)
+/* static */
+void adapter::query_pp_sq_buffer_sizes(uint32_t wqe_sz, uint32_t wqe_num, size_t& wq_buf_sz,
+                                       size_t& db_rec_sz)
+{
+    wq_buf_sz = pp_sq::get_wq_buf_sz(wqe_sz, wqe_num);
+    db_rec_sz = pp_sq::get_db_rec_sz();
+}
+
+status adapter::create_pp_sq(const sq_attr& sq_attr, pp_sq*& packet_pacing_sq)
 {
     if (nullptr == m_uarpool) {
         // Allocate UAR pool
@@ -1500,12 +1551,16 @@ status adapter::create_pp_sq(sq_attr& sq_attr, pp_sq*& packet_pacing_sq)
     if (DPCP_OK != ret) {
         return ret;
     }
-    // Allocate WQ Buf
-    void* wq_buf = nullptr;
+    // Allocate or set WQ Buf
+    void* wq_buf = sq_attr.wq_buf_addr;
     size_t wq_buf_sz = ppsq->get_wq_buf_sz();
-    ret = ppsq->allocate_wq_buf(wq_buf, wq_buf_sz);
-    if (DPCP_OK != ret) {
-        return ret;
+    if (wq_buf) {
+        ppsq->set_wq_buf(wq_buf);
+    } else {
+        ret = ppsq->allocate_wq_buf(wq_buf, wq_buf_sz);
+        if (DPCP_OK != ret) {
+            return ret;
+        }
     }
     // Register UMEM for WQ Buffer
     ret = reg_mem(get_ctx(), (void*)wq_buf, wq_buf_sz, ppsq->m_wq_buf_umem, ppsq->m_wq_buf_umem_id);
@@ -1514,13 +1569,16 @@ status adapter::create_pp_sq(sq_attr& sq_attr, pp_sq*& packet_pacing_sq)
     }
     log_trace("create_pp_sq Buf: 0x%p sz: 0x%x umem_id: %x\n", wq_buf, (uint32_t)wq_buf_sz,
               ppsq->m_wq_buf_umem_id);
-    //
-    // Allocated DB
-    uint32_t* db_rec = nullptr;
-    size_t db_rec_sz = 0;
-    ret = ppsq->allocate_db_rec(db_rec, db_rec_sz);
-    if (DPCP_OK != ret) {
-        return ret;
+    // Allocate or set DB record
+    uint32_t* db_rec = sq_attr.db_addr;
+    size_t db_rec_sz = pp_sq::get_db_rec_sz();
+    if (db_rec) {
+        ppsq->set_db_rec(db_rec);
+    } else {
+        ret = ppsq->allocate_db_rec(db_rec, db_rec_sz);
+        if (DPCP_OK != ret) {
+            return ret;
+        }
     }
     // Register UMEM for DoorBell record
     ret = reg_mem(get_ctx(), (void*)db_rec, db_rec_sz, ppsq->m_db_rec_umem, ppsq->m_db_rec_umem_id);

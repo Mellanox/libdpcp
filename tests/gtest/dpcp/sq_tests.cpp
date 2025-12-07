@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
- * Copyright (c) 2020-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * Copyright (c) 2020-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -185,7 +185,8 @@ TEST_F(dpcp_sq, ti_06_get_wq_stride_sz)
 TEST_F(dpcp_sq, ti_07_get_wq_buf_sz)
 {
     size_t wq_buf_sz = s_ppsq->get_wq_buf_sz();
-    log_trace("wq_buf_sz: %zd\n", wq_buf_sz);
+    ASSERT_GT(wq_buf_sz, 0);
+    ASSERT_EQ(wq_buf_sz, s_sqattr.wqe_sz * s_sqattr.wqe_num);
 }
 /**
  * @test dpcp_sq.ti_08_modify_state

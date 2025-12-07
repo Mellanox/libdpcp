@@ -28,17 +28,6 @@
             name: "release_dir"
             default: "/auto/sw/release/sw_acceleration/dpcp"
             description: "(not enabled yet) Location to release rpm/deb packages"
-        - string:
-            name: "DOCA_VERSION"
-            default: "3.2.0"
-            description: "DOCA version - see https://developer.nvidia.com/doca-downloads?deployment_platform=Host-Server&deployment_package=DOCA-Host"
-        - choice:
-            name: DOCA_BRANCH
-            choices:
-                - dev
-                - stage
-                - latest
-            description: "On which DOCA branch to run?"
         - bool:
             name: "do_copyrights"
             default: true

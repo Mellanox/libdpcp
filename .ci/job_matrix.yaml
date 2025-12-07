@@ -3,6 +3,7 @@ job: dpcp-ci-demo
 
 registry_host: nbu-harbor.gtm.nvidia.com
 registry_auth: rivermax_harbor_credentials
+registry_path: /rivermax/dpcp
 
 credentials:
   - {credentialsId: 'dpcp_admin_cov_credentials', usernameVariable: 'DPCP_COV_USER', passwordVariable: 'DPCP_COV_PASSWORD'}
@@ -29,21 +30,20 @@ volumes:
 
 runs_on_dockers:
 # base
-  - {file: '.dockers/Dockerfile.ubuntu22.04', arch: 'x86_64', name: 'ubuntu22.04', url: 'nbu-harbor.gtm.nvidia.com/rivermax/dpcp/$arch/$name/core', tag: '22.04', category: ['base', 'build-test'], build_args: '--build-arg ARCH=x86_64 --no-cache --target build'}
-  - {file: '.dockers/Dockerfile.ubuntu22.04', arch: 'aarch64', name: 'ubuntu22.04', url: 'nbu-harbor.gtm.nvidia.com/rivermax/dpcp/$arch/$name/core', tag: '22.04', category: 'base', build_args: '--build-arg ARCH=aarch64 --no-cache --target build'}
-  - {file: '.dockers/Dockerfile.ubuntu24.04', arch: 'x86_64', name: 'ubuntu24.04', url: 'nbu-harbor.gtm.nvidia.com/rivermax/dpcp/$arch/$name/core', tag: '24.04', category: ['base', 'build-test'], build_args: '--build-arg ARCH=x86_64 --no-cache'}
-  - {file: '.dockers/Dockerfile.ubuntu24.04', arch: 'aarch64', name: 'ubuntu24.04', url: 'nbu-harbor.gtm.nvidia.com/rivermax/dpcp/$arch/$name/core', tag: '24.04', category: 'base', build_args: '--build-arg ARCH=aarch64 --no-cache'}
-  - {file: '.dockers/Dockerfile.rhel9.2', arch: 'x86_64', name: 'rhel9.2', url: 'nbu-harbor.gtm.nvidia.com/rivermax/dpcp/$arch/$name/core', tag: '9.2', category: 'base', build_args: '--no-cache'}
-  - {file: '.dockers/Dockerfile.rhel9.6', arch: 'x86_64', name: 'rhel9.6', url: 'nbu-harbor.gtm.nvidia.com/rivermax/dpcp/$arch/$name/core', tag: '9.6', category: 'base', build_args: '--no-cache'}
-  - {file: '.dockers/Dockerfile.oel8.4', arch: 'x86_64', name: 'oel8.4', url: 'nbu-harbor.gtm.nvidia.com/rivermax/dpcp/$arch/$name/core', tag: '8.4', category: 'base', build_args: '--no-cache'}
-  - {file: '.dockers/Dockerfile.oel8.6', arch: 'x86_64', name: 'oel8.6', url: 'nbu-harbor.gtm.nvidia.com/rivermax/dpcp/$arch/$name/core', tag: '8.6', category: 'base', build_args: '--no-cache'}
-  - {file: '.dockers/Dockerfile.oel8.7', arch: 'x86_64', name: 'oel8.7', url: 'nbu-harbor.gtm.nvidia.com/rivermax/dpcp/$arch/$name/core', tag: '8.7', category: 'base', build_args: '--no-cache'}
-  - {file: '.dockers/Dockerfile.oel9.2', arch: 'x86_64', name: 'oel9.2', url: 'nbu-harbor.gtm.nvidia.com/rivermax/dpcp/$arch/$name/core', tag: '9.2', category: 'base', build_args: '--no-cache'}
-  - {file: '.dockers/Dockerfile.oel9.6', arch: 'x86_64', name: 'oel9.6', url: 'nbu-harbor.gtm.nvidia.com/rivermax/dpcp/$arch/$name/core', tag: '9.6', category: 'base', build_args: '--no-cache'}
-  - {file: '.dockers/Dockerfile.ctyunos23.01', arch: 'x86_64', name: 'ctyunos23.01', url: 'nbu-harbor.gtm.nvidia.com/rivermax/dpcp/$arch/$name/core', tag: '23.01', category: 'base', build_args: '--build-arg ARCH=x86_64 --no-cache'}
-  - {file: '.dockers/Dockerfile.ctyunos23.01', arch: 'aarch64', name: 'ctyunos23.01', url: 'nbu-harbor.gtm.nvidia.com/rivermax/dpcp/$arch/$name/core', tag: '23.01', category: 'base', build_args: '--build-arg ARCH=aarch64 --no-cache'}
+  - {file: '.dockers/Dockerfile.ubuntu22.04', arch: 'x86_64', name: 'ubuntu22.04', uri: '$arch/$name/core', tag: '20251207', category: ['base', 'build-test'], build_args: '--build-arg ARCH=x86_64 --no-cache --target build'}
+  - {file: '.dockers/Dockerfile.ubuntu22.04', arch: 'aarch64', name: 'ubuntu22.04', uri: '$arch/$name/core', tag: '20251207', category: 'base', build_args: '--build-arg ARCH=aarch64 --no-cache --target build'}
+  - {file: '.dockers/Dockerfile.ubuntu24.04', arch: 'x86_64', name: 'ubuntu24.04', uri: '$arch/$name/core', tag: '20251207', category: ['base', 'build-test'], build_args: '--build-arg ARCH=x86_64 --no-cache'}
+  - {file: '.dockers/Dockerfile.ubuntu24.04', arch: 'aarch64', name: 'ubuntu24.04', uri: '$arch/$name/core', tag: '20251207', category: 'base', build_args: '--build-arg ARCH=aarch64 --no-cache'}
+  - {file: '.dockers/Dockerfile.rhel9.2', arch: 'x86_64', name: 'rhel9.2', uri: '$arch/$name/core', tag: '20251207', category: 'base', build_args: '--no-cache'}
+  - {file: '.dockers/Dockerfile.rhel9.6', arch: 'x86_64', name: 'rhel9.6', uri: '$arch/$name/core', tag: '20251207', category: 'base', build_args: '--no-cache'}
+  - {file: '.dockers/Dockerfile.oel8.4', arch: 'x86_64', name: 'oel8.4', uri: '$arch/$name/core', tag: '20251207', category: 'base', build_args: '--no-cache'}
+  - {file: '.dockers/Dockerfile.oel8.6', arch: 'x86_64', name: 'oel8.6', uri: '$arch/$name/core', tag: '20251207', category: 'base', build_args: '--no-cache'}
+  - {file: '.dockers/Dockerfile.oel8.7', arch: 'x86_64', name: 'oel8.7', uri: '$arch/$name/core', tag: '20251207', category: 'base', build_args: '--no-cache'}
+  - {file: '.dockers/Dockerfile.oel9.6', arch: 'x86_64', name: 'oel9.6', uri: '$arch/$name/core', tag: '20251207', category: 'base', build_args: '--no-cache'}
+  - {file: '.dockers/Dockerfile.ctyunos23.01', arch: 'x86_64', name: 'ctyunos23.01', uri: '$arch/$name/core', tag: '20260210', category: 'base', build_args: '--build-arg ARCH=x86_64 --no-cache'}
+  - {file: '.dockers/Dockerfile.ctyunos23.01', arch: 'aarch64', name: 'ctyunos23.01', uri: '$arch/$name/core', tag: '20260210', category: 'base', build_args: '--build-arg ARCH=aarch64 --no-cache'}
 # tool
-  - {file: '.dockers/Dockerfile.ubuntu22.04', arch: 'x86_64', name: 'toolbox', url: 'nbu-harbor.gtm.nvidia.com/rivermax/dpcp/$arch/$name/toolbox', tag: '20240820', category: 'tool', build_args: '--build-arg ARCH=x86_64 --no-cache --target toolbox'}
+  - {file: '.dockers/Dockerfile.ubuntu22.04', arch: 'x86_64', name: 'toolbox', uri: '$arch/$name/toolbox', tag: '20251207', category: 'tool', build_args: '--build-arg ARCH=x86_64 --no-cache --target toolbox'}
   - {name: 'header-check', url: 'nbu-harbor.gtm.nvidia.com/toolbox/header_check:0.0.64', arch: 'x86_64', tag: '0.0.51', category: 'tool', build_args: '--no-cache'}
   - {name: 'secret-scan', url: 'nbu-harbor.gtm.nvidia.com/toolbox/secret_scan:0.0.23', arch: 'x86_64', tag: '0.0.23', category: 'tool', build_args: '--no-cache'}
 
@@ -92,24 +92,6 @@ steps:
       env GITHUB_TOKEN=$MELLANOX_GH_TOKEN /opt/nvidia/secret_scan.py --path $WORKSPACE --git-repo $WORKSPACE --report-file secret_scan.html
     archiveArtifacts: '*.html'
     parallel: false
-
-  - name: Install Doca-host
-    containerSelector:
-      - "{category: 'base'}"
-    agentSelector:
-      - "{nodeLabel: 'skip-agent'}"
-    run: |
-      echo "Installing DOCA: ${DOCA_VERSION} ..."
-      .ci/scripts/doca_install.sh
-
-  - name: Install Doca-host on Tools
-    run: |
-      echo "Installing DOCA: ${DOCA_VERSION} ..."
-      .ci/scripts/doca_install.sh
-    containerSelector:
-      - "{name: 'toolbox', category: 'tool'}"
-    agentSelector:
-      - "{nodeLabel: 'skip-agent'}"
 
   - name: Autogen
     run: |
