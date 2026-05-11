@@ -105,6 +105,7 @@
       <DiagnosticsFormat>Classic</DiagnosticsFormat>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -133,6 +134,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
+      <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -161,6 +163,7 @@
       <DiagnosticsFormat>Classic</DiagnosticsFormat>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -189,6 +192,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
+      <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -212,9 +216,11 @@
     <ClCompile Include="src\dcmd\windows\provider.cpp" />
     <ClCompile Include="src\dcmd\windows\uar.cpp" />
     <ClCompile Include="src\dcmd\windows\umem.cpp" />
+    <ClCompile Include="src\dcmd\windows\dev_mem.cpp" />
     <ClCompile Include="src\dpcp\adapter.cpp" />
     <ClCompile Include="src\dpcp\cq.cpp" />
     <ClCompile Include="src\dpcp\dek.cpp" />
+    <ClCompile Include="src\dpcp\dma_mmo_qp.cpp" />
     <ClCompile Include="src\dpcp\dpcp.cpp" />
     <ClCompile Include="src\dpcp\dpcp_obj.cpp" />
     <ClCompile Include="src\dpcp\eq.cpp" />
@@ -226,13 +232,16 @@
     <ClCompile Include="src\dpcp\flow_table.cpp" />
     <ClCompile Include="src\dpcp\forwardable_obj.cpp" />
     <ClCompile Include="src\dpcp\fr.cpp" />
+    <ClCompile Include="src\dpcp\internal.cpp" />
     <ClCompile Include="src\dpcp\mkey.cpp" />
     <ClCompile Include="src\dpcp\parser_graph_node.cpp" />
+    <ClCompile Include="src\dpcp\qp.cpp" />
     <ClCompile Include="src\dpcp\rq.cpp" />
     <ClCompile Include="src\dpcp\sq.cpp" />
     <ClCompile Include="src\dpcp\tir.cpp" />
     <ClCompile Include="src\dpcp\tis.cpp" />
     <ClCompile Include="src\dpcp\tag_buffer_table_obj.cpp" />
+    <ClCompile Include="src\dpcp\dev_mem.cpp" />
     <ClCompile Include="src\utils\windows\log.cpp" />
     <ClCompile Include="src\utils\windows\stdafx.cpp" />
     <ClCompile Include="src\utils\windows\utils.cpp" />
@@ -247,12 +256,14 @@
     <ClInclude Include="src\dcmd\base\base_provider.h" />
     <ClInclude Include="src\dcmd\base\base_uar.h" />
     <ClInclude Include="src\dcmd\base\base_umem.h" />
+    <ClInclude Include="src\dcmd\base\base_dev_mem.h" />
     <ClInclude Include="src\dcmd\dcmd.h" />
     <ClInclude Include="src\dcmd\prm.h" />
     <ClInclude Include="src\dcmd\windows\action.h" />
     <ClInclude Include="src\dcmd\windows\compchannel.h" />
     <ClInclude Include="src\dcmd\windows\ctx.h" />
     <ClInclude Include="src\dcmd\windows\def.h" />
+    <ClInclude Include="src\dcmd\windows\dev_mem.h" />
     <ClInclude Include="src\dcmd\windows\device.h" />
     <ClInclude Include="src\dcmd\windows\flow.h" />
     <ClInclude Include="src\dcmd\windows\obj.h" />

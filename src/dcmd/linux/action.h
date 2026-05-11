@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
- * Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,7 +32,9 @@
 #ifndef SRC_DCMD_LINUX_ACTION_H_
 #define SRC_DCMD_LINUX_ACTION_H_
 
+#include <cstdint>
 #include <memory>
+#include <vector>
 
 #include "dcmd/base/base_action.h"
 

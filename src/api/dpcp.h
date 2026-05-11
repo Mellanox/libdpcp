@@ -53,7 +53,7 @@
 using std::function;
 using std::unordered_map;
 
-static const char* dpcp_version = "1.1.61";
+static const char* dpcp_version = "1.1.65";
 
 #if defined(__linux__)
 typedef void* LPOVERLAPPED;
@@ -80,6 +80,7 @@ class umem;
 class compchannel;
 struct modify_action;
 struct fwd_dst_desc;
+class dev_mem;
 } // namespace dcmd
 
 namespace dpcp {
@@ -100,6 +101,7 @@ struct flow_group_attr;
 struct flow_rule_attr_ex;
 struct uar_t;
 struct adapter_hca_capabilities;
+class dev_mem;
 
 enum status {
     DPCP_OK = 0, /**< Operation finished successfully*/
@@ -116,7 +118,8 @@ enum status {
     DPCP_ERR_QUERY = -11, /**< Error on PRM Object query */
     DPCP_ERR_UMEM = -12, /**< Error with UMEM - allocation, mapping.. */
     DPCP_ERR_ALLOC_UAR = -13, /**< Error with UAR allocation */
-    DPCP_ERR_NOT_APPLIED = -14 /**< Flow is different on HW vs current */
+    DPCP_ERR_NOT_APPLIED = -14, /**< Flow is different on HW vs current */
+    DPCP_ERR_DEV_MEM = -15 /**< Error in device memory allocation/registration */
 };
 
 enum dpcp_ibq_protocol {
@@ -152,6 +155,13 @@ public:
      * @return Description string, or "Unknown" if unknown
      */
     static std::string decode_vendor_error_syndrome(uint8_t vendor_error_syndrome);
+};
+
+/**
+ * @brief Deleter for aligned-allocated host buffers; releases via ::aligned_free.
+ */
+struct aligned_free_deleter {
+    void operator()(void* p) const noexcept;
 };
 
 class obj {
@@ -2394,12 +2404,17 @@ typedef struct adapter_hca_capabilities {
                              0x0: FREE_RUNNING_TS
                              0x1: REAL_TIME_TS
                              0x2: FREE_RUNNING_AND_REAL_TIME_TS - both
-                             free running real time timestamps are supported.*/
+                             free running and real time timestamps are supported.*/
     uint8_t rq_ts_format; /**< Indicates the supported ts_format in RQ Context.
                              0x0: FREE_RUNNING_TS
                              0x1: REAL_TIME_TS
                              0x2: FREE_RUNNING_AND_REAL_TIME_TS - both
-                             free running real time timestamps are supported.*/
+                             free running and real time timestamps are supported.*/
+    uint8_t qp_ts_format; /**< Indicates the supported ts_format in QP Context.
+                             0x0: FREE_RUNNING_TS
+                             0x1: REAL_TIME_TS
+                             0x2: FREE_RUNNING_AND_REAL_TIME_TS - both
+                             free running and real time timestamps are supported.*/
     bool lro_cap; /**< indicates LRO support */
     bool lro_psh_flag; /**< indicate LRO support for segments with PSH flag */
     bool lro_time_stamp; /**< indicate LRO support for segments with TCP timestamp option */
@@ -2463,11 +2478,30 @@ typedef struct adapter_hca_capabilities {
     bool is_flow_table_caps_supported; /**< Capability to query flow table HCH.cap */
     flow_table_capabilities flow_table_caps; /**< Flow table from type receive capabilities */
     nvmeotcp_capabilities nvmeotcp_caps; /**< NVMe/TCP capabilities flags */
+    bool qpc_extension_supported; /**< If set, QP Context Extension is supported */
+    bool dma_mmo_qp_supported; /**< If set, DMA MMO WQE in QP is supported (only RC and DC QP types)
+                                */
+    bool qp_mmo_type_supported; /**< If set, QP Context mmo_type field must indicate the MMO type
+                                   used by the QP */
+    bool fl_rc_qp_when_roce_disabled; /**< If set, RC QP creation with force loopback is allowed
+                                           when RoCE is disabled */
+    bool dma_mmo_qp_when_roce_disabled_supported; /**< If set, DMA MMO QP creation is supported on a
+                                                     device with RoCE disabled (composite:
+                                                     dma_mmo_qp_supported AND
+                                                     fl_rc_qp_when_roce_disabled AND
+                                                     qpc_extension_supported AND
+                                                     qp_mmo_type_supported) */
+    uint32_t log_dma_mmo_max_size; /**< Log (base 2) of the maximum DMA MMO operation size in
+                                        bytes, 0 means no limit on size */
+    bool memic_supported; /**< If set, MEMIC (on-chip device memory) is supported */
+    size_t memic_max_size; /**< Maximum MEMIC allocation size in bytes, 0 means unsupported */
 } adapter_hca_capabilities;
 
 typedef std::unordered_map<int, void*> caps_map_t;
 typedef std::function<void(adapter_hca_capabilities* external_hca_caps, const caps_map_t& caps_map)>
     cap_cb_fn;
+typedef std::function<void(adapter_hca_capabilities* external_hca_caps, void* ibv_ctx)>
+    ibv_cap_cb_fn;
 
 typedef enum {
     QOS_NONE,
@@ -2624,6 +2658,527 @@ public:
      */
     status modify(const sq_attr& attr);
     virtual status destroy();
+};
+
+/**
+ * @brief Queue Pair states
+ */
+enum qp_state {
+    QP_RST = 0x0, /**< QP in reset state */
+    QP_INIT = 0x1, /**< QP in init state */
+    QP_RTR = 0x2, /**< QP in ready-to-receive state */
+    QP_RTS = 0x3, /**< QP in ready-to-send state */
+    QP_SQER = 0x4, /**< QP in send-queue error state */
+    QP_ERR = 0x6, /**< QP in error state */
+    QP_SQD = 0x7 /**< QP in send-queue drained state */
+};
+
+/**
+ * @brief Queue Pair service type (transport)
+ */
+enum qp_service_type : uint8_t {
+    QPST_RC = 0x0, /**< Reliable Connected */
+    QPST_UC = 0x1, /**< Unreliable Connected */
+    QPST_UD = 0x2, /**< Unreliable Datagram */
+    QPST_DCI = 0x5 /**< DC Initiator */
+};
+
+/**
+ * @brief Queue Pair path MTU
+ */
+enum qp_mtu : uint8_t {
+    QP_MTU_BYTES_256 = 0x1, /**< 256 bytes */
+    QP_MTU_BYTES_512 = 0x2, /**< 512 bytes */
+    QP_MTU_BYTES_1024 = 0x3, /**< 1024 bytes */
+    QP_MTU_BYTES_2048 = 0x4, /**< 2048 bytes */
+    QP_MTU_BYTES_4096 = 0x5, /**< 4096 bytes */
+    QP_MTU_BYTES_8192 = 0x6, /**< 8192 bytes */
+    QP_MTU_RAW_ETHERNET = 0x7 /**< Raw Ethernet QP */
+};
+
+/**
+ * @brief Queue Pair completion timestamp format
+ */
+enum qp_ts_format : uint8_t {
+    QP_TS_FREE_RUNNING = 0x0, /**< Free-running timestamp */
+    QP_TS_DEFAULT = 0x1, /**< Selected by the device */
+    QP_TS_REAL_TIME = 0x2 /**< Real-time timestamp */
+};
+
+/**
+ * @brief QP doorbell record layout.
+ *
+ * The RQ and SQ share a single 8-byte record aligned on a 4-byte boundary.
+ * SW writes the respective counter before ringing the doorbell.
+ */
+struct qp_db_rec {
+    uint32_t recv_db; /**< RQ consumer counter */
+    uint32_t send_db; /**< SQ producer counter */
+};
+
+/**
+ * @brief Queue Pair attributes
+ */
+struct qp_attr {
+    /* General */
+    qp_service_type st; /**< Service type (transport) */
+    uint32_t user_index; /**< QP user index, returned via CQE.user_index */
+    uint8_t port_num; /**< HCA port number (1-based) */
+    uint16_t pkey_index; /**< P_Key index for the primary address path */
+    qp_mtu mtu; /**< Path MTU */
+    qp_ts_format ts_format = QP_TS_DEFAULT; /**< Completion timestamp format */
+    void* wq_buf_addr = nullptr; /**< Externally allocated WQ buffer address;
+                                      nullptr to allocate internally.
+                                      Holds RQ WQEs first, then SQ WQEs contiguously */
+    qp_db_rec* db_addr = nullptr; /**< Externally allocated doorbell record;
+                                       nullptr to allocate internally */
+
+    /* Send queue */
+    uint32_t cqn_snd; /**< Send completion queue number */
+    uint32_t sq_wqe_num; /**< Number of WQEs in SQ, must be power of 2 */
+    uint32_t sq_wqe_sz; /**< SQ WQE size in bytes */
+
+    /* Receive queue */
+    uint32_t cqn_rcv; /**< Receive completion queue number */
+    uint32_t rq_wqe_num; /**< Number of WQEs in RQ, must be power of 2; 0 when no RQ */
+    uint32_t rq_wqe_sz; /**< RQ WQE size in bytes; 0 when no RQ */
+};
+
+/**
+ * @brief class qp - Abstract generic Queue Pair base
+ *
+ * Owns the universal QP resources (WQ buffer, doorbell record, UAR), and the
+ * reset -> init -> ready-to-receive -> ready-to-send state machine. Cannot be
+ * instantiated directly; concrete QP types derive from this and override the
+ * on_build_* hooks to set per-type fields when creating the QP and when
+ * moving it between states.
+ *
+ * Not all QP types and features are implemented; currently only concrete
+ * derived classes provide specific and workable implementations.
+ */
+class qp : public obj {
+    friend class adapter;
+
+protected:
+    /* General */
+    adapter* m_adapter;
+    std::unique_ptr<uar_t> m_uar;
+    qp_attr m_attr;
+    qp_state m_state;
+    uint32_t m_qpn;
+
+    /* WQ buffer (RQ WQEs first, then SQ WQEs, contiguous) */
+    std::unique_ptr<void, aligned_free_deleter> m_owned_wq_buf;
+    void* m_wq_buf;
+    std::unique_ptr<dcmd::umem> m_wq_buf_umem;
+    uint32_t m_wq_buf_umem_id;
+
+    /* Doorbell record */
+    std::unique_ptr<qp_db_rec, aligned_free_deleter> m_owned_db_rec;
+    qp_db_rec* m_db_rec;
+    std::unique_ptr<dcmd::umem> m_db_rec_umem;
+    uint32_t m_db_rec_umem_id;
+
+    /* Send queue */
+    size_t m_sq_wqe_num;
+    size_t m_sq_wqe_sz;
+
+    /* Receive queue */
+    size_t m_rq_wqe_num;
+    size_t m_rq_wqe_sz;
+
+    /**
+     * @brief QP constructor. Object is initialized but not created yet.
+     *
+     * @param [in]  ad      Owning adapter
+     * @param [in]  attr    QP attributes
+     */
+    qp(adapter* ad, const qp_attr& attr);
+    /**
+     * @brief Creates the QP object in HW.
+     *
+     * Sets the universal QP fields, then calls @ref on_build_create for
+     * per-type customization. Requires the UAR, WQ buffer, and DB record
+     * to be set up before this call.
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status create();
+    /**
+     * @brief Binds the UAR and creates the QP object.
+     *
+     * @param [in]  qp_uar      UAR descriptor
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status init(const uar_t* qp_uar);
+    /**
+     * @brief Allocates a page-aligned, zero-filled WQ buffer owned by the QP.
+     *
+     * @param [out] buf         Allocated buffer address
+     * @param [in]  sz          Buffer size in bytes
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status allocate_wq_buf(void*& buf, size_t sz);
+    /**
+     * @brief Sets a caller-owned WQ buffer on the QP.
+     *
+     * @param [in]  buf         Caller-allocated buffer address
+     */
+    void set_wq_buf(void* buf);
+    /**
+     * @brief Allocates a cacheline-aligned DB record owned by the QP.
+     *
+     * @param [out] db_rec      Allocated DB record address
+     * @param [out] sz          Allocated size in bytes
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status allocate_db_rec(qp_db_rec*& db_rec, size_t& sz);
+    /**
+     * @brief Sets a caller-owned DB record on the QP.
+     *
+     * @param [in]  db_rec      Caller-allocated DB record address
+     */
+    void set_db_rec(qp_db_rec* db_rec);
+    /**
+     * @brief Hook to set per-type fields when creating the QP object.
+     *
+     * @param [in,out] p_in        Pointer to QP create input
+     * @param [in,out] p_qpc       Pointer to QP context
+     * @param [in,out] p_qpc_ext   Pointer to QP context extension
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    virtual status on_build_create(void* p_in, void* p_qpc, void* p_qpc_ext);
+    /**
+     * @brief Hook to set per-type fields when moving the QP to init state.
+     *
+     * @param [in,out] p_qpc       Pointer to QP context
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    virtual status on_build_rst2init(void* p_qpc);
+    /**
+     * @brief Hook to set per-type fields when moving the QP to ready-to-receive state.
+     *
+     * @param [in,out] p_qpc       Pointer to QP context
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    virtual status on_build_init2rtr(void* p_qpc);
+    /**
+     * @brief Hook to set per-type fields when moving the QP to ready-to-send state.
+     *
+     * @param [in,out] p_qpc       Pointer to QP context
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    virtual status on_build_rtr2rts(void* p_qpc);
+
+public:
+    qp(const qp&) = delete;
+    qp& operator=(const qp&) = delete;
+    virtual ~qp() = 0;
+
+    /**
+     * @brief Drives the QP to the requested state.
+     *
+     * @param [in]  new_state   Requested target state
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    virtual status modify_state(qp_state new_state);
+    /**
+     * @brief Queries the current QP state from HW.
+     *
+     * @param [out] cur_state   Current state read from HW
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    virtual status query_state(qp_state& cur_state);
+    /**
+     * @brief Best-effort moves the QP back to reset state.
+     *
+     * @retval      Returns DPCP_OK regardless of HW result; failures are logged
+     */
+    virtual status to_reset();
+    /**
+     * @brief Drives the QP from reset to ready-to-send in one call.
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    virtual status transition_to_rts();
+    /**
+     * @brief Returns cached QP state.
+     *
+     * @param [out] state       Cached state
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status get_state(qp_state& state);
+    /**
+     * @brief Returns QP number.
+     *
+     * @param [out] qpn         QP number
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status get_qpn(uint32_t& qpn);
+    /**
+     * @brief Returns SQ WQE size in bytes.
+     *
+     * @param [out] wqe_sz      SQ WQE size in bytes
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status get_sq_wqe_sz(uint32_t& wqe_sz);
+    /**
+     * @brief Returns SQ WQEs number.
+     *
+     * @param [out] wqe_num     SQ WQEs number
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status get_sq_wqe_num(uint32_t& wqe_num);
+    /**
+     * @brief Returns RQ WQE size in bytes.
+     *
+     * @param [out] wqe_sz      RQ WQE size in bytes
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status get_rq_wqe_sz(uint32_t& wqe_sz);
+    /**
+     * @brief Returns RQ WQEs number.
+     *
+     * @param [out] wqe_num     RQ WQEs number
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status get_rq_wqe_num(uint32_t& wqe_num);
+    /**
+     * @brief Returns send CQ number.
+     *
+     * @param [out] cqn         Send CQ number
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status get_cqn_snd(uint32_t& cqn);
+    /**
+     * @brief Returns receive CQ number.
+     *
+     * @param [out] cqn         Receive CQ number
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status get_cqn_rcv(uint32_t& cqn);
+    /**
+     * @brief Returns virtual address of WQ buffer.
+     *
+     * @param [out] buf_addr    WQ buffer address
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status get_wq_buf(void*& buf_addr);
+    /**
+     * @brief Returns virtual address of QP DoorBell record.
+     *
+     * @param [out] db_rec      DB record address
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status get_dbrec(qp_db_rec*& db_rec);
+    /**
+     * @brief Returns virtual address of BlueFlame register.
+     *
+     * @param [out] bf_reg      BF register address
+     * @param [in]  offset      BF register offset
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status get_bf_reg(uint64_t*& bf_reg, size_t offset = 0);
+    /**
+     * @brief Returns virtual address of QP UAR page.
+     *
+     * @param [out] uar_page    QP UAR page address
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status get_uar_page(volatile void*& uar_page);
+    /**
+     * @brief Returns total WQ buffer size in bytes for an RQ+SQ pair.
+     *
+     * The RQ and SQ share a single contiguous WQ buffer.
+     *
+     * @param [in]  rq_wqe_sz   RQ WQE size in bytes (0 for SQ-only)
+     * @param [in]  rq_wqe_num  Number of RQ WQEs (0 for SQ-only)
+     * @param [in]  sq_wqe_sz   SQ WQE size in bytes (0 for RQ-only)
+     * @param [in]  sq_wqe_num  Number of SQ WQEs (0 for RQ-only)
+     *
+     * @retval      Combined WQ buffer size in bytes
+     */
+    static size_t get_wq_buf_sz(size_t rq_wqe_sz, size_t rq_wqe_num, size_t sq_wqe_sz,
+                                size_t sq_wqe_num);
+    inline size_t get_wq_buf_sz() const
+    {
+        return get_wq_buf_sz(m_rq_wqe_sz, m_rq_wqe_num, m_sq_wqe_sz, m_sq_wqe_num);
+    }
+    /**
+     * @brief Returns DB record size in bytes.
+     *
+     * @retval      Returns DB record size
+     */
+    inline static size_t get_db_rec_sz()
+    {
+        return DB_REC_SIZE;
+    }
+    virtual status destroy() override;
+};
+
+/**
+ * @brief struct dma_mmo_qp_attr - DMA MMO QP attributes
+ *
+ * Type-safe attribute subclass for @ref adapter::create_dma_mmo_qp.
+ * Inherits @ref qp_attr but only the general and send-queue fields apply. The
+ * type owns st (forced to QPST_RC; any caller value is ignored). The RQ side is
+ * unsupported: cqn_rcv, rq_wqe_num and rq_wqe_sz must be 0, else
+ * @ref adapter::create_dma_mmo_qp rejects the attr.
+ */
+struct dma_mmo_qp_attr : public qp_attr { };
+
+/**
+ * @brief class dma_mmo_qp - Force-Loopback RC QP with DMA MMO offload
+ *
+ * Concrete QP that performs in-server DMA via the MMO offload engine
+ * over a single-QP self-loopback (Force-Loopback RC, no RoCE required,
+ * SQ-only).
+ */
+class dma_mmo_qp final : public qp {
+    friend class adapter;
+
+private:
+    /**
+     * @brief DMA MMO QP constructor. Object is initialized but not created yet.
+     *
+     * @param [in]  ad             Owning adapter
+     * @param [in]  qp_attr        DMA MMO QP attributes
+     */
+    dma_mmo_qp(adapter* ad, const dma_mmo_qp_attr& qp_attr);
+
+protected:
+    /**
+     * @brief Sets DMA MMO specific fields when creating the QP object.
+     *
+     * @param [in,out] p_in        Pointer to QP create input
+     * @param [in,out] p_qpc       Pointer to QP context
+     * @param [in,out] p_qpc_ext   Pointer to QP context extension
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status on_build_create(void* p_in, void* p_qpc, void* p_qpc_ext) override;
+    /**
+     * @brief Sets Force-Loopback self-loop fields when moving to ready-to-receive.
+     *
+     * @param [in,out] p_qpc       Pointer to QP context
+     *
+     * @retval      Returns DPCP_OK on success
+     */
+    status on_build_init2rtr(void* p_qpc) override;
+
+public:
+    virtual ~dma_mmo_qp() = default;
+};
+
+/**
+ * @brief class dev_mem - Represent on-chip device memory (MEMIC).
+ *
+ * The memory is registered as a zero-based MKey and is addressed by its lkey
+ * (@ref get_lkey) and a byte offset. The host accesses it through
+ * @ref copy_to_dev_mem / @ref copy_from_dev_mem; the device accesses it through
+ * DMA WQE entries, which use the byte offset as the address together with the lkey.
+ */
+class dev_mem : public obj {
+    friend class adapter;
+
+private:
+    /**
+     * @brief dev_mem constructor. Allocates device memory and registers the MKey.
+     *
+     * @param [in]  ad      Owning adapter
+     * @param [in]  size    Requested allocation size in bytes
+     * @param [out] s_out   DPCP_OK on success, error status on failure
+     */
+    dev_mem(adapter* ad, size_t size, status& s_out);
+
+public:
+    virtual ~dev_mem() override;
+    dev_mem(const dev_mem&) = delete;
+    dev_mem& operator=(const dev_mem&) = delete;
+
+    /**
+     * @brief Returns the lkey of the device memory MKey.
+     */
+    uint32_t get_lkey() const;
+    /**
+     * @brief Returns the allocation size in bytes.
+     */
+    size_t get_size() const;
+    /**
+     * @brief Copy data from host buffer into device memory.
+     *
+     * @param [in]  dst_offset  Destination offset within the device memory allocation
+     * @param [in]  src         Source host buffer
+     * @param [in]  length      Number of bytes to copy
+     *
+     * @retval      Returns 0 on success, errno-style error code on failure
+     */
+    int copy_to_dev_mem(size_t dst_offset, const void* src, size_t length) noexcept;
+    /**
+     * @brief Copy data from device memory into host buffer.
+     *
+     * @param [out] dst         Destination host buffer
+     * @param [in]  src_offset  Source offset within the device memory allocation
+     * @param [in]  length      Number of bytes to copy
+     *
+     * @retval      Returns 0 on success, errno-style error code on failure
+     */
+    int copy_from_dev_mem(void* dst, size_t src_offset, size_t length) noexcept;
+    /**
+     * @brief Returns the maximum device memory allocation size supported by the adapter.
+     *
+     * @param [in]  ad      Adapter pointer
+     *
+     * @retval      Maximum device memory allocation size in bytes (0 if unsupported)
+     */
+    static size_t get_max_device_memory_size(const adapter* ad);
+    /**
+     * @brief Check whether device memory is supported on the adapter.
+     *
+     * @param [in]  ad      Adapter pointer
+     *
+     * @retval      DPCP_OK             if device memory is supported
+     * @retval      DPCP_ERR_NO_SUPPORT if device memory is not supported
+     * @retval      DPCP_ERR_QUERY      if adapter capabilities cannot be queried
+     */
+    static status is_supported(const adapter* ad);
+    /**
+     * @brief Check whether a device memory allocation of the given length is supported.
+     *
+     * @param [in]  ad      Adapter pointer
+     * @param [in]  length  Requested allocation size in bytes
+     *
+     * @retval      DPCP_OK             if device memory is supported and length fits the maximum
+     * @retval      DPCP_ERR_NO_SUPPORT if device memory is not supported
+     * @retval      DPCP_ERR_NO_MEMORY  if length exceeds the maximum supported size
+     * @retval      DPCP_ERR_QUERY      if adapter capabilities cannot be queried
+     */
+    static status is_supported(const adapter* ad, size_t length);
+
+private:
+    adapter* m_adapter;
+    std::unique_ptr<dcmd::dev_mem> m_dev_mem;
 };
 
 /**
@@ -2910,11 +3465,13 @@ private:
     caps_map_t m_caps;
     adapter_hca_capabilities* m_external_hca_caps;
     std::vector<cap_cb_fn> m_caps_callbacks;
+    std::vector<ibv_cap_cb_fn> m_ibv_caps_callbacks;
     bool m_opened;
     flow_action_generator m_flow_action_generator;
     std::shared_ptr<flow_table> m_root_table_arr[flow_table_type::FT_END];
     status prepare_basic_rq(const rq_attr& rq_attr, basic_rq& srq);
     status verify_flow_table_receive_attr(const flow_table_attr& attr);
+    status ensure_uarpool();
 
 public:
     adapter(dcmd::device* dev, dcmd::ctx* ctx);
@@ -3211,6 +3768,40 @@ public:
      * @retval      Returns DPCP_OK on success
      */
     status create_pp_sq(const sq_attr& sq_attr, pp_sq*& sq);
+
+    /**
+     * @brief Returns WQ buffer and DB record sizes for a generic QP.
+     *
+     * @param [in]  qp_attr         QP attributes
+     * @param [out] wq_buf_sz       WQ buffer size in bytes
+     * @param [out] db_rec_sz       DB record size in bytes
+     */
+    static void query_qp_buffer_sizes(const qp_attr& qp_attr, size_t& wq_buf_sz, size_t& db_rec_sz);
+
+    /**
+     * @brief Creates and returns a DMA MMO QP in ready-to-send state.
+     *
+     * @param [in]  qp_attr         DMA MMO QP attributes, see @ref dma_mmo_qp_attr
+     * @param [out] qp              On success, the created QP in ready-to-send state
+     *
+     * @retval      Returns DPCP_OK on success
+     *              Returns DPCP_ERR_INVALID_PARAM if the attributes are invalid
+     */
+    status create_dma_mmo_qp(const dma_mmo_qp_attr& qp_attr, dma_mmo_qp*& qp);
+
+    /**
+     * @brief Creates and returns dev_mem.
+     *
+     * @param [in]  size            Requested allocation size in bytes
+     * @param [out] dm              On Success created dev_mem
+     *
+     * @retval      Returns DPCP_OK on success
+     *              Returns DPCP_ERR_INVALID_PARAM if size is 0
+     *              Returns DPCP_ERR_NO_SUPPORT if unsupported or size exceeds the maximum
+     *              Returns DPCP_ERR_NO_MEMORY if not enough device memory is available
+     *              Returns DPCP_ERR_DEV_MEM if device memory allocation failed
+     */
+    status create_dev_mem(size_t size, dev_mem*& dm);
 
     /**
      * @brief Get general HCA capabilities

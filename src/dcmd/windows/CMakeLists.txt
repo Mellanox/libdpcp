@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@ target_sources(${PROJECT_NAME}
         ${CMAKE_CURRENT_LIST_DIR}/provider.cpp
         ${CMAKE_CURRENT_LIST_DIR}/uar.cpp
         ${CMAKE_CURRENT_LIST_DIR}/umem.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/dev_mem.cpp
         ${CMAKE_CURRENT_LIST_DIR}/action.h
         ${CMAKE_CURRENT_LIST_DIR}/compchannel.h
         ${CMAKE_CURRENT_LIST_DIR}/ctx.h
@@ -34,6 +35,7 @@ target_sources(${PROJECT_NAME}
         ${CMAKE_CURRENT_LIST_DIR}/provider.h
         ${CMAKE_CURRENT_LIST_DIR}/uar.h
         ${CMAKE_CURRENT_LIST_DIR}/umem.h
+        ${CMAKE_CURRENT_LIST_DIR}/dev_mem.h
 )
 
 target_include_directories(${PROJECT_NAME} INTERFACE ${CMAKE_CURRENT_LIST_DIR})

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,9 @@ target_sources(${PROJECT_NAME}
         ${CMAKE_CURRENT_LIST_DIR}/pd_tests.cpp
         ${CMAKE_CURRENT_LIST_DIR}/pp_tests.cpp
         ${CMAKE_CURRENT_LIST_DIR}/provider_tests.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/qp_tests.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/dma_mmo_qp_tests.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/dev_mem_tests.cpp
         ${CMAKE_CURRENT_LIST_DIR}/rq_ibq_tests.cpp
         ${CMAKE_CURRENT_LIST_DIR}/rq_tests.cpp
         ${CMAKE_CURRENT_LIST_DIR}/sq_tests.cpp

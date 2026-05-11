@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
- * Copyright (c) 2019-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * Copyright (c) 2019-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -131,7 +131,7 @@
 struct gtest_configure_t {
     int log_level;
     int random_seed;
-    char adapter[16];
+    char adapter[128];
 };
 
 #endif /* TESTS_GTEST_COMMON_DEF_H_ */

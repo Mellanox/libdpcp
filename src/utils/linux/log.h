@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
- * Copyright (c) 2019-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * Copyright (c) 2019-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -51,42 +51,58 @@ static inline int check_log_level(int level)
     return (dpcp_log_level > level);
 }
 
+/* Guard each log_* macro so a translation unit that already defined log_*
+ * (e.g. via tests/gtest/common/log.h) is not redefined when this header is
+ * later pulled in via utils/os.h. First-include wins. */
+
+#ifndef log_fatal
 #define log_fatal(fmt, ...)                                                                        \
     do {                                                                                           \
         if (check_log_level(0))                                                                    \
             fprintf(stderr, "[    FATAL ] " fmt, ##__VA_ARGS__);                                   \
         exit(1);                                                                                   \
     } while (0)
+#endif
 
+#ifndef log_error
 #define log_error(fmt, ...)                                                                        \
     do {                                                                                           \
         if (check_log_level(1))                                                                    \
             fprintf(stderr, "[    ERROR ] " fmt, ##__VA_ARGS__);                                   \
     } while (0)
+#endif
 
+#ifndef log_warn
 #define log_warn(fmt, ...)                                                                         \
     do {                                                                                           \
         if (check_log_level(2))                                                                    \
             fprintf(stderr, "[     WARN ] " fmt, ##__VA_ARGS__);                                   \
     } while (0)
+#endif
 
+#ifndef log_info
 #define log_info(fmt, ...)                                                                         \
     do {                                                                                           \
         if (check_log_level(3))                                                                    \
             fprintf(stderr, "[     INFO ] " fmt, ##__VA_ARGS__);                                   \
     } while (0)
+#endif
 
+#ifndef log_trace
 #define log_trace(fmt, ...)                                                                        \
     do {                                                                                           \
         if (check_log_level(4))                                                                    \
             fprintf(stderr, "[    TRACE ] " fmt, ##__VA_ARGS__);                                   \
     } while (0)
+#endif
 
+#ifndef log_hexdump
 #define log_hexdump(_ptr, _size)                                                                   \
     do {                                                                                           \
         if (check_log_level(5))                                                                    \
             sys_hexdump((_ptr), (_size));                                                          \
     } while (0)
+#endif
 
 inline void sys_hexdump(void* ptr, int buflen);
 

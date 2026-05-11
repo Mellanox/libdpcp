@@ -1,5 +1,5 @@
 ARG ARCH=x86_64
-FROM nbu-harbor.gtm.nvidia.com/hpcx/${ARCH}/ubuntu20.04/base:latest
+FROM nbu-harbor.gtm.nvidia.com/swx-infra/media/${ARCH}/base/ubuntu:26.04
 ARG _UID=6213
 ARG _GID=11429
 ARG _LOGIN=swx-jenkins
@@ -22,15 +22,17 @@ RUN apt-get update && \
         maven \
         udev \
         wget \
+        curl \
+        gpg \
         vim \
         net-tools \
         iputils-ping \
         environment-modules \
         libibverbs-dev \
         libfile-fcntllock-perl \
-        chrpath flex gfortran graphviz dpatch libgfortran5 tcl bison tk swig \
+        chrpath flex gfortran graphviz libgfortran5 tcl bison tk swig \
         libnl-route-3-dev libnl-3-dev kmod python3 lsof pciutils ethtool libmnl0 pkg-config \
-	libusb-1.0-0 libfuse2 \
+	libusb-1.0-0 libfuse2t64 \
         lsb-release \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 

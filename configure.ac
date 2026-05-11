@@ -13,8 +13,8 @@ dnl===-----------------------------------------------------------------------===
 #
 define([prj_ver_major], 1)
 define([prj_ver_minor], 1)
-define([prj_ver_revision], 61)
-define([prj_ver_release], esyscmd([echo ${PRJ_RELEASE:=0}]))
+define([prj_ver_revision], 65)
+define([prj_ver_release], esyscmd([echo -n ${PRJ_RELEASE:=0}]))
 
 
 # Initialize autoconf and define the package name, version number and
@@ -30,7 +30,8 @@ AC_CONFIG_HEADER([config.h])
 PRJ_MAJOR=prj_ver_major
 PRJ_MINOR=prj_ver_minor
 PRJ_REVISION=prj_ver_revision
-PRJ_RELEASE=prj_ver_release
+# PACKAGE_BUILD_NUMBER can be used to override build number
+PRJ_RELEASE="${PACKAGE_BUILD_NUMBER:-prj_ver_release}"
 
 AC_DEFINE_UNQUOTED(PRJ_MAJOR, ${PRJ_MAJOR}, [Project Major Version])
 AC_SUBST(PRJ_MAJOR)

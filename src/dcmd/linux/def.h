@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
- * Copyright (c) 2019-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * Copyright (c) 2019-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,6 +35,7 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+#include <cstdint>
 #include <cstdlib>
 #include <infiniband/verbs.h>
 #include <infiniband/mlx5dv.h>

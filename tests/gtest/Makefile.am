@@ -9,6 +9,7 @@ gtest_CPPFLAGS = \
 	-I$(top_srcdir) \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/dcmd/linux \
+	-I$(top_srcdir)/src/utils/linux \
 	-I$(top_srcdir)/tests/gtest
 
 if ENABLE_CUDA
@@ -35,6 +36,7 @@ gtest_SOURCES = \
 	dcmd/dcmd_device.cpp\
 	dcmd/dcmd_ctx.cpp\
 	dcmd/dcmd_obj.cpp\
+	dcmd/dcmd_dev_mem.cpp\
 	\
 	dpcp/dpcp_base.cpp\
 	dpcp/provider_tests.cpp\
@@ -51,12 +53,15 @@ gtest_SOURCES = \
 	dpcp/fr_tests.cpp\
 	dpcp/dek_tests.cpp\
 	dpcp/sq_tests.cpp\
+	dpcp/qp_tests.cpp\
+	dpcp/dma_mmo_qp_tests.cpp\
 	dpcp/parser_graph_node_tests.cpp\
 	dpcp/adapter_tests.cpp\
 	dpcp/err_cqe_tests.cpp\
 	dpcp/flow_table_tests.cpp\
 	dpcp/flow_group_tests.cpp\
-	dpcp/flow_rule_ex_tests.cpp
+	dpcp/flow_rule_ex_tests.cpp\
+	dpcp/dev_mem_tests.cpp
 
 noinst_HEADERS = \
 	common/gtest.h \

@@ -20,6 +20,7 @@ libdpcp_la_SOURCES = \
 	dpcp/eq.cpp \
 	dpcp/err_cqe.cpp \
 	dpcp/internal.h \
+	dpcp/internal.cpp \
 	dpcp/fr.cpp \
 	dpcp/mkey.cpp \
 	dpcp/rq.cpp \
@@ -27,6 +28,8 @@ libdpcp_la_SOURCES = \
 	dpcp/tis.cpp \
 	dpcp/dek.cpp \
 	dpcp/sq.cpp \
+	dpcp/qp.cpp \
+	dpcp/dma_mmo_qp.cpp \
 	dpcp/parser_graph_node.cpp \
 	dpcp/flow_table.cpp \
 	dpcp/flow_group.cpp \
@@ -35,6 +38,7 @@ libdpcp_la_SOURCES = \
 	dpcp/flow_matcher.cpp \
 	dpcp/forwardable_obj.cpp \
 	dpcp/tag_buffer_table_obj.cpp \
+	dpcp/dev_mem.cpp \
 	\
 	dcmd/dcmd.h \
 	dcmd/prm.h \
@@ -47,6 +51,7 @@ libdpcp_la_SOURCES = \
 	dcmd/base/base_umem.h \
 	dcmd/base/base_flow.h \
 	dcmd/base/base_action.h \
+	dcmd/base/base_dev_mem.h \
 	\
 	dcmd/linux/def.h \
 	dcmd/linux/provider.cpp \
@@ -67,6 +72,8 @@ libdpcp_la_SOURCES = \
 	dcmd/linux/flow.h \
 	dcmd/linux/action.cpp \
 	dcmd/linux/action.h \
+	dcmd/linux/dev_mem.cpp \
+	dcmd/linux/dev_mem.h \
 	\
 	utils/os.h \
 	\

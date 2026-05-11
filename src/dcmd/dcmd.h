@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
- * Copyright (c) 2019-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * Copyright (c) 2019-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,6 +32,9 @@
 #ifndef SRC_DCMD_H_
 #define SRC_DCMD_H_
 
+#include <cstddef>
+#include <cstdint>
+
 #if defined(__linux__)
 #include "prm.h"
 
@@ -43,6 +46,7 @@
 #include "obj.h"
 #include "uar.h"
 #include "umem.h"
+#include "dev_mem.h"
 #include "flow.h"
 #else
 
@@ -66,6 +70,7 @@ extern "C" {
 #include "src/dcmd/windows/uar.h"
 #include "src/dcmd/windows/umem.h"
 #include "src/dcmd/windows/flow.h"
+#include "src/dcmd/windows/dev_mem.h"
 #endif
 
 enum {

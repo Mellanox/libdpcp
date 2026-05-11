@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
- * Copyright (c) 2019-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * Copyright (c) 2019-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -362,7 +362,7 @@ status pattern_mkey::create()
     // Max size of the Repeated Block header and entries.
     // Must be aligned to 4 octwords (octword in this case is 16Bytess).
     // If needed the last entries are padded with zeros.
-    uint32_t aligned_sz = align((uint32_t)(m_bbs_num + 1), 4);
+    uint32_t aligned_sz = align<4u>((uint32_t)(m_bbs_num + 1));
     uint32_t repeat_block_sz =
         sizeof(mlx5_wqe_umr_repeat_block_seg) + aligned_sz * sizeof(mlx5_wqe_umr_repeat_ent_seg);
     size_t inlen = DEVX_ST_SZ_DW(create_mkey_in) + repeat_block_sz / sizeof(uint32_t);

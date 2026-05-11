@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
- * Copyright (c) 2019-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * Copyright (c) 2019-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,7 @@
 #define SRC_UTILS_LINUX_UTILS_H_
 
 #include <unistd.h>
+#include <cstddef>
 #include <cstdint>
 
 inline size_t get_page_size()

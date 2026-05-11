@@ -90,7 +90,7 @@ RUN for FILE in sudo-i sudo system-auth; do sed -i 's/session.*required.*pam_lim
 COPY .ci/scripts/doca_install.sh /tmp/doca_install.sh
 RUN chmod +x /tmp/doca_install.sh && \
     /tmp/doca_install.sh && \
-    rm -f /tmp/doca_install.sh /tmp/GPG-KEY-Mellanox.pub
+    rm -f /tmp/doca_install.sh RPM-GPG-KEY-doca
 
 ENV MODULEPATH /hpc/local/etc/modulefiles
 SHELL ["/bin/bash"]

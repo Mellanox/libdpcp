@@ -42,15 +42,10 @@
 
 namespace dpcp {
 
-static const std::vector<int> s_supported_cap_types {MLX5_CAP_GENERAL,
-                                                     MLX5_CAP_TLS,
-                                                     MLX5_CAP_PARSE_GRAPH_NODE,
-                                                     MLX5_CAP_ETHERNET_OFFLOADS,
-                                                     MLX5_CAP_GENERAL_2,
-                                                     MLX5_CAP_FLOW_TABLE,
-                                                     MLX5_CAP_DPP,
-                                                     MLX5_CAP_NVMEOTCP,
-                                                     MLX5_CAP_CRYPTO};
+static const std::vector<int> s_supported_cap_types {
+    MLX5_CAP_GENERAL,           MLX5_CAP_ROCE,      MLX5_CAP_TLS,        MLX5_CAP_PARSE_GRAPH_NODE,
+    MLX5_CAP_ETHERNET_OFFLOADS, MLX5_CAP_GENERAL_2, MLX5_CAP_FLOW_TABLE, MLX5_CAP_DPP,
+    MLX5_CAP_NVMEOTCP,          MLX5_CAP_CRYPTO};
 
 static void store_hca_device_frequency_khz_caps(adapter_hca_capabilities* external_hca_caps,
                                                 const caps_map_t& caps_map)
@@ -80,6 +75,43 @@ static void store_hca_device_qp_caps(adapter_hca_capabilities* external_hca_caps
     log_trace("Capability - log_max_qp_sz: %d\n", external_hca_caps->log_max_qp_sz);
 }
 
+static void store_hca_dma_mmo_qp_caps(adapter_hca_capabilities* external_hca_caps,
+                                      const caps_map_t& caps_map)
+{
+    auto general_cap = caps_map.find(MLX5_CAP_GENERAL);
+    if (general_cap == caps_map.end()) {
+        log_fatal("Incorrect caps_map object - couldn't find MLX5_CAP_GENERAL\n");
+        return;
+    }
+
+    external_hca_caps->dma_mmo_qp_supported =
+        DEVX_GET(query_hca_cap_out, general_cap->second, capability.cmd_hca_cap.dma_mmo_qp);
+    log_trace("Capability - dma_mmo_qp: %d\n", external_hca_caps->dma_mmo_qp_supported);
+
+    external_hca_caps->qpc_extension_supported =
+        DEVX_GET(query_hca_cap_out, general_cap->second, capability.cmd_hca_cap.qpc_extension);
+    log_trace("Capability - qpc_extension: %d\n", external_hca_caps->qpc_extension_supported);
+
+    external_hca_caps->qp_mmo_type_supported =
+        DEVX_GET(query_hca_cap_out, general_cap->second, capability.cmd_hca_cap.qp_mmo_type);
+    log_trace("Capability - qp_mmo_type: %d\n", external_hca_caps->qp_mmo_type_supported);
+
+    external_hca_caps->fl_rc_qp_when_roce_disabled = DEVX_GET(
+        query_hca_cap_out, general_cap->second, capability.cmd_hca_cap.fl_rc_qp_when_roce_disabled);
+    log_trace("Capability - fl_rc_qp_when_roce_disabled: %d\n",
+              external_hca_caps->fl_rc_qp_when_roce_disabled);
+
+    external_hca_caps->log_dma_mmo_max_size = DEVX_GET(query_hca_cap_out, general_cap->second,
+                                                       capability.cmd_hca_cap.log_dma_mmo_max_size);
+    log_trace("Capability - log_dma_mmo_max_size: %d\n", external_hca_caps->log_dma_mmo_max_size);
+
+    external_hca_caps->dma_mmo_qp_when_roce_disabled_supported =
+        external_hca_caps->dma_mmo_qp_supported && external_hca_caps->fl_rc_qp_when_roce_disabled &&
+        external_hca_caps->qpc_extension_supported && external_hca_caps->qp_mmo_type_supported;
+    log_trace("Capability - dma_mmo_qp_when_roce_disabled_supported: %d\n",
+              external_hca_caps->dma_mmo_qp_when_roce_disabled_supported);
+}
+
 static void store_hca_tls_caps(adapter_hca_capabilities* external_hca_caps,
                                const caps_map_t& caps_map)
 {
@@ -96,6 +128,20 @@ static void store_hca_tls_caps(adapter_hca_capabilities* external_hca_caps,
     external_hca_caps->tls_rx =
         DEVX_GET(query_hca_cap_out, general_cap->second, capability.cmd_hca_cap.tls_rx);
     log_trace("Capability - tls_rx: %d\n", external_hca_caps->tls_rx);
+}
+
+static void store_hca_roce_caps(adapter_hca_capabilities* external_hca_caps,
+                                const caps_map_t& caps_map)
+{
+    auto roce_cap = caps_map.find(MLX5_CAP_ROCE);
+    if (roce_cap == caps_map.end()) {
+        log_fatal("Incorrect caps_map object - couldn't find MLX5_CAP_ROCE\n");
+        return;
+    }
+
+    external_hca_caps->qp_ts_format =
+        DEVX_GET(query_hca_cap_out, roce_cap->second, capability.roce_cap.qp_ts_format);
+    log_trace("Capability - qp_ts_format: %d\n", external_hca_caps->qp_ts_format);
 }
 
 static void store_hca_cap_crypto_enable(adapter_hca_capabilities* external_hca_caps,
@@ -788,6 +834,8 @@ static void store_hca_nvmeotcp_caps(adapter_hca_capabilities* external_hca_caps,
 static const std::vector<cap_cb_fn> caps_callbacks = {
     store_hca_device_frequency_khz_caps,
     store_hca_device_qp_caps,
+    store_hca_dma_mmo_qp_caps,
+    store_hca_roce_caps,
     store_hca_tls_caps,
     store_hca_general_object_types_encryption_key_caps,
     store_hca_log_max_dek_caps,
@@ -803,6 +851,28 @@ static const std::vector<cap_cb_fn> caps_callbacks = {
     store_hca_flow_table_nic_receive_caps,
     store_hca_crypto_caps,
     store_hca_nvmeotcp_caps,
+};
+
+static void store_hca_memic_caps(adapter_hca_capabilities* external_hca_caps, void* ibv_ctx)
+{
+    external_hca_caps->memic_supported = false;
+    external_hca_caps->memic_max_size = 0;
+
+    if (!ibv_ctx) {
+        log_fatal("store_hca_memic_caps: ibv_context missing\n");
+        return;
+    }
+
+    const size_t max_dm =
+        dcmd::dev_mem::get_max_device_memory_size(static_cast<struct ibv_context*>(ibv_ctx));
+    external_hca_caps->memic_max_size = max_dm;
+    external_hca_caps->memic_supported = (max_dm != 0);
+    log_trace("Capability - memic_supported: %d\n", external_hca_caps->memic_supported);
+    log_trace("Capability - memic_max_size: %zu\n", external_hca_caps->memic_max_size);
+}
+
+static const std::vector<ibv_cap_cb_fn> ibv_caps_callbacks = {
+    store_hca_memic_caps,
 };
 
 status pd_devx::create()
@@ -872,6 +942,7 @@ adapter::adapter(dcmd::device* dev, dcmd::ctx* ctx)
     , m_caps()
     , m_external_hca_caps(nullptr)
     , m_caps_callbacks(caps_callbacks)
+    , m_ibv_caps_callbacks(ibv_caps_callbacks)
     , m_opened(false)
     , m_flow_action_generator(m_dcmd_ctx, m_external_hca_caps)
 {
@@ -985,6 +1056,19 @@ status adapter::get_real_time(uint64_t& real_time)
     return DPCP_OK;
 }
 
+status adapter::ensure_uarpool()
+{
+    if (m_uarpool != nullptr) {
+        return DPCP_OK;
+    }
+    m_uarpool = new (std::nothrow) uar_collection(get_ctx());
+    if (m_uarpool == nullptr) {
+        log_error("ensure_uarpool: UAR pool allocation failed\n");
+        return DPCP_ERR_NO_MEMORY;
+    }
+    return DPCP_OK;
+}
+
 status adapter::open()
 {
     status ret = DPCP_OK;
@@ -1013,12 +1097,9 @@ status adapter::open()
             return ret;
         }
     }
-    // Allocate UAR pool
-    if (nullptr == m_uarpool) {
-        m_uarpool = new (std::nothrow) uar_collection(get_ctx());
-        if (nullptr == m_uarpool) {
-            return DPCP_ERR_NO_MEMORY;
-        }
+    ret = ensure_uarpool();
+    if (ret != DPCP_OK) {
+        return ret;
     }
     // Mapping device ctx to iseg for getting RTC on BF2 device
     int err = m_dcmd_ctx->hca_iseg_mapping();
@@ -1219,12 +1300,9 @@ status adapter::create_cq(const cq_attr& attrs, cq*& out_cq)
         return DPCP_ERR_INVALID_PARAM;
     }
 
-    if (nullptr == m_uarpool) {
-        // Allocate UAR pool
-        m_uarpool = new (std::nothrow) uar_collection(get_ctx());
-        if (nullptr == m_uarpool) {
-            return DPCP_ERR_NO_MEMORY;
-        }
+    status ret = ensure_uarpool();
+    if (ret != DPCP_OK) {
+        return ret;
     }
     std::unique_ptr<cq> cq64(new (std::nothrow) cq(this, attrs));
     if (nullptr == cq64) {
@@ -1236,7 +1314,7 @@ status adapter::create_cq(const cq_attr& attrs, cq*& out_cq)
         return DPCP_ERR_ALLOC_UAR;
     }
     uar_t uar_p;
-    status ret = m_uarpool->get_uar_page(cq_uar, uar_p);
+    ret = m_uarpool->get_uar_page(cq_uar, uar_p);
     if (DPCP_OK != ret) {
         return ret;
     }
@@ -1352,18 +1430,16 @@ void adapter::query_rq_buffer_sizes(uint32_t wqe_sz, uint32_t wqe_num, size_t& w
 
 status adapter::create_striding_rq(const rq_attr& rq_attr, striding_rq*& str_rq)
 {
-    if (!m_uarpool) {
-        // Allocate UAR pool
-        m_uarpool = new (std::nothrow) uar_collection(get_ctx());
-        if (!m_uarpool)
-            return DPCP_ERR_NO_MEMORY;
+    status ret = ensure_uarpool();
+    if (ret != DPCP_OK) {
+        return ret;
     }
 
     std::unique_ptr<striding_rq> srq(new (std::nothrow) striding_rq(this, rq_attr));
     if (!srq)
         return DPCP_ERR_NO_MEMORY;
 
-    status ret = prepare_basic_rq(rq_attr, *srq);
+    ret = prepare_basic_rq(rq_attr, *srq);
     if (DPCP_OK == ret)
         str_rq = srq.release();
 
@@ -1372,18 +1448,16 @@ status adapter::create_striding_rq(const rq_attr& rq_attr, striding_rq*& str_rq)
 
 status adapter::create_regular_rq(const rq_attr& rq_attr, regular_rq*& reg_rq)
 {
-    if (!m_uarpool) {
-        // Allocate UAR pool
-        m_uarpool = new (std::nothrow) uar_collection(get_ctx());
-        if (!m_uarpool)
-            return DPCP_ERR_NO_MEMORY;
+    status ret = ensure_uarpool();
+    if (ret != DPCP_OK) {
+        return ret;
     }
 
     std::unique_ptr<regular_rq> srq(new (std::nothrow) regular_rq(this, rq_attr));
     if (!srq)
         return DPCP_ERR_NO_MEMORY;
 
-    status ret = prepare_basic_rq(rq_attr, *srq);
+    ret = prepare_basic_rq(rq_attr, *srq);
     if (DPCP_OK == ret)
         reg_rq = srq.release();
 
@@ -1529,12 +1603,9 @@ void adapter::query_pp_sq_buffer_sizes(uint32_t wqe_sz, uint32_t wqe_num, size_t
 
 status adapter::create_pp_sq(const sq_attr& sq_attr, pp_sq*& packet_pacing_sq)
 {
-    if (nullptr == m_uarpool) {
-        // Allocate UAR pool
-        m_uarpool = new (std::nothrow) uar_collection(get_ctx());
-        if (nullptr == m_uarpool) {
-            return DPCP_ERR_NO_MEMORY;
-        }
+    status ret = ensure_uarpool();
+    if (ret != DPCP_OK) {
+        return ret;
     }
     pp_sq* ppsq = new (std::nothrow) pp_sq(this, sq_attr);
     if (nullptr == ppsq) {
@@ -1547,7 +1618,7 @@ status adapter::create_pp_sq(const sq_attr& sq_attr, pp_sq*& packet_pacing_sq)
         return DPCP_ERR_ALLOC_UAR;
     }
     uar_t uar_p;
-    status ret = m_uarpool->get_uar_page(sq_uar, uar_p);
+    ret = m_uarpool->get_uar_page(sq_uar, uar_p);
     if (DPCP_OK != ret) {
         return ret;
     }
@@ -1592,6 +1663,145 @@ status adapter::create_pp_sq(const sq_attr& sq_attr, pp_sq*& packet_pacing_sq)
     return ret;
 }
 
+/* static */
+void adapter::query_qp_buffer_sizes(const qp_attr& qp_attr, size_t& wq_buf_sz, size_t& db_rec_sz)
+{
+    wq_buf_sz = qp::get_wq_buf_sz(qp_attr.rq_wqe_sz, qp_attr.rq_wqe_num, qp_attr.sq_wqe_sz,
+                                  qp_attr.sq_wqe_num);
+    db_rec_sz = qp::get_db_rec_sz();
+}
+
+status adapter::create_dma_mmo_qp(const dma_mmo_qp_attr& qp_attr, dma_mmo_qp*& qp)
+{
+    qp = nullptr;
+
+    if (qp_attr.cqn_rcv != 0 || qp_attr.rq_wqe_num != 0 || qp_attr.rq_wqe_sz != 0) {
+        log_error("create_dma_mmo_qp: DMA MMO QP is SQ-only; cqn_rcv, rq_wqe_num and "
+                  "rq_wqe_sz must be 0\n");
+        return DPCP_ERR_INVALID_PARAM;
+    }
+
+    if (m_is_caps_available && !m_external_hca_caps->dma_mmo_qp_when_roce_disabled_supported) {
+        log_error("create_dma_mmo_qp: DMA MMO QP when RoCE disabled not supported\n");
+        return DPCP_ERR_NO_SUPPORT;
+    }
+
+    status ret = ensure_uarpool();
+    if (ret != DPCP_OK) {
+        return ret;
+    }
+
+    std::unique_ptr<dma_mmo_qp> dqp(new (std::nothrow) dma_mmo_qp(this, qp_attr));
+    if (!dqp) {
+        log_error("create_dma_mmo_qp: QP object allocation failed\n");
+        return DPCP_ERR_NO_MEMORY;
+    }
+
+    uar qp_uar = m_uarpool->get_uar(dqp.get());
+    if (qp_uar == nullptr) {
+        log_error("create_dma_mmo_qp: UAR acquisition failed\n");
+        return DPCP_ERR_ALLOC_UAR;
+    }
+    uar_t uar_p;
+    ret = m_uarpool->get_uar_page(qp_uar, uar_p);
+    if (ret != DPCP_OK) {
+        log_error("create_dma_mmo_qp: UAR page acquisition failed ret=%d\n", ret);
+        return ret;
+    }
+
+    void* wq_buf = qp_attr.wq_buf_addr;
+    size_t wq_buf_sz = dqp->get_wq_buf_sz();
+    if (wq_buf != nullptr) {
+        dqp->set_wq_buf(wq_buf);
+    } else {
+        ret = dqp->allocate_wq_buf(wq_buf, wq_buf_sz);
+        if (ret != DPCP_OK) {
+            log_error("create_dma_mmo_qp: WQ buf allocation failed ret=%d\n", ret);
+            return ret;
+        }
+    }
+    dcmd::umem* wq_umem = nullptr;
+    ret = reg_mem(get_ctx(), wq_buf, wq_buf_sz, wq_umem, dqp->m_wq_buf_umem_id);
+    if (ret != DPCP_OK) {
+        log_error("create_dma_mmo_qp: WQ buf UMEM registration failed ret=%d\n", ret);
+        return DPCP_ERR_UMEM;
+    }
+    dqp->m_wq_buf_umem.reset(wq_umem);
+    log_trace("create_dma_mmo_qp Buf: 0x%p sz: 0x%zx umem_id: %x\n", wq_buf, wq_buf_sz,
+              dqp->m_wq_buf_umem_id);
+
+    qp_db_rec* db_rec = qp_attr.db_addr;
+    size_t db_rec_sz = qp::get_db_rec_sz();
+    if (db_rec != nullptr) {
+        dqp->set_db_rec(db_rec);
+    } else {
+        ret = dqp->allocate_db_rec(db_rec, db_rec_sz);
+        if (ret != DPCP_OK) {
+            log_error("create_dma_mmo_qp: DB rec allocation failed ret=%d\n", ret);
+            return ret;
+        }
+    }
+    dcmd::umem* db_umem = nullptr;
+    ret = reg_mem(get_ctx(), db_rec, db_rec_sz, db_umem, dqp->m_db_rec_umem_id);
+    if (ret != DPCP_OK) {
+        log_error("create_dma_mmo_qp: DB rec UMEM registration failed ret=%d\n", ret);
+        return DPCP_ERR_UMEM;
+    }
+    dqp->m_db_rec_umem.reset(db_umem);
+    log_trace("create_dma_mmo_qp DB: 0x%p sz: 0x%zx umem_id: %x\n", db_rec, db_rec_sz,
+              dqp->m_db_rec_umem_id);
+
+    ret = dqp->init(&uar_p);
+    if (ret != DPCP_OK) {
+        log_error("create_dma_mmo_qp: QP init/create failed ret=%d\n", ret);
+        return ret;
+    }
+
+    ret = dqp->transition_to_rts();
+    if (ret != DPCP_OK) {
+        log_error("create_dma_mmo_qp: transition to RTS failed ret=%d\n", ret);
+        return ret;
+    }
+
+    qp = dqp.release();
+    return DPCP_OK;
+}
+
+status adapter::create_dev_mem(size_t size, dev_mem*& dm)
+{
+    dm = nullptr;
+
+    if (size == 0) {
+        log_error("create_dev_mem: Invalid size 0\n");
+        return DPCP_ERR_INVALID_PARAM;
+    }
+
+    status ret = dev_mem::is_supported(this, size);
+    if (ret == DPCP_ERR_NO_SUPPORT) {
+        log_error("create_dev_mem: MEMIC not supported\n");
+        return ret;
+    }
+    if (ret == DPCP_ERR_NO_MEMORY) {
+        log_error("create_dev_mem: size %zu exceeds device limit\n", size);
+        return ret;
+    }
+    if (ret != DPCP_OK) {
+        return ret;
+    }
+
+    ret = DPCP_OK;
+    std::unique_ptr<dev_mem> tmp(new (std::nothrow) dev_mem(this, size, ret));
+    if (!tmp) {
+        log_error("create_dev_mem: MEMIC allocation failed\n");
+        return DPCP_ERR_NO_MEMORY;
+    }
+    if (ret != DPCP_OK) {
+        return ret;
+    }
+    dm = tmp.release();
+    return DPCP_OK;
+}
+
 status adapter::query_hca_caps()
 {
     uint32_t in[DEVX_ST_SZ_DW(query_hca_cap_in)] = {0};
@@ -1618,6 +1828,10 @@ void adapter::set_external_hca_caps()
     m_external_hca_caps = new adapter_hca_capabilities();
     for (auto& callback : m_caps_callbacks) {
         callback(m_external_hca_caps, m_caps);
+    }
+    void* ibv_ctx = m_dcmd_ctx->get_context();
+    for (auto& callback : m_ibv_caps_callbacks) {
+        callback(m_external_hca_caps, ibv_ctx);
     }
     m_is_caps_available = true;
 }

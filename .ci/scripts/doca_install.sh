@@ -4,9 +4,9 @@ set -xvEe -o pipefail
 
 DOCA_REPO_PATH="https://doca-repo-prod.nvidia.com/internal/repo/doca"
 TARGET=${TARGET:=all}
-DOCA_VERSION=${DOCA_VERSION:='3.3.0'}
-DOCA_BRANCH=${DOCA_BRANCH:="latest"}
-GPG_KEY="GPG-KEY-Mellanox.pub"
+DOCA_VERSION=${DOCA_VERSION:='3.4.0'}
+DOCA_BRANCH=${DOCA_BRANCH:="dev"}
+GPG_KEY=""
 
 function error_handler() {
     bc="$BASH_COMMAND"
@@ -48,7 +48,8 @@ function map_os_and_arch {
                 echo "Unsupported Ubuntu version: $VERSION_ID"
                 exit 1
             fi
-            GPG_KEY_CMD='cat "${GPG_KEY}" | gpg --dearmor > /etc/apt/trusted.gpg.d/"${GPG_KEY}"'
+            GPG_KEY="doca_keyring.gpg"
+            GPG_KEY_CMD='install -m 0644 "${GPG_KEY}" /etc/apt/trusted.gpg.d/"${GPG_KEY}"'
             REPO_CMD='echo deb [signed-by=/etc/apt/trusted.gpg.d/"${GPG_KEY}"] "${REPO_URL}" ./ >> /etc/apt/sources.list.d/doca.list'
             PKG_TYPE="deb"
             PKG_TOOL="dpkg"
@@ -58,6 +59,7 @@ function map_os_and_arch {
 
         rhel|ol)
             OS="${ID}${VERSION_ID%%.*}"
+            GPG_KEY="RPM-GPG-KEY-doca"
             GPG_KEY_CMD='rpm --import "${GPG_KEY}"'
             REPO_CMD='yum install -y yum-utils && yum-config-manager --add-repo "${REPO_URL}"'
             PKG_TYPE="rpm"
@@ -68,6 +70,7 @@ function map_os_and_arch {
 
             ctyunos|openEuler)
                         OS="${ID}${VERSION_ID}"
+                        GPG_KEY="RPM-GPG-KEY-doca"
                         GPG_KEY_CMD='rpm --import "${GPG_KEY}"'
                         REPO_CMD="cat <<EOF | sed 's/^[ \t]*//' > /etc/yum.repos.d/doca.repo
 [doca]
@@ -101,7 +104,16 @@ EOF
 map_os_and_arch
 
 # Install DOCA repo GPG key
-curl -o "${GPG_KEY}" "${DOCA_REPO_PATH}/${DOCA_VERSION}/${OS}/${ARCH}/${DOCA_BRANCH}/${GPG_KEY}"
+curl -fsSL -o "${GPG_KEY}" "${DOCA_REPO_PATH}/${DOCA_VERSION}/${OS}/${ARCH}/${DOCA_BRANCH}/${GPG_KEY}"
+
+# The key endpoint may redirect; ensure we didn't download an HTML/error body.
+if ! GNUPGHOME=/tmp gpg --show-keys "${GPG_KEY}" >/dev/null 2>&1; then
+    echo "Downloaded file is not a valid GPG public key: ${GPG_KEY}"
+    echo "First line of downloaded content:"
+    sed -n '1p' "${GPG_KEY}"
+    exit 1
+fi
+
 eval "${GPG_KEY_CMD}"
 
 # Install DOCA repo

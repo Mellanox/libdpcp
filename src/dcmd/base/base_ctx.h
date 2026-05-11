@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
- * Copyright (c) 2019-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * Copyright (c) 2019-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,8 +32,9 @@
 #ifndef SRC_DCMD_BASE_CTX_H_
 #define SRC_DCMD_BASE_CTX_H_
 
-#include <vector>
+#include <cstddef>
 #include <memory>
+#include <vector>
 
 #include "action.h"
 #include "dcmd/dcmd.h"

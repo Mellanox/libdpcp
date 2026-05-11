@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
- * Copyright (c) 2019-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * Copyright (c) 2019-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -55,6 +55,8 @@ status obj::destroy()
     errno = 0;
     if (m_obj_handle) {
         err = m_obj_handle->destroy();
+        delete m_obj_handle;
+        m_obj_handle = nullptr;
         if (err) {
             ret = DPCP_OK;
         }
@@ -124,6 +126,10 @@ status obj::modify(void* in, size_t inlen, void* out, size_t& outlen)
     if ((nullptr == in) || (nullptr == out) || (inlen < 16) || (outlen < 16))
         return DPCP_ERR_INVALID_PARAM;
 
+    if (!m_obj_handle) {
+        return DPCP_ERR_INVALID_ID;
+    }
+
     struct dcmd::obj_desc obj_desc = {in, inlen, out, outlen};
 
     log_trace("modify in: %p inlen: %zu out: %p outlen: %zu\n", obj_desc.in, obj_desc.inlen,
@@ -155,6 +161,10 @@ status obj::query(void* in, size_t inlen, void* out, size_t& outlen)
 
     if ((nullptr == in) || (nullptr == out) || (inlen < 16) || (outlen < 16))
         return DPCP_ERR_INVALID_PARAM;
+
+    if (!m_obj_handle) {
+        return DPCP_ERR_INVALID_ID;
+    }
 
     struct dcmd::obj_desc obj_desc = {in, inlen, out, outlen};
 

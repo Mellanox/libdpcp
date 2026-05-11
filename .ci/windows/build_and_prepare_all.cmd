@@ -8,7 +8,7 @@ if "%WORKSPACE%" == "" (
 call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvars64.bat"
 
 set SolutionDir=%WORKSPACE%
-msbuild dpcp.sln /t:Build /p:Configuration=Release;Platform=x64
+msbuild dpcp.sln /t:Build /p:Configuration=Release;Platform=x64 /m /p:UseMultiToolTask=true /p:EnforceProcessCountAcrossBuilds=true /p:CL_MPCount=%NUMBER_OF_PROCESSORS%
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 set GTEST_TAP=2

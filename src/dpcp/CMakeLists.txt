@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +15,7 @@
 
 target_sources(${PROJECT_NAME}
     PRIVATE
+        ${CMAKE_CURRENT_LIST_DIR}/internal.cpp
         ${CMAKE_CURRENT_LIST_DIR}/adapter.cpp
         ${CMAKE_CURRENT_LIST_DIR}/cq.cpp
         ${CMAKE_CURRENT_LIST_DIR}/dek.cpp
@@ -32,9 +33,12 @@ target_sources(${PROJECT_NAME}
         ${CMAKE_CURRENT_LIST_DIR}/parser_graph_node.cpp
         ${CMAKE_CURRENT_LIST_DIR}/rq.cpp
         ${CMAKE_CURRENT_LIST_DIR}/sq.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/qp.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/dma_mmo_qp.cpp
         ${CMAKE_CURRENT_LIST_DIR}/err_cqe.cpp
         ${CMAKE_CURRENT_LIST_DIR}/tag_buffer_table_obj.cpp
         ${CMAKE_CURRENT_LIST_DIR}/tir.cpp
         ${CMAKE_CURRENT_LIST_DIR}/tis.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/dev_mem.cpp
         ${CMAKE_CURRENT_LIST_DIR}/internal.h
 )

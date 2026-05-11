@@ -67,7 +67,7 @@
     triggers:
         - github-pull-request:
             cron: 'H/5 * * * *'
-            trigger-phrase: '.*\bbot:retest\b.*'
+            trigger-phrase: '.*\bbot:(lin:)?retest\b.*'
             status-context: "{jjb_proj}"
             success-status: "[PASS]"
             failure-status: "[FAIL]"

@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
- * Copyright (c) 2019-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,37 +29,18 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SRC_UTILS_OS_H_
-#define SRC_UTILS_OS_H_
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
-#include <cstdint>
-#include <type_traits>
+#include "dcmd/dcmd.h"
+#include "api/dpcp.h"
 
-#include "log.h"
-#include "utils.h"
+namespace dpcp {
 
-/**
- * @brief Rounds val up to the nearest multiple of Alignment (power of two).
- *
- * @tparam Alignment  Alignment in bytes (must be a power of two and non-zero).
- * @param [in] val    Value to round.
- *
- * @return Smallest multiple of Alignment that is >= val.
- */
-template <size_t Alignment, typename T> constexpr inline T align(T val)
+void aligned_free_deleter::operator()(void* p) const noexcept
 {
-    static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value,
-                  "align() requires an unsigned integral type");
-    static_assert(Alignment != 0 && (Alignment & (Alignment - 1)) == 0,
-                  "Alignment must be a non-zero power of two");
-    return (val + Alignment - 1) & ~(T(Alignment) - 1);
+    ::aligned_free(p);
 }
 
-inline bool is_pow2(size_t value)
-{
-    return value && ((value & (value - 1)) == 0);
-}
-
-#define NOT_IN_USE(a) ((void)(a))
-
-#endif /* SRC_UTILS_OS_H_ */
+} // namespace dpcp

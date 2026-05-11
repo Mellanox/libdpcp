@@ -1,4 +1,4 @@
-dpcp (@PRJ_MAJOR@.@PRJ_MINOR@.@PRJ_REVISION@) release; urgency=low
+dpcp (@PRJ_MAJOR@.@PRJ_MINOR@.@PRJ_REVISION@-@PRJ_RELEASE@) release; urgency=low
 
   * Initial release (Closes: #12345)
 
