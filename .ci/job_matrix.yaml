@@ -45,7 +45,7 @@ runs_on_dockers:
 # tool
   - {file: '.dockers/Dockerfile.ubuntu22.04', arch: 'x86_64', name: 'toolbox', uri: '$arch/$name/toolbox', tag: '20251207', category: 'tool', build_args: '--build-arg ARCH=x86_64 --no-cache --target toolbox'}
   - {name: 'header-check', url: 'nbu-harbor.gtm.nvidia.com/toolbox/header_check:0.0.64', arch: 'x86_64', tag: '0.0.51', category: 'tool', build_args: '--no-cache'}
-  - {name: 'secret-scan', url: 'nbu-harbor.gtm.nvidia.com/toolbox/secret_scan:0.0.23', arch: 'x86_64', tag: '0.0.23', category: 'tool', build_args: '--no-cache'}
+  - {name: 'secret-scan', url: 'nbu-harbor.gtm.nvidia.com/swx-storage/tools/secret_scan:devops-stable', arch: 'x86_64', tag: 'devops-stable', category: 'tool', build_args: '--no-cache'}
 
 runs_on_agents:
   - {nodeLabel: 'beni09', category: 'base'}
